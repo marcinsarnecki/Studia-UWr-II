@@ -1,0 +1,733 @@
+# L11 - GRUPA 1
+
+
+## Zadanie 1
+:::success
+Autor: 	Michał Hetnar	
+:::
+Dlaczego zastąpienie wszystkich operacji
+przypisania referencji w funkcjach add() oraz remove()
+operacjami compareAndSet() nie daje w wyniku poprawnej
+współbieżnej implementacji zbioru?
+
+object.CompareAndSet(objec2,objct3)
+- jeżeli object =object 2 to przypisz do object <- object3
+Podajmy kontr przykłady:
+mamy:
+h -> a  ->  c -> t
+dwa wątki równolegle chcą
+- dodać b
+- usunac a
+
+powinno być:
+h->b->c->t
+
+ale: 
+(Wstawianie b)
+b.next <- c
+
+(usuwamy a)
+if h.next == a
+to wstawiamy h.next <- c
+
+(Wstawianie b)
+
+if a.next == c
+to wstawiamy h.next <- a.next
+
+
+
+mamy:
+h->a->c
+
+h->a->c
+___b->c
+
+h->c
+a->c
+b->c
+
+____h-> c -> t
+a -> b -> c
+
+czyli
+
+h->c
+(nie dodaliśmy b!)
+oraz
+
+mamy:
+h-> a ->b -> t
+
+usuwamy a i b
+
+zamiast 
+
+h-> t
+
+
+if a. next == b.next
+a.next <- c 
+
+if h.next == a.next
+h.next <- b (succ)
+
+mamy:
+h ->b -> t
+
+Jeśli dodamy klase AtomicMarkableReference
+    
+to pole marked mówi nam że  dany wierzchołek na liscie jest usuniety
+i operacje add oraz remove usuną wszystkie takie zanim przejda do modyfikacji
+a warunkiem do jakich zmian jest nowa operacja compareandset która sprawdza również nastepny wskaznik czy niejest do usuniecia.
+
+
+
+
+
+
+## Zadanie 2
+:::success
+Autor: 	Wojciech Pokój	
+:::
+
+  
+Opisz w dokładny sposób działanie metody find() z
+klasy Window oraz metod add(), remove() i contains() z klasy
+LockFreeList. W szczególności, dla każdego wywołania
+compareAndSet() występującego w treści tych metod wymień
+wszystkie powody, dla których może ono zawieść (zwrócić
+false). Dlaczego rezultat drugiego wywołania compareAndSet() w
+metodzie remove() nie jest sprawdzany? Czy można je usunąć nie
+tracąc poprawności implementacji?
+    
+Wskazówka: TAoMP2e, r. 9.8
+
+![](https://i.imgur.com/kRqnNIm.png)
+
+Zadanie klasy window i metody find jest przejście listy w poszukiwaniu żądanego klucza po drodze usuwając fizycznie usuwając węzły które były usunięte logicznie.
+
+Opecja CAS w linijce 17 może się nie powieść w 2 sytuacjach:
+
+1. curr jesr zamarkowany - curr został w międzyczasie poddany logicznemu usunięciu więc nie można wskaźnika przepiąć
+2. pred.next i curr są różne - został wstawiony nowy element
+
+![](https://i.imgur.com/2f6e2YJ.png)
+
+Dodawanie nowego elementu
+
+CAS może się nie powieść w 2 sytuacjach:
+
+1. curr został zamarkowany i logicznie usunięty
+2. wskaźniki wskazują na różne wartości więc coś w międzyczasie zostało dodane
+
+![](https://i.imgur.com/DEBxr4N.png)
+
+Usuwanie elemntu - po znalezieniu elementu usuwamy go logicznie
+i CASem próbujemy go usunąć fizycznie, jeśli się nie uda, pomijamy usuwanie i pozostawiamy to findowi
+
+UWAGA
+
+attemptMark w linii 26 to tak naprawdę curr.next.compareAndSet(succ, succ, false, true);
+
+CAS w linii 25 może się nie powieść gdy zmienił się następnik lub został wcześniej logicznie usunięty.
+
+CAS w linijce 30 może się nie powieść jeśli został wstawiony nowy elemet lub poprzednik został usunięty logicznie
+
+Wynik próby usuwania nie jest sprawdzany ponieważ bez tej próby ciągle dostajemy popraawnie działąjący algorytm (problemem usuwania pierwotnie zajmuje się find)
+
+![](https://i.imgur.com/Oh5vbxc.png)
+
+Przeszukujemy listę dopóki nie napotkamy elementu o właściwym kluczu
+
+
+## Zadanie 3
+:::success
+Autor: 	Julia Matuszewska	
+:::
+![](https://i.imgur.com/N3SRNDC.png)
+
+![](https://i.imgur.com/TPhDY8H.png)
+
+Jeżeli `pred` nie ma ustawionego pola `marked` to nie został logicznie usunięty z listy.
+W tym wypadku nie musimy zaczynać od początku, tylko od `pred`, ponieważ jest on na liście, więc poszukiwane miejsce na dodanie elementu występuje gdzieś po `pred`, ze względu na posortowanie elementów.
+Niezmiennik `pred.key < key && curr.key >= key` nadal jest aktualny.
+
+## Zadanie 4
+:::success
+Autor: 	Marcin Sarnecki	
+:::
+![](https://i.imgur.com/JvZcbWF.png)
+![](https://i.imgur.com/u7MsOrj.png)
+![](https://i.imgur.com/nKxsaQs.png)
+![](https://i.imgur.com/fqqIZrn.png)
+![](https://i.imgur.com/CJGpZtc.png)
+
+Metoda `contains` iteruje się do znalezienia elementu większego, bądź równego `key`. Nie można dodać nieskończenie wielu elementów pomiędzy `head` a szukanym elementem, więc metoda jest `wait-free`
+
+Metody `add` i `remove` są `lock-free`, ponieważ jeśli się zapętlą, to dlatego, że inne wątki zmodyfikowały listę, zatem przynajmniej jeden wątek dokonał postępu. 
+
+## Zadanie 5
+:::success
+Autor: 	Mateusz Kisiel	
+:::
+
+![](https://i.imgur.com/lDTIUo2.png)
+![](https://i.imgur.com/6KUe7vB.png)
+
+```java=
+public class BoundedQueue <T> {
+    ReentrantLock enqLock, deqLock;
+    Condition notEmptyCondition, notFullCondition;
+    AtomicInteger size;
+    volatile Node head, tail;
+    final int capacity;
+    public BoundedQueue(int _capacity) {
+        capacity = _capacity;
+        head = new Node(null);
+        tail = head;
+        size = new AtomicInteger(0);
+        enqLock = new ReentrantLock();
+        notFullCondition = enqLock.newCondition();
+        deqLock = new ReentrantLock();
+        notEmptyCondition = deqLock.newCondition();
+    }
+
+    
+    public void enq(T x) {
+        boolean mustWakeDequeuers = false;
+        Node e = new Node(x);
+        enqLock.lock();
+        try {
+            while (size.get() == capacity)
+                notFullCondition.await();
+            tail.next = e;
+            tail = e;
+            if (size.getAndIncrement() == 0)
+                mustWakeDequeuers = true;
+        } finally {
+            enqLock.unlock();
+        }
+        if (mustWakeDequeuers) {
+            deqLock.lock();
+            try {
+                notEmptyCondition.signalAll();
+            } finally {
+                deqLock.unlock();
+            }
+        }
+    }
+    public T deq() {
+        T result;
+        boolean mustWakeEnqueuers = false;
+        deqLock.lock();
+        try {
+            while (head.next == null)
+                notEmptyCondition.await();
+            result = head.next.value;
+            head = head.next;
+            if (size.getAndDecrement() == capacity) {
+                mustWakeEnqueuers = true;
+            }
+        } finally {
+            deqLock.unlock();
+        }
+        if (mustWakeEnqueuers) {
+            enqLock.lock();
+            try {
+                notFullCondition.signalAll();
+            } finally {
+                enqLock.unlock();
+            }
+        }
+        return result;
+    }
+}
+```
+:::info
+Czy istnieje taka sekwencja wykonań metod ```enq()``` i ```deq()```, że zmienna *size()* staje się ujemna?
+:::
+Niech wątek 1 wykonuje enque i po wykonaniu linijki `tail.next = e;` sheduler przełacza się na drugi wątek, który wykonuje deque. W tym przypadku wątek drugi stwierdzi, że są jakieś elementy(choć ich jeszcze fizycznie nie ma) i zrobi deque zmieniając licznik na -1.
+
+
+## Zadanie 6
+:::success
+Autor: 	Bartosz Szczeciński	
+:::
+
+![](https://i.imgur.com/mZIM2Pq.png)
+
+Problem zagubionej pobudki występuje w przypadku, kiedy któreś wątki czekają na wybudzenie nie zauważając, że ich warunek na wybudzenie został już spełniony.
+
+#### Wysyłanie sygnału i czekanie na niego odbywa się w miejscach zabezpieczonych tym samym zamkiem (`enqLock` lub `deqLock`), więc przykładowo `enq()` w trakcie wykonywania nigdy nie przegapi sygnału `notFullCondition`
+
+#### Za każdym razem wywołujemy `signalAll()`
+Gdybyśmy wywoływali `signal()`, czyli budzili tylko jeden wątek to mogłoby się zdarzyć:
+
+1. Zaczynamy od pustej kolejki
+2. Wątek A wywołuje `deq()` i czeka w poczekalni na `notEmptyCondition.await()`
+3. Wątek B wywołuje `deq()` i czeka w poczekalni na `notEmptyCondition.await()`
+4. Wątek C wywołuje `enq(x)` i budzi jeden z wątków wywołaniem `signal()` (powiedzmy, że budzi się A i czeka na zamek `deqLock`)
+5. Wątek D wywołuje `enq(x)` i wstawia element, zanim A skończy swoje `deq()`. Kolejka nie była pusta, więc D nie wywołuje `signal()`
+6. Wątek A zdejmuje element wstawiony przez C.
+7. Wątek B czeka, mimo że w kolejce jest jeden element wstawiony przez D.
+
+
+
+## Zadanie 7
+:::success
+Autor: 	Tomasz Wołczański	
+:::
+![](https://i.imgur.com/RGYTZUo.png)
+
+![](https://i.imgur.com/OSnOKyK.png)
+
+Gdyby w metodzie `deq` klasy `UnboundedQueue` sprawdzenie niepustości kolejki odbywało się przed zajęciem zamka, to mogłoby dojść do następującej sytuacji:
+
+Załóżmy, że w kolejce znajduje się tylko jeden element. Wątek $A$ wywołuje `deq`, sprawdza warunek niepustości i zostaje zatrzymany tuż przed zajęciem zamka `deqLock`. Następnie wątek $B$ wywołuje `deq`, sprawdza warunek niepustości, zajmuje zamek, modyfikuje wskaźnik `head`, zwalnia zamek i zwraca pobraną wartość. Jeśli teraz wątek $A$ zostanie wznowiony, to zajmie zamek i spróbuje odczytać `head.next.value`, ale `head.next` ma wartość `null`, więc wyrzucony zostanie wyjątek `NullPointerException`.
+
+## Zadanie 8
+:::success
+Autor: 	Maksymilian Komarnicki	
+:::
+
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    while (true) {
+        Node pred = head;
+        Node curr = head.next;
+        while (curr.key < key) {
+            pred = curr; curr = curr.next;
+        }
+        pred.lock();
+        try {
+            curr.lock();
+            try {
+                if (validate(pred, curr)) {
+                    if (curr.key == key) {
+                        return false;
+                    } else {
+                        Node node = new Node(item);
+                        node.next = curr;
+                        pred.next = node;
+                        return true;
+                    }
+                }
+            } finally {
+                curr.unlock();
+            }
+        } finally {
+            pred.unlock();
+        }
+    }
+}
+
+public boolean remove(T item) {
+    int key = item.hashCode();
+    while (true) {
+        Node pred = head;
+        Node curr = head.next;
+        while (curr.key < key) {
+            pred = curr; curr = curr.next;
+        }
+        pred.lock();
+        try {
+            curr.lock();
+            try {
+                if (validate(pred, curr)) {
+                    if (curr.key != key) {
+                        return false;
+                    } else {
+                        curr.marked = true;
+                        pred.next = curr.next;
+                        return true;
+                    }
+                }
+            } finally {
+                curr.unlock();
+            }
+        } finally {
+            pred.unlock();
+        }
+    }
+}
+
+public boolean contains(T item) {
+    int key = item.hashCode();
+    Node curr = head;
+    while (curr.key < key)
+        curr = curr.next;
+    return curr.key == key && !curr.marked;
+}
+```
+
+1. Add()
+    Punkty linearyzacji dla wywołania zakończonego:
+    - sukcesem - moment przyłączenia nowego węzła do listy(linia 19)
+    - porażką - moment zwrócenia wartości z funkcji(linia 15)
+2. Remove()
+    Punkty linearyzacji dla wywołania zakończonego:
+    - sukcesem - moment ustalenia pola jako marked(linia 48)
+    - porażką - moment zwrócenia wartości z funkcji(linia 46)
+3. Contains()
+    Punkty linearyzacji dla wywołania zakończonego:
+    - sukcesem - moment znalezienia węzła nieoznaczonego jako marked(linia 67)
+    - porażką:
+        - przypadek 1 - moment znalezienia węzła o prawidłowym kluczu, który jest oznaczony jako marked
+            ![](https://i.imgur.com/gD8HL2Q.png)
+        - przypadek 2 - moment nie jest możliwy do wskazania w kodzie - bezpośrodnio przed tym, gdy nowy odpowiadający węzeł został dodany
+            ![](https://i.imgur.com/1seurJF.png)
+
+## Zadanie 9
+:::success
+Autor: 	Marcin Wróbel	
+:::
+![](https://i.imgur.com/tbartHw.png)
+
+```java=
+public class LockFreeQueue < T > {
+    AtomicReference < Node > head,
+    tail;
+    public LockFreeQueue() {
+        Node node = new Node(null);
+        head = new AtomicReference(node);
+        tail = new AtomicReference(node);
+    }
+    public void enq(T value) {
+        Node node = new Node(value);
+        while (true) {
+            Node last = tail.get();
+            Node next = last.next.get();
+            if (last == tail.get()) {
+                if (next == null) {
+                    // Logiczne enq
+                    if (last.next.compareAndSet(next, node)) {
+                        
+                        // Fizyczne enq
+                        // Zmieniamy tail, nie sprawdzamy zwracanej wartości
+                        // ponieważ albo się nam udało, albo inny wątek nam pomógł
+                        tail.compareAndSet(last, node);
+                        return;
+                    }
+                } else {
+                     // próbujemy pomóc "wolniejszemu" wątkowi w zmianie taila
+                     // Nie sprawdzamy zwracanej wartości, bo jeśli nie pomogliśmy,
+                     // to ktoś inny pomógł, albo "wolny" wątek sam zmienił taila
+                    tail.compareAndSet(last, next);
+                }
+            }
+        }
+    }
+
+    public T deq() throws EmptyException {
+        while (true) {
+            Node first = head.get();
+            Node last = tail.get();
+            Node next = first.next.get();
+            if (first == head.get()) {
+                if (first == last) {
+                    // Wartownik jest jedynym fizycznie dodanym elementem
+                    if (next == null) {
+                        // Nie ma żadnych logicznie dodanych elementów
+                        throw new EmptyException();
+                    }
+                 
+                    // Jakiś element został logicznie dodany jako następnik taila
+                    // próbujemy pomóc "wolniejszemu" wątkowi
+                    // Nie sprawdzamy zwracanej wartości, bo jeśli nie pomogliśmy,
+                    // to ktoś inny pomógł, albo "wolny" wątek sam zmienił taila
+                    tail.compareAndSet(last, next);
+                } else {
+                    T value = next.value;
+                    if (head.compareAndSet(first, next))
+                        return value;
+                }
+            }
+        }
+    }
+}
+```
+
+:::info
+Dla każdego wywołania metody **compareAndSet()** w kodzie **enq()** i **deq()** wymień wszystkie powody, dla których może ono zawieść.
+:::
+17: `last.next.compareAndSet(next, node)` może zawieść, gdy
+- inny wątek dodał inny element do kolejki
+
+22: `tail.compareAndSet(last, node)` może zawieść gdy:
+- inny wątek nam pomógł
+
+29: `tail.compareAndSet(last, next)` może zawieść, gdy:
+- inny wątek pomógł już "wolnemu" wątkowi
+- "wolny" wątek wykonał przepięcie wskaźników, w którym chcieliśmy pomóc
+
+
+52: `tail.compareAndSet(last, next)` może zawieść, gdy:
+- inny wątek pomógł już "wolnemu" wątkowi
+- "wolny" wątek wykonał przepięcie wskaźników, w którym chcieliśmy pomóc
+
+55: `head.compareAndSet(first, next)` może zawieść, gdy:
+- inny wątek wyciągnął pierwszy element kolejki, który chcieliśmy wyciągnąć
+
+:::info
+Dla wszystkich wywołań tej metody, których wartość zwracana nie jest sprawdzana wyjaśnij, dlaczego tak jest.
+:::
+Wyjaśnienia w komentarzach w kodzie
+:::info
+Co to znaczy, że “szybsze” wątki pomagają w działaniu
+wątkom “wolniejszym”?
+:::
+Jeżeli jakiś wątek nie wykonał jeszcze pewnego działania, np. przepięcia wskaźników, bo przykładowo system nie przydzielił mu jeszcze czasu procesora, to nazywamy go "wolnym". Wątki, które zauważyły, że wyżej wymienione działanie nie zostało wykonane pomagają "wolnemu" wątkowi poprzez wykonanie tego działania.
+======
+# L11 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Maria Szlasa	 	
+:::
+:::info
+Rozważmy standardową sekwencyjną (jednowątkową) implementację listową zbioru (elementy przechowywane na liście uporządkowanej względem kluczy, bez powtórzeń, ze strażnikami). Dlaczego zastąpienie wszystkich operacji przypisania referencji w funkcjach add() oraz remove() operacjami compareAndSet() nie daje w wyniku poprawnej współbieżnej implementacji zbioru? W jaki sposób użycie pola marked oraz klasy AtomicMarkableReference\<T\> pomaga w rozwiązaniu powstałego problemu?
+Wskazówka: TAoMP2e, Fig. 9.21
+Polska wersja: str 247-249 Fig. 9.22
+:::
+
+Zastąpienie wszystkich operacji przypisania referencji operacjami compare and set nie daje poprawnego wyniku, ponieważ może nastąpić nieprawidłowe wykonanie poleceń (nie uwzględniamy pola mark):
+
+![](https://i.imgur.com/DMQRmQ8.jpg)
+
+AtomicMarkableReference\<T\> posiada metodę:
+```java=
+compareAndSet(T expectedReference, 
+    T newReference, 
+    boolean expectedMark, 
+    boolean newMark)
+``` 
+Aby rozwiązać problem, musimy zapewnić, żeby pole next usuniętego węzła nie było modyfikowane.
+
+Zmieniamy typ pola next na AtomicMarkableReference\<T\>, którą aby upewnić się, że w międzyczasie nie została zmodyfikowana referencja do następnego węzła ani nie został on usunięty.
+
+
+## Zadanie 2
+:::success
+Autor: 	Jan Jankowicz	
+:::
+![](https://i.imgur.com/ONqUepn.png)
+```java=
+class Window {
+	public Node pred, curr;
+	Window(Node myPred, Node myCurr) {
+		pred = myPred; curr = myCurr;
+	}
+}
+	
+public Window find(Node head, int key) {
+	Node pred = null, curr = null, succ = null;
+	boolean[] marked = {false};
+	boolean snip;
+	retry: while (true) {
+		/* ustawiamy początkowe wartości pred i curr, zaczynając od head */
+		pred = head;
+		curr = pred.next.getReference();
+		while (true) {
+			succ = curr.next.get(marked);
+			while (marked[0]) { /* dopóki następnik curr musi zostać fizycznie usunięty */
+				snip = pred.next.compareAndSet(curr, succ, false, false);	/* próba fizycznego usunięcia logicznie usuniętego węzła */
+				if (!snip) continue retry;  /* jeśli fizyczne usunięcie się nie uda, to zaczynamy od początku */
+				curr = succ; /* jeśli fizyczne usunięcie się uda, to aktualizujemy element curr */
+				succ = curr.next.get(marked); /* sprawdzamy kolejny węzeł na liście, czy też powinien zostać fizycznie usunięty i jeśli tak, to ponawiamy pętlę */
+			}
+			
+			
+			if (curr.key >= key)
+				return new Window(pred, curr); /* w tym momencie dotarliśmy do pred i curr logicznie znajdujących się na liście i następujących bezpośrednio po sobie, przy okazji fizycznie eliminując napotkane węzły usunięte logicznie */
+			
+			/* przechodzimy do następnych elementów */
+			pred = curr;
+			curr = succ;
+		}
+	}
+}
+
+```
+
+```java=
+public boolean add(T item) {
+	int key = item.hashCode();
+	while (true) {
+		Window window = find(head, key); /* znajdujemy miejsce wstawienia */
+		Node pred = window.pred, curr = window.curr;  /* rozpakowujemy wskaźniki */
+		if (curr.key == key) {
+			return false;  /* jeśli klucz istnieje, to nie wstawiamy go */
+		} else {
+			/* tworzymy nowy węzeł, który wskazuje na znaleziony element curr */
+			Node node = new Node(item);
+			node.next = new AtomicMarkableReference(curr, false); 
+			
+			/* próbujemy dokonać przepięcia referencji pred na nowy węzeł */
+			if (pred.next.compareAndSet(curr, node, false, false)) {
+				return true; /* udało się zmienić następnika pred, gdyż był on nieusunięty, a jednocześnie dalej wskazywał na curr (czyli od momentu znalezienia Windowa żaden inny wątek nie zakłócił struktury listy w tym miejscu) */
+			}
+			/* nie udało się zmodyfikować, co oznacza, że udało się to już innemu wątkowi w międzyczasie; musimy powtórzyć operację wstawiania elementu od początku */
+		}
+	}
+}
+```
+
+```java=
+public boolean remove(T item) {
+	int key = item.hashCode();
+	boolean snip;
+	while (true) {
+		Window window = find(head, key); /* znajdujemy miejsce wstawienia */
+		Node pred = window.pred, curr = window.curr; /* rozpakowujemy wskaźniki */
+		if (curr.key != key) {
+			return false; /* klucz nie istnieje w liście */
+		} else {
+			Node succ = curr.next.getReference(); /* pobieramy następnik obiektu usuwanego curr */
+			snip = curr.next.attemptMark(succ, true); /* próbujemy logicznie usunąć element curr */
+			if (!snip)
+				continue; /* nie udało się usunąć curr, ponieważ przestał on już wskazywać na węzeł succ jako swojego następnika; ponawiamy próbę wykonania operacji remove od początu */
+			pred.next.compareAndSet(curr, succ, false, false); /* podejmujemy od razu jedną próbę fizycznego usunięcia elementu */
+			return true; /* niezależnie od wyniku fizycznego usunięcia wychodzimy z funkcji */
+		}
+	}
+}
+```
+
+```java=
+public boolean contains(T item) {
+	boolean[] marked = false{};
+	int key = item.hashCode();
+	Node curr = head;
+	while (curr.key < key) { /* przechodzimy przez całą listę bez fizycznego usuwania napotkanych logicznie usuniętych elementów jak w przyapdku add i remove */
+		curr = curr.next;
+		Node succ = curr.next.get(marked);
+	}
+	return (curr.key == key && !marked[0]) /* gdy dojdziemy do miejsca, w którym musi się ewentualnie znajdować szukany element, sprawdzamy, czy faktycznie jest nim curr, i czy jest jednocześnie logicznie nieusunięty.
+}
+
+```
+
+Niepowodzenie wykonania instrukcji pred.next.compareAndSet(curr, ..., false, false) może wynikać z usunięcia elementu pred przez inny wątek (marked = true, a nie false, jak oczekujemy) lub z tego, że pred przestał wskazywać na curr, tak jak gdy zostało to ustalone przez find(); może to być skutkiem wstawienia przez inny wątek elementu x, takiego że pred.key < x < curr.key.
+
+>Dlaczego rezultat drugiego wywołania compareAndSet() w metodzie remove() nie jest sprawdzany? Czy można je usunąć nie tracąc poprawności implementacji?
+
+Wywołanie instrukcji pred.next.compareAndSet(curr, succ, false, false) w metodzie remove odpowiada za fizyczne usunięcie elementu. Nie ma konieczności sprawdzania jego skuteczności, gdyż jeśli nie uda się to teraz, to inny wątek podczas operacji add lub remove dokona fizycznego usunięcia takiego węzła albo już tego dokonał w międzyczasie.
+
+## Zadanie 3
+:::success
+Autor: 	Wiktor Hamberger	
+:::
+![](https://i.imgur.com/nABq1gp.png)
+
+![](https://i.imgur.com/dIh6fbr.png)
+Z definicji Window:
+> The find() method takes a head node and a key $a$, and traverses the list, seeking to set $pred$ to the node with the largest key less than $a$, and $curr$ to the node with the least key greater than or equal to $a$
+
+Jako że $pred$ nie ma ustawionego $marked$, nie został usunięty (tylko $curr$ jest usunięty), zatem $pred$ dalej jest miejszy od $a$, a nowy $curr$ większy od $pred$, więc para $pred_x<a<=curr_x$ dalej istnieje w liście i wiadomo, że $pred<=pred_x$, więc można nie wracać do początku i iterować dalej.
+
+## Zadanie 4
+:::success
+Autor: 	Adam Jarząbek	
+:::
+Metoda jest lock-free, jeżeli przynajmniej jeden wątek zawsze dokonuje postępu.
+W metodach add() i remove() wątki mogą się pętlić. Ale jeżeli się pętlą, to znaczy, że jakiś inny wątek dokonuje modyfikacji listy (tj add lub remove). A jeżeli inny wątek modyfikuje listę, to znaczy, że dokonuje postępu, więc te moetody są lock-free.
+
+Metoda jest wait-free, wtedy, kiedy każdy wątek dokonuje postępu.
+Metoda contains() jest wait-free, ponieważ szuka ona elementu >= kluczowi zaczynając od head. Elemetów < key jest skończenie wiele, więc każdy wątek dokonuje postępu.
+
+## Zadanie 5
+:::success
+Autor: 	Rafał Starypan	
+:::
+![](https://i.imgur.com/Po59mEh.png)
+![](https://i.imgur.com/1XkJDLV.png)
+
+![](https://i.imgur.com/nHZViKv.png)
+![](https://i.imgur.com/ERF9va1.png)
+![](https://i.imgur.com/x5dbAbJ.png)
+
+Rozważmy następującą sytuację:
+Wątek A wykonuje operację enq na pustej kolejce. Po wykonaniu instrukcji
+tail.next = e; przechodzimy do wątku B, który wykonuje deq().
+Wtedy wątek B nie zatrzyma się w pętli while (head.next == null),
+co z kolei spowoduje wywołanie size.getAndDecrement(), po którym rozmiar kolejki size będzie wynosił -1.
+
+## Zadanie 6
+:::success
+Autor: 	Daniel Boguszewski	
+:::
+![](https://i.imgur.com/ElF6rv7.png)
+
+Zagubiona pobudka dla obiektów Condition jest podobną sytuacją do zakleszczenia dla zamków. Występuje w sytuacji, w której czekający na dopuszczenie do działania obiekt przegapił moment, w którym powinien przystąpić do pracy. W kolejce byłaby to sytuacja w której dequer (enquer działa w analogiczny sposób) nie otrzymałby sygnału do wyjęcia elementu z kolejki.![](https://i.imgur.com/oidqgbK.png)
+
+W ograniczonej kolejce istnieje mechanizm, w którym dequery trafiają do poczekalni, jeśli żadanie deq() pojawią się w momencie, w którym kolejka pozostaje pusta. Taki dequer zaczyna oczekiwać, aż warunek notEmptyCondition zostanie spełniony. Problem mógłby się pojawić, gdyby próbowano zoptymalizować proces i sygnalizować tylko jeden oczekujący dequer, gdy pusta kolejka zostanie uzupełniona o element. Jeśli do kolejki dodanoby kilka elementów, a w oczekiwaniu znajdowało się wiele dequerów, to ponieważ metoda signal() losowo wybiera, który dequer o tym powiadomić, mogłoby dojść do sytuacji, w której jeden dequer zostałby powiadomiany kilka razy, a pozostałe dequery niepotrzebnie by oczekiwały (przegapiły swoją pobudkę).
+![](https://i.imgur.com/9F8Yjko.png)
+
+Kolejka z tego zadania rozwiązuje ten problem powiadamiając zawsze wszystkie oczekujące dequery metodą signalAll(). Jest to nieoptymalne o tyle, że będzie zdarzać się, że dequer z powrotem wróci do poczekalni, gdy kolejka okaże się pusta po jego pobudce, jednak opóźnienie, które to powoduje (a także walka o zamek deqLock), jest mniejszym problemem niż przegapione wyciągnięcie elementu z kolejki.
+![](https://i.imgur.com/FjfbT4F.png)
+
+
+## Zadanie 7
+:::success
+Autor: 	Kamila Goszcz	
+:::
+
+![](https://i.imgur.com/3cyCmlt.png)
+
+
+```java=
+public T deq() throws EmptyException {
+    T result;
+    deqLock.lock();
+    try {
+        if (head.next == null) {
+            throw new EmptyException();
+        }
+        result = head.next.value;
+        head = head.next;
+    } finally {
+        deqLock.unlock();
+    }
+    return result;
+}
+```
+
+Rozpatrzmy sytuację, gdy wątki A i B będą próbowały usunąć element z kolejki jednoelementowej:
+1. Wątek A sprawdza czy zachodzi `head.next == null`, ale lista jest jednoelementowa a więc false 
+2. Wątek B sprawdza czy zachodzi `head.next == null` - może to zrobić ponieważ A nie założył locka
+3. Wątek A usuwa element. Teraz head = head.next oraz head.next = null
+4. Wątek B będzie chciał zrobić `result = head.next.value`, ale `head.next == null` a więc otrzymamy wyjątek `NullPointerException`
+
+Zatem zajęcie locka jest konieczne
+
+## Zadanie 8
+:::danger
+Autor: 	dodeklarować?
+> [name=Piotr Witkowski]Wskazówka: TAoMP2e, str. 218
+:::
+
+## Zadanie 9
+:::success
+Autor: 	Zuzanna Kania	
+:::
+
+![](https://i.imgur.com/NyD631h.png)
+
+Zasada konstrukcji LockFreeQueue jest podobna do UnboundedQueue, przy czym wskaźniki na węzły są teraz typu `AtomicReference<Node>`, co oznacza, że możemy wykonywać na nich operację `compareAndSet`. Dzięki temu możemy zrezygnować z zamków.
+
+### enq()
+
+* linia 25 - może zawieść, gdy inny wątek wstawi swój węzeł już po sprawdzeniu przez nasz wątek warunku w linii 24
+* linia 26 - może zawieść, gdy inny wątek pomoże nam przesunąć ogon na nowo wstawiony węzeł. Nie wymaga sprawdzenia, ponieważ skoro inny wątek pomógł nam w naszej pracy, to wszystko jest w porządku
+* linia 30 - może zawieść, gdy inny wątek wyprzedzi nas w pomaganiu w przesuwaniu ogona. Nie wymaga sprawdzenia, ponieważ nie jest to zasadniczy zakres obowiązków funkcji - tu tylko pomagamy innym i operacja dalej będzie poprawna, jeśli się to nie uda
+
+### deq()
+
+* linia 45 - może zawieść, gdy inny wątek wyprzedzi nas w pomaganiu w przesuwaniu ogona. Nie wymaga sprawdzenia, ponieważ tu tylko pomagamy innym
+* linia 48 - może zawieść, gdy inny wątek wykona deq już po sprawdzeniu warunku `first == head.get()`
+
+![](https://i.imgur.com/20WnX9O.png)
+![](https://i.imgur.com/3v12wSy.png)

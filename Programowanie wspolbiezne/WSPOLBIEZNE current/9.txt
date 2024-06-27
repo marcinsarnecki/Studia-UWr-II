@@ -1,0 +1,607 @@
+# L9 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Maksymilian Komarnicki	
+:::
+
+_Lokalność czasowa_
+Komórki pamięci, które były ostatnio używane będą z wysokim prawdopodobieństwem używane ponownie w niedalekiej przyszłości.
+
+_Lokalność przestrzenna_
+Komórki pamięci o pobliskich adresach mają tendencje do bycia używanymi w krótkich odstępach czasu.
+
+
+(Lokalność czasowa) Pamięci podręczne wykorzystują lokalność odwołań poprzez pamiętanie w liniach komórek pamięci, które były ostatnio używane. Dzięki temu ponowny dostęp do tych samych danych jest bardzo szybki, o ile dane nie zostały usunięte z pamięci. 
+(Lokalność przestrzenna) Pamięci podręczne wykorzystują także lokalność poprzez umieszczanie linii o pobliskich adresach w różnych zbiorach pamięci podręcznej, co umożliwia trzymanie w niej większego kawałka spójnej pamięci.
+
+
+Procesor A i B posiadają swoje pamięci podręczne. Przypuśćmy, że oba wczytały dane pod adresem X do swoich pamięci podręcznych. Jeśli jeden z procesorów dokona modyfikacji tej danej, to pamięci podręczne procesorów A i B przestaną być spójne. Z tego względu potrzebne są protokoły spójności pamięci podręcznej.
+
+
+_MESI_, czyli każda z linii pamięci podręcznej może byc oznaczona jako
+- Modified - dane pamięci podręcznej zostały zmienione, muszą zostać zapisane do pamięci operacyjnej,
+- Exclusive - dane niemodyfikowane, jedyna kopia w jakiejkolwiek pamięci podręcznej,
+- Shared - dane niemodyfikowane, mogą być też w innej pamięci podręcznej,
+- Invalid - zawartość pamięci podręcznej nie jest spójna/zgodna.
+
+## Zadanie 2
+:::success
+Autor: Wojciech Pokój	
+:::
+
+:::info
+W jaki sposób mierzy się wydajność implementacji zamków?
+:::
+
+Układa się prosty program z krótką sekcją krytyczną (na przykład licznik) i mierzy się czas wykonania programu i średni czas potrzeby na zajęcie zamka
+
+:::info
+Wyjaśnij, skąd bierze się różnica w wydajności zamka TAS vs. TTAS odwołując się do modelu komunikacji w systemach wieloprocesorowych ze spójnymi pamięciami podręcznymi i wspólną szyną danych.
+:::
+
+Różnica wynika z konstrukcji pętli czekającej. TAS aktywnie zagląda do pamięci współdzielonej, przez co szyna komunikacyjna staje się obciążona. TTAS wykorzystuje fakt że pamięć znajduje się w cachu i dopuki nie zmieni stanu nie trzeba sięgać do pamięci współdzielonej
+
+## Zadanie 3
+:::success
+Autor: Marcin Sarnecki	
+:::
+![](https://i.imgur.com/uQzxAUG.png)
+* Przypomnij zasadę działania i podaj implementację zamka kolejkowego Andersona
+
+Mamy współdzieloną tablicę zmiennych boolowskich (flag), na poczatku wszedzie są wartości `false` z wyjatkiem poczatku, mamy współdzieloną zmienną `next`. Aby wziąć zamek, wątek atomowo wykonuje `getAnIncrement()` na zmiennej `next`, nastepnie czeka, aż nie pojawi sie tam wartosc `true`, stanie się to gdy poprzedni wątek wykona `unlock()`
+![](https://i.imgur.com/RjtPvlR.png)
+
+![](https://i.imgur.com/SkDCsht.png)
+
+* Jakie zalety ma ten zamek w stosunku do zamków TAS/TTAS/Backoff?
+
+
+![](https://i.imgur.com/3dNDGXj.png)
+
+* Czego dotyczy problem fałszywego współdzielenia wierszy pamięci podręcznej (ang. false sharing) w tym algorytmie i jak go rozwiązać?
+
+Kolejne komórki z tablicy `flags` będą znajdowały się w tych samych wierszach pamięci, każda zmiana pojedynczej flagi spowoduje zmianę stanu całego wiersza, zatem będzie więcej niepotrzebnego współdzielenia. 
+![](https://i.imgur.com/Z0TxcuO.png)
+![](https://i.imgur.com/qWkIcvQ.png)
+Rozwiązaniem jest takie rozmieszczenie flag w tablicy, aby na jedną flagę przypadał jeden wiersz pamięci.
+
+## Zadanie 4
+:::success
+Autor: Mikołaj Depta	
+:::
+
+![](https://i.imgur.com/6GqzhlT.png)
+![](https://i.imgur.com/0Z9GUGx.png)
+
+
+W pierszym podejściu wiele wątków aktywnie modyfikuje i odczytuje wartość jedenj, komórki. Będzie to przyczyną ciągłych inwalidacji pamięci cache i wymuszenie odczytu z pamieci głównej, co jest bardzo kosztowne.
+
+W drugim przypadku mamy podejście podobne do algorytmu Anderson'a, gdzie każdy wątek aktywnie czeka i pisze tylko do jendej komórki, poza ostatnią. Pomijając aspekt kolizji linii cache'u, który można objeść, inwalidajce pamięci podręcznej wystąpią nie więcej niż dwa razy dla każdego wątku. Raz gdy wątek `i - 1` naszpie do swojej komóki i ewentuanie gdy `n`'ty wątek napisze do swojej.
+
+Druga implementacja powinna być dużo szybsza, ponieważ generuje stałą liczbę inwalidacji per wątek, a nie jak w pierwszym przypadku proporcjonalnie do ilości wątków.
+
+## Zadanie 5
+:::success
+Autor: Tomasz Wołczański	
+:::
+![](https://i.imgur.com/g8tIyHy.png)
+
+W zamku CLH, podobnie jak w zamku Andersona, każdy wątek oczekuje w pętli na zmianę wartości komórki pamięci, która może zostać zmodyfikowana tylko przez jeden wątek. Dzięki temu liczba niepotrzebnych dostępów do szyny danych jest minimalna i narzut czasowy związany z rywalizacją wątków jest prawie zerowy. W przeciwieństwie do zamka Andersona, zamek CLH wykorzystuje (niejawną) listę wiązaną, więc osiąga lepszą złożoność pamięciową. Gdy w systemie mamy $L$ zamków i maksymalnie $n$ wątków, to algorytm Andersona musi zaalokować tablicę rozmiaru $n$ dla każdego zamka, co daje złożoność pamięciową $O(nL$). Natomiast złożoność algorytmu CLH wynosi $O(n+L)$.
+
+W algorytmie CLH wątek, który chce uzyskać dostęp do sekcji krytycznej tworzy węzeł `QNode` i inicjalizuje jego wartość na `true` (jeśli wątek nie uzyskał jeszcze dostępu do sekcji krytycznej, to wartość w jego węźle jest równa `true`, w przeciwnym razie `false`). Następnie przy pomocy metody `getAndSet` atomowo odczytuje i ustawia ogon niejawnej listy na swój węzeł. Jeśli wartość w odczytanym ogonie jest równa `true`, to znaczy, że w sekcji krytycznej znajduje się jeszcze jakiś wątek, więc trzeba na niego poczekać. Zwolnienie zamka przez wątek polega na ustawieniu wartości w węźle tego wątku na `false`.  Zamek można zaimplementować w następujący sposób:
+
+```java=
+public class CLHLock implements Lock {
+  AtomicReference<QNode> tail;
+  ThreadLocal<QNode> myNode;
+  
+  public CLHLock() {
+    tail = new AtomicReference<QNode>(new QNode());
+    myNode = new ThreadLocal<QNode>() {
+      protected QNode initialValue() {
+        return new QNode();
+      }
+    };
+  }
+  
+  public void lock() {
+    QNode qnode = new QNode();
+    qnode.locked = true;
+    myNode.set(qnode);
+    QNode pred = tail.getAndSet(qnode);
+    while (pred.locked) {}
+  }
+    
+  public void unlock() {
+    QNode qnode = myNode.get();
+    qnode.locked = false;
+    myNode = null;
+  }
+    
+  class QNode {
+    volatile boolean locked = false;
+  }
+}
+```
+
+Aby ograniczyć liczbę alokacji węzłów `QNode`, można w metodzie `unlock` ustawiać węzeł `myNode` na węzeł występujący przed nim na liście - wątek odpowiadający temu węzłowi wyszedł już z sekcji krytycznej, więc ten węzeł jest nieużywany.
+
+```java=
+public class CLHLock implements Lock {
+  AtomicReference<QNode> tail;
+  ThreadLocal<QNode> myPred;
+  ThreadLocal<QNode> myNode;
+  
+  public CLHLock() {
+    tail = new AtomicReference<QNode>(new QNode());
+    myNode = new ThreadLocal<QNode>() {
+      protected QNode initialValue() {
+        return new QNode();
+      }
+    };
+    myPred = new ThreadLocal<QNode>() {
+      protected QNode initialValue() {
+        return null;
+      }
+    };
+  }
+  
+  public void lock() {
+    QNode qnode = myNode.get();
+    qnode.locked = true;
+    QNode pred = tail.getAndSet(qnode);
+    myPred.set(pred);
+    while (pred.locked) {}
+  }
+    
+  public void unlock() {
+    QNode qnode = myNode.get();
+    qnode.locked = false;
+    myNode.set(myPred.get());
+  }
+    
+  class QNode {
+    volatile boolean locked = false;
+  }
+}
+```
+
+## Zadanie 6
+:::success
+Autor: Marcin Wróbel	
+:::
+![](https://i.imgur.com/S7xTFyE.png)
+
+```java 
+public class BadCLHLock implements Lock {
+    AtomicReference<Qnode> tail = new AtomicReference<QNode>(new QNode());
+    ThreadLocal<Qnode> myNode = new ThreadLocal<QNode> {
+        protected QNode initialValue() {
+            return new QNode();
+        }
+    };
+    public void lock() {
+        Qnode qnode = myNode.get();
+        qnode.locked = true; // I’m not done
+        // Make me the new tail, and find my predecessor
+        Qnode pred = tail.getAndSet(qnode);
+        while (pred.locked) {}
+    }
+    public void unlock() {
+        // reuse my node next time
+        myNode.get().locked = false;
+    }
+    static class Qnode { // Queue node inner class
+        volatile boolean locked = false;
+    }
+}
+
+```
+Implementacja jest błędna, ponieważ może dojść do zakleszczenia.
+Niech `X_myNode(y)` oznacza, że zmienna `myNode` wątku `X` jest obiektem `QNode` z wartością `locked` równą `y`;
+Działa tylko jeden wątek nazwany A.
+- A.lock()
+Po wykonaniu `tail == A_myNode(true)`
+- A.unlock()
+Po wykonaniu `tail == A_myNode(false)`
+- A.lock()
+`qnode.locked = true;` sprawi, że
+`tail == A_myNode(true)`
+`Qnode pred = tail.getAndSet(qnode);` po tej instrukcji
+`pred == A_myNode(true)`
+Program w nieskończoność będzie wykonywał pętlę `while (pred.locked) {}`, choć jest jedynym wątkiem chcącym uzyskać zamek.
+
+
+## Zadanie 7
+:::success
+Autor: Jan Dalecki	
+:::
+![](https://i.imgur.com/BPmxtMp.png)
+
+![](https://i.imgur.com/b5ejaw0.png)
+
+![](https://i.imgur.com/PbyvQ1I.png)
+
+Zamek implementuje timeout poprzez metodę `tryLock`, którą może wywołać każdy wątek w bloku try...catch. Metoda przyjmuje jako argument czas, który wątek wywołujący jest w stanie czekać na dostanie zamka. Próba otrzymania zamka jest porzucana jeżeli minie okrelony czas.
+
+W algorytmnie CLH zwykłe porzucenie próby dostania się do zamka spowodowałoby zagłodzenie wątków czekających w kolejce. Z tego powodu porzucone węzły są przejmowane przez kolejne przychodzące wątki.
+
+W strukturze `QNode` przechowujemy wskaźnik pod polem `pred` na inny `QNode`. Pole `pred` jest na początku zawsze `null`, a jeżeli nie zostanie podmienione na strukturę `AVAILABLE` tylko na inną strukturę, to oznacza, że wątek z niepowodzeniem wykonał metodę `tryLock`.
+
+Jeżeli poprzednik (wskazywany przez `tail`) miał wartość `null` lub przechowywał `AVAILABLE` możemy otrzymać zamek. W przeciwnym przypadku wchodzimy w pętlę na ustalony przez nas czas. 
+
+W pętli czekamy, aż pole `pred` poprzedniego wątku stanie się `AVAILABLE` - wtedy dostajemy zamek.
+Jeżeli zmieni się na inną wartość (poprzednik porzucił próbę dostania się do zamka) zmieniamy naszego poprzednika na tego, który jest wskazywany przez `pred`.
+
+Jeżeli minie nasz czas musimy ustawić `tail` na naszego poprzednika, jeżeli jesteśmy ostatni w kolejce (`tail` wskazuje na nas). W przeciwnym przypadku ustawiamy nasze pole `pred` na naszego poprzednika.
+
+![](https://i.imgur.com/NiKL0x8.jpg)
+![](https://i.imgur.com/SjIzMYN.jpg)
+## Zadanie 8
+:::success
+Autor: Wiktor Bukowski	
+:::
+
+![](https://i.imgur.com/N2qVtdW.png)
+
+![](https://i.imgur.com/q64cdqg.png)
+
+Zamek opiera się na następującej idei:
+Gdy zamek próbuje zająć blokadę, ustawia się na końcu kolejki. Jeśli jest już tam jakiś wątek, modyfikuje jego wskaźnik `next` na samego siebie, a następnie czeka aż ten wątek ustawi jego zmienną `locked` na fałsz.
+
+Aby zwolnić zamek musimy sprawdzić, czy żaden wątek nie ustawił się za nami. Sprawdzamy więc swój wskaźnik `next`. Jeśli nie jest nullem, ustawiamy jego zmienną `locked` na fałsz i kończymy algorytm. Jeśli jednak jest nullem, możliwym jest powolne ustawianie tego wskaźnika przez inny wątek. Aby wyeliminować ten problem, próbujemy ustawić zmienną `tail` (trzymającą koniec kolejki) na nulla. Jeśli się to uda, wiemy, że jesteśmy jedynym wątkiem i możemy zakończyć algorytm. Jeśli się to nie uda, to inny wątek powinien zaraz zmodyfikować nasz wskaźnik `next`, więc czekamy na to i ustawiamy jego zmienną `locked` na fałsz. Po wszystkich tych krokach żaden wątek nie może już skorzystać z naszego węzła, a więc możemy go użyć ponownie.
+
+W systemie o architekturze NUMA wydajność tego zamka jest satysfakcjonująca, ponieważ każdy z wątków pętli się na komórce znajdującej się w jego własnej pamięci.
+
+## Zadanie 9
+:::success
+Autor: Mateusz Kisiel	
+:::
+![](https://i.imgur.com/xcvMLcI.png)
+
+### TAS
+
+```java=
+class TASlock {
+    AtomicBoolean state = new AtomicBoolean(false);
+    void lock() {
+        while (state.getAndSet(true)) {}
+    }
+    void unlock() {
+        state.set(false);
+    }
+    
+    public boolean isLocked(){
+        return state.get();
+    }
+}
+```
+
+### CLH
+```java
+public class CLHLock implements Lock {
+    AtomicReference<QNode> tail;
+    ThreadLocal<QNode> myPred;
+    ThreadLocal<QNode> myNode;
+
+    public CLHLock() {
+        tail = new AtomicReference<QNode>(new QNode());
+        myNode = new ThreadLocal<QNode>() {
+            protected QNode initialValue() {
+                return new QNode();
+            }
+        };
+        myPred = new ThreadLocal<QNode>() {
+            protected QNode initialValue() {
+                return null;
+            }
+        };
+    }
+
+    public void lock() {
+        QNode qnode = myNode.get();
+        qnode.locked = true;
+        QNode pred = tail.getAndSet(qnode);
+        myPred.set(pred);
+        while (pred.locked) {}
+    }
+
+    public void unlock() {
+        QNode qnode = myNode.get();
+        qnode.locked = false;
+        myNode.set(myPred.get());
+    }
+    
+    public boolean isLocked(){
+        return tail.get().locked; /// kolejka jest pusta
+    }
+
+    class QNode {
+        volatile boolean locked = false;
+    }
+}
+```
+
+### MCS
+```java=
+public class MCSLock implements Lock {
+    AtomicReference<QNode> tail;
+    ThreadLocal<QNode> myNode;
+
+    public MCSLock() {
+        tail = new AtomicReference<QNode>(null);
+        myNode = new ThreadLocal<QNode>() {
+            protected QNode initialValue() {
+                return new QNode();
+            }
+        };
+    }
+
+    public void lock() {
+        QNode qnode = myNode.get();
+        QNode pred = tail.getAndSet(qnode);
+        if (pred != null) {
+            qnode.locked = true;
+            pred.next = qnode;
+            // wait until predecessor gives up the lock
+            while (qnode.locked) {}
+        }
+    }
+
+    public void unlock() {
+        QNode qnode = myNode.get();
+        if (qnode.next == null) {
+            if (tail.compareAndSet(qnode, null))
+                return;
+            // wait until successor fills in its next field
+            while (qnode.next == null) {}
+        }
+        qnode.next.locked = false;
+        qnode.next = null;
+    }
+    
+    public boolean isLocked(){
+        QNode pred = tail.get();
+        return pred != null; /// kolejka jest pusta
+    }
+    
+    class QNode {
+        volatile boolean locked = false;
+        volatile QNode next = null;
+    }
+}
+```
+
+====
+
+# L9 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Daniel Boguszewski	
+:::
+![](https://i.imgur.com/aEM5I9S.png)
+
+Zasada lokalności odwołań to dwie własności:
+1. Lokalność czasowa:
+		Jeśli program korzysta z komórki pamięci, w niedługim czasie ponownie z niej skorzysta.
+2. Lokalność miejscowa:
+		Jeśli program korzysta z komórki pamięci, w niedługim czasie skorzysta z komórki blisko niej.
+
+Ładując komórkę do pamięci podręcznej, przenosi się tam wiersz bliskich sobie komórek.
+
+Spójność pamięci podręcznych to spójność danych dzielonych przez różne pamięci podręczne. Gdyby spójność nie zachodziła, różne procesory, odnoszące się do jednej komórki pamięci, mogłyby odczytywać już nieaktualne dane (inny procesor zmodyfikował komórkę, ale reszta procesorów nie zaktualizowała pamięci podręcznych). Protokoły spójności temu zapobiegają.
+
+MESI to prosty protokół spójności, działający na 4 stanach pamięci podręcznej:
+1. Modified - procesor zmodyfikował komórkę pamięci podręcznej i musi zapisać ją do pamięci głównej.
+2. Exclusive - wiersz pamięci podręcznej posiada te same dane, co pamięć główna, dodatkowo wyłącznie on posiada ten wiersz w swojej pamięci podręcznej.
+3. Shared - jak wyżej, ale procesor może dzielić ten sam wiersz z innym procesorem.
+4. Invalid - wiersz pamięci podręcznej posiada nieaktualne dane.
+
+Gdy procesor rząda dostępu do pamięci głównej, a żaden inny nie ma go we własnej pamięci, otrzyma go w stanie Exclusive.
+Gdyby inny procesor domagał się tego samego wiersza pamięci, nie otrzyma go od pamięci głównej, ale z pamięci odpowiedniego procesora, a wiersze zyskują stan Shared.
+By ograniczyć wykorzystanie pamięci, gdy procesor modyfikuje wartość komórki swojej pamięci podręcznej, wiersz zyskuje stan Modified, a procesory, które go dzieliły, zmieniają własny wiersz na Invalid. Pamięć główna zapisze dane dopiero wtedy, gdy procesor opróżni wiersz z własnej pamięci (Write-Back).
+
+## Zadanie 2
+:::success
+Autor: Joanna Stachowicz	
+:::
+![](https://i.imgur.com/onDk3Jn.png)
+
+Wydajność programów, implementujących zamek, mierzy się, badając funkcję t(n), gdzie n to liczba wątków, a t to czas wykonania programu, zakładającego locka. Za idealną wydajność przyjmujemy stałą funkcję czasu (niezależną od liczby wątków w programie)
+
+![](https://i.imgur.com/zLzNS3Y.png)
+
+#### działanie TAS
+
+![](https://i.imgur.com/cCtP2bE.png)
+
+każde wywołanie tej instrukcji powoduje konieczność zmiany stanów wszystkich wierszy, przechowujących zmienną state, na stan **invalid**, ponieważ przy każdym wywołaniu, zmieniana jest wartość state na **true** (często bezsensownie nadpisywane jest true). Dlatego, jeżeli w programie jest dużo wątków, przy każdym nadpisaniu state, trzeba będzie aktualizować dane we wszystkich cache'ach, zawierających tę kopię. Stąd: wykonywanie Test and Set na zajętym zamku jest bez sensu (ponieważ, gdy zamek jest zajęty, wartość state wynosi true). Ten problem także prowadzi do dwóćh pochodnych problemów - chybienia w cache'ach procesorów, mających nieaktualne dane, a także problem w sytuacji, gdy wątek chce zwolnić zamek - wówczas będzie musiał rywalizować z wątkami, wirującymi w pętlach while, co prowadzi do dużego opóźnienia w zwolnieniu zamka
+
+#### działanie TTAS
+
+![](https://i.imgur.com/tiwpNwA.png)
+
+w tym rozwiązaniu implementacyjnym pozbywamy się głównego problemu, jakim jest bezsensowne nadpisywanie wartości true, poprzez dodanie dodatkowej pętli while, która sprawi, że nie będziemy wywoływać metody get and set w sytuacji, gdy zamek jest zajęty, czyli gdy wartośc state wynosi true. Dzięki tej modyfikacji, kiedy semafor jest zajęty, po pewnym czasie wszystkie procesory będą miały w swoim cache'u wartość zmiennej state w stanie **shared**, co sprawi, że gdy będą szukać wartości zmiennej state, wystarczy, że zajrzą do pamięci podręcznej - nie muszą sięgać do współdzielonej szyny danych.
+
+Problem, który nie został w tej implementacji zneutralizowany, pojawia się w sytuacji, gdy zamek jest zwolniony - wówczas wiersze, które dotychczas były w stanie shared, przechodzą w stan **invalid**, co powoduje konieczność zaktualizowania wartości zmiennej state przy pomocy pamięci operacyjnej
+
+
+
+## Zadanie 3
+:::success
+Autor: Rafał Starypan	
+:::
+
+![](https://i.imgur.com/yBtsXz7.png)
+
+Algorytm wykorzystuje tablicę typu boolean, mamy także współdzieloną zmienną next, która wskazuje na indeks w tablicy, który będzie odczytywał dany wątek.  W celu zajęcia zamka wątek wykonuje atomowo metodę getAndIncrement() na zmiennej next, po czym wiruje, dopóki odczytywana komórka zawiera wartość false. Gdy poprzedni wątek wywoła metodę unlock(), wartość w komórce zostanie ustawiona na true, co umożliwi zajęcie zamka.
+
+![](https://i.imgur.com/mxa57dH.png)
+![](https://i.imgur.com/AOuPjHM.png)
+
+![](https://i.imgur.com/l669uCZ.png)
+
+![](https://i.imgur.com/FEl42Am.png)
+
+
+
+## Zadanie 4
+:::success
+Autor: Mikołaj Jaszcza	
+:::
+
+![](https://i.imgur.com/T68zDt1.png)
+
+---
+**Wersja 1:** Implementacja opisana jako pierwsza ma następującą wadę - czekające wątki wirują na zmiennej licznika w trakcie czekania na pozostałe ("późniejsze" wątki). Zauważmy, że takie działanie będzie powodowało, że pamięć cache dla poszczególnych wątków bardzo często będzie wchodziła w stan 'Invalid' (średnio O(n) razy dla pojedynczego wątku). Nastąpi wtedy komunikacja przez szynę danych co powoduje spowolnienie działania programu. Tj. każde zwiększenie licznika spowoduje "tłok" na szynie danych. Dokładniej - każde zwiększenie licznika spowoduje, że pamięć 'wcześniejszych' wątków przejdzie w stan 'Invalid'. Ponadto doliczyć trzeba 'koszt' zamku TTAS. Mimo że jest wydajniejszy od TAS, to spowoduje tłok na szynie danych gdy następuje unlock (a nastąpi n razy). Powoduje to podobne problemy wydajnościowe jak opisane powyżej. 
+
+Łącznie mamy $O(n^2)$ przejść do stanu 'Invalid' cache'y pojedynczych wątków.
+
+---
+**Wersja 2:** Natomiast drugie rozwiązanie przypomina 'Anderson Queue Lock' opisany na wykładzie, tj:
+![](https://i.imgur.com/PiER75D.png)
+
+Zatem wiemy, że każdy wątek będzie miał tylko jedną "swoją" komórkę do której pisze (pomijając czytanie komórki b[n-1]), oraz jedną (inną) którą czyta. A więc, gdy zastosujemy "sztuczkę" polegającą na umieszczeniu komórek tablicy w różnych liniach cache'a (tak jak opisane w z3) przejścia do stanu 'Invalid' będą znacznie rzadsze niż w przypadku pierszej propozycji rozwiązania. Każdy wątek (poza n-tym) zapisując ma wpływ na dokładnie 1 inny wątek, a jedynie raz modyfikuje swoją wartość. Zatem każdy wątek, poza n-tym, będzie odpowiedzialny za jedno przejście do stanu 'Invalid' cache'a pojedynczego wątku.
+
+Natomiast wątek n-ty tylko raz spowoduje przejście do stanu 'Invalid' cache'y pozostałych wątków. Łącznie mamy $O(n)$ przejść do stanu 'Invalid' cache'y pojedynczych wątków.
+
+---
+Podsumowując, w systemach wieloprocesorowych ze spójnymi pamięciami podręcznymi i wspólną szyną danych wydajniejsze będzie rozwiązanie drugie, ponieważ ilość przejść do stanu 'Invalid' jest liniowa w stosunku do liczby wątków, a dla rozwiązania pierwszego ta liczba jest zależna kwadratowo od ilości wątków.
+
+## Zadanie 5
+:::success
+Autor: Jan Jankowicz	
+:::
+![](https://i.imgur.com/eGM6Voi.png)
+>Przypomnij zasadę działania zamka CLH.
+
+Zasada działania zamku CLH jest podobna do tej, którą prezentuje zamek Andersona z tą różnicą, że w przypadku zamku CLH do trzymania informacji o możliwości jego nabycia wykorzystujemy niejawną, elastyczną listę łączoną zamiast zwykłej tablicy o ustalonym rozmiarze.
+Do implementacji wspomnianej listy służą obiekty (węzły) przechowujące wartość typu boolean, która wskazuje, czy wątek, którego dotyczy, nabył zamek lub na niego czeka (true), czy też go już zwolnił (false).
+Każdy wątek, który chce nabyć zamek CLH, otrzymuje dwa takie obiekty. Pierwszy zawiera informację o nim samym (jest tworzony i posiada wartość true), natomiast drugi o jego poprzedniku w kolejce (w momencie wywołania metody lock() wskazuje na niego 'tail'). 
+Zgodnie z opisem tego pola wątek może zająć zamek, jeśli jego poprzednik ustawił swoją flagę na false. Jeśli tak się stanie, to wątek nabywa zamek, wchodzi do sekcji krytycznej i uwalnia zamek ustawiając flagę w swoim obiekcie na false. Wątek, dla którego ten obiekt był poprzednikiem, odczytuje nową wartość (aktywnie czekając/wirując na tym polu) i podobnie jak poprzednik nabywa zamek.
+
+![](https://i.imgur.com/diT9Wu0.png)
+
+
+![](https://i.imgur.com/RBfSrKa.png)
+![](https://i.imgur.com/0QbM8FJ.png)
+
+
+
+>W jaki sposób ograniczyć w implementacji tego zamka liczbę alokacji węzłów listy?
+
+Wyżej zostało wspomniane, że obiekt, który mówiący o stanie wątku oczekującego w kolejce, jest tworzony w momencie zgłoszenia chęci nabycia zamka. 
+Można jednak ograniczyć ilość takich alokacji poprzez przydzielenie danemu wątkowi przy ponownej próbie nabycia zamka obiektu węzła wcześniej wykorzystanego przez ten wątek. Gdy wątek zwalnia zamek, jego obiekt poprzednika nie jest już nikomu potrzebny i może zostać w ten sposób zrecyklingowany.
+
+
+## Zadanie 6
+:::success
+Autor: Zuzanna Kania	
+:::
+![](https://i.imgur.com/D1bgvnY.png)
+
+Implementacja ta jest błędna, ponieważ wątek zostawia sobie do ponownego wykorzystania węzeł, na który może jeszcze wskazywać tail lub jego następnik. W sytuacji, gdy węzeł ten jest aktualnie wskazywany przez tail może dojść do zapętlenia, ponieważ jeśli wątek zwolni zamek, ale nie będzie kolejnych oczekujących w kolejce, to kiedy ponownie ten sam wątek spróbuje zająć zamek, na swojego poprzednika ustawi on węzeł wskazywany przez tail, czyli swój własny węzeł, którego wartość locked chwilę wcześniej ustawił na true. Przez to wątek zostanie uwięziony w pętli while.
+
+![](https://i.imgur.com/ehlnu3E.png)
+
+## Zadanie 7
+:::success
+Autor: Wiktor Hamberger	
+:::
+![](https://i.imgur.com/UqnwdWE.png)
+![](https://i.imgur.com/08Z2KEU.png)
+![](https://i.imgur.com/RZ6ppnw.png)
+![](https://i.imgur.com/uXhWKtf.png)
+
+## Zadanie 8
+:::success
+Autor: Kamila Goszcz	
+:::
+
+```java=
+public class MCSLock implements Lock {
+    AtomicReference<QNode> tail;
+    ThreadLocal<QNode> myNode;
+
+    public MCSLock() {
+        tail = new AtomicReference<QNode>(null);
+        myNode = new ThreadLocal<QNode>() {
+            protected QNode initialValue() {
+                return new QNode();
+            }
+        };
+    }
+
+    public void lock() {
+        QNode qnode = myNode.get();
+        QNode pred = tail.getAndSet(qnode);
+        if (pred != null) {
+            qnode.locked = true;
+            pred.next = qnode;
+            // wait until predecessor gives up the lock
+            while (qnode.locked) {}
+        }
+    }
+
+    public void unlock() {
+        QNode qnode = myNode.get();
+        if (qnode.next == null) {
+            if (tail.compareAndSet(qnode, null))
+                return;
+            // wait until successor fills in its next field
+            while (qnode.next == null) {}
+        }
+        qnode.next.locked = false;
+        qnode.next = null;
+    }
+
+    class QNode {
+        volatile boolean locked = false;
+        volatile QNode next = null;
+    }
+}
+```
+
+![](https://i.imgur.com/aT6HCuC.png)
+Architektura NUMA charakteryzuje się tym, że nie ma  również protokołu synchronizacji pamięci, takiego jak np. MESI. Dlatego nie możemy odczytać danych które należa do innego wątku. Jedynym sposobem komunikacji jest wysłanie informacji do innego wątku, że nastąpiła jakaś zmiana, wysyłanie informacji jest operacją dosyć kosztowną, dlatego należy ją minimalizować.
+
+## Zadanie 9
+:::success
+Autor: Patryk Mazur	
+:::
+![](https://i.imgur.com/QrEKWuT.png)
+
+a) TAS
+
+![](https://i.imgur.com/06UkIio.png)
+
+```java
+boolean isLocked(){
+    return state.get(); // Z pozdrowieniami
+} 
+```
+
+b) CLH
+
+![](https://i.imgur.com/kSgZAK4.png)
+
+```java
+boolean isLocked(){ 
+    return tail.get().locked;
+} 
+```
+
+c) MCS
+
+![](https://i.imgur.com/gndtqD4.png)
+![](https://i.imgur.com/COIOcX8.png)
+
+
+```java
+boolean isLocked(){
+    return tail.get() != null; 
+} 
+```

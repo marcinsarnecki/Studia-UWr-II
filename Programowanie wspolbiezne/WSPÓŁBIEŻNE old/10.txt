@@ -1,0 +1,229 @@
+# Ćwiczenia 10, grupa cz. 10-12, 5. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Przemysław Hoszowski     |   X   |     |  X  |  X  |  X  |     |     |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |     |     |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |   X    |  X   |  X   |  X   |  X   |     |     |
+Łukasz Pluta             |   X    |  X   |   X  |  X   |  X   |     |     |
+Antoni Pokusiński        |       |  X  |  X  |  X |     |     |     |
+Szymon Rysz              |   X   |  X  |  X  |==X==|  X  |     |     |
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |       |  X  |  X  |  X  |  X  |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |     |     |
+Michał Zieliński         |       |     |  X  |  X  |     |     |     |
+:::
+
+
+Tu można do-deklarować zad. 8. z listy 9: 
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+![](https://i.imgur.com/s6dloLI.png)
+![](https://i.imgur.com/ldiCxjS.png)
+
+
+“element należy do zbioru ⇔ węzeł na liście, w którym znajduje się element jest osiągalny z węzła head”
+
+1) add - po 24 linii, remove - po 43 linii, cotains - po zajęciu locka
+
+2) Po zajęciu zamka powinniśmy móc dojść do wierzchołka z heada, ale jeszcze nie dodaliśmy go na listę, stąd warunek nie jest spełniony.
+
+3) “element należy do zbioru ⇔ (element jest osiągalny z węzła head lub pewien wątek jest w trakcie wywołania add z zajętym zamkiem) oraz nie istnieje wątek, który zajął zamek i chce ten element usunąć”
+
+## Zadanie 2
+
+:::success
+Autor: Antoni Pokusiński
+:::
+### ```add()``` z *FineList*
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                return false;
+            }
+            Node newNode = new Node(item);
+            newNode.next = curr;
+            pred.next = newNode;
+            return true;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+
+Wybieramy punkt linearyzacji w zależności od wyniku metody ```add()```:
+* udało się wstawić element (```return true```): instrukcja 21, czyli ```pred.next = newNode```. Mamy spełnione wszystkie niezmienniki - 
+    * wiemy, że naszego elementu nie ma w liście (przeszliśmy przez *if*'a w linii 16) 
+    * lista jest posortowana, czyli $pred.key < newNode.key < curr.key$ 
+    * *newNode* jest osiągalny z początku listy
+* nie udało się wstawić (```return false```): ~~linia 17, czyli ```return false```~~ zajęcie węzła w linii 8 albo 14. Punkt linearyzacji nie może być w ```return false``` - w takim wypadku, po zwolnieniu zamków w blokach *finally*, inne wątki mogłyby "wyprzedzić" instrukcję ```return false``` i np. usunąć element, o którym właśnie wywnioskowaliśmy, że jest na liście. Ten problem znika, gdy punkt linearyzacji jest w miejscu zajęcia zamka.
+### ```remove()``` z *FineList*
+```java=
+public boolean remove(T item) {
+    Node pred = null, curr = null;
+    int key = item.hashCode();
+    head.lock();
+    try {
+        pred = head;
+        curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                pred.next = curr.next;
+                return true;
+            }
+            return false;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+Podobnie jak w przypadku metody ```add()```:
+* udało się usunąć element - instr. 17, czyli ```pred.next = curr.next;```
+    * lista oczywiście dalej jest posortowana
+    * wszystkie elementy dalej są osiągalne
+* nie udało się usunąć - ~~```return false```, czyli instr. 20~~ zajęcie węzła w linii 8 albo 14. Argumentacja analogiczna jak przy metodzie ```add()```.
+## Zadanie 3
+
+:::success
+Autor: Mateusz Sidło
+:::
+
+:::info
+ Podaj implementację metody `contains()` dla klasy `FineList`. Uzasadnij jej poprawność.
+:::
+
+```java=
+public boolean contains(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            return curr.key == key; 
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+ 
+Metoda contains przeszukuje listę i znajduje parę (`pred`, `curr`), taką, że `pred.next` $=$ `curr`, `pred.key` $<$ `key` oraz `curr.key` $\geq$ `key`. Na `curr` i `pred` założone są zamki, co nam daje, że przynajmniej do sprawdzenia warunku w lini 15, oba węzły będą na liście i pomiędzy nimi nie zostanie wstawiony nowy węzeł. Jeżeli `curr.key == key` zwróci `false`, to  `curr.key` $>$ `key`, a wiemy, że lista jest uporządkowana rosnąco, więc `key` nie należy do zbiory. Natomiast jeśli `curr.key == key` zwróci `true`, to `key` należy do zbioru.
+
+## Zadanie 4
+
+:::success
+Autor: Szymon Rysz
+:::
+![](https://i.imgur.com/soe5TR3.png)
+![](https://i.imgur.com/GHAsFWr.png)
+![](https://i.imgur.com/uNhqAzr.png)
+
+
+---
+
+Załóżmy, że mamy listę:
+-inf -> a -> b -> +inf
+
+Wątek A chce wykonać `remove(b)`. Kiedy znajdzie już wartość b na liście, jesteśmy w linijce 38 i mamy `pred = a` i `curr = b`. Zwróćmy uwagę, że wątek A nie zajął jeszcze zamków.
+
+Wtedy wątek B chce wykonać `add(a')` i udaje mu się zająć zamki a i b przed wątkiem A.
+
+Zatem lista wygląda następująco:
+-inf -> a -> a' -> b -> +inf
+
+Wątkowi A udaje się zając zamki i wykonuje `validate(pred, curr)`. Zwraca ona fałsz, ponieważ teraz następnikiem a jest a', a nie b. Metoda remove ma pętle while, a więc wątek A będzie próbował usunać element b aż do skutku.
+
+Tym razem po znalezieniu na liście a mamy: `pred = a'` i `curr = b`. 
+
+Wątkowi B ponownie udaje się zając zamki przed wątkiem A i wykonuje `remove(a')`. Po wykonaniu tej metody lista wygląda następująco:
+-inf -> a -> b -> +inf
+
+Wątek A znów wykonuje `validate(pred, curr)` i otrzymuje false, bo na liście nie ma już a'. 
+
+Zatem dopóki wątek B będzie wyprzedzał wątek A i na zmiane dodawał i usuwał element przed a, wątek A w nieskończoność będzie próbował usunąć element b.
+
+
+
+## Zadanie 5
+
+:::success
+Autor: Mateusz Opala
+:::
+
+![](https://i.imgur.com/vZOqH9H.png)
+
+Przykładowo dla funkcji add:
+Przed czwartą linią zczytujemy wartość timestampa. W 13 linii w ifie zczytujemy znowu timestampa i sprawdzamy czy jest równy staremu timestampowi. Po linii 18 lockujemy zmienną timestamp, zwiększamy jej wartość, wykonujemy linię 19 i zwalniamy locka.
+
+Analogicznie robimy dla pozostałych funkcji.
+
+## Zadanie 6
+
+:::danger
+Autor: do-deklarować
+:::
+
+## Zadanie 7
+
+:::danger
+Autor: do-deklarować
+:::

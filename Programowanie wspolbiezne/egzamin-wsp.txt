@@ -1,0 +1,203 @@
+# WSP. ROZW.
+
+### Pytanie ...
+
+
+### 
+
+###  Wyjaśnij, z czego wynika różnica w wydajności pomiędzy licznikami implementowanymi za pomocą pojedyńczego rejestru RMW z operacją getAndIncrement(), a licznikami rozproszonymi, implementowanymi za pomocą drzew lub sieci równoważników.
+
+### 
+
+1) Wynika z braku potrzeby zajmowania i zwalniania jednego zamka (lock'a). Liczniki rozproszone działają w zupełnie inny sposób (wyróżniamy fazy operation, combine itd.) co pozwala na uniezależnienie pracy wątków. To samo tyczy się sieci równoważników - podoperacje działają niezależnie ograniczając czas z liniowego do logarytnicznego.
+
+2) Różnica w wydajności jest konsekwencją braku konieczności zajmowania i zwalniania jednego zamka. Podział na fazy (combine, operation) umożliwia licznikom rozproszonym uniezależnienie pracy wątków. Z kolei w sieciach równoważników podoperacje działają niezależnie, co redukuje złożoność z liniowej do logarytmicznej.
+
+
+algorytm licznika
+
+![](https://i.imgur.com/OPYOVkJ.png)
+Odpowiedz C
+
+### ABA (screen)
+![](https://i.imgur.com/cP9CqAv.png)
+
+--- stare
+ABA to błąd synchronizacji. Mówimy o nim w kontekście operacji compareAndSet. Chodzi o błędne założenie że jeśli wartość danej zmiennej/wskaźnika jest taka sama jak kiedyś to nie została zmieniona. Jest to fałszywe założenie - szczególnie widoczne w przypadku, gdy nie mamy Garbage Collectora i korzystamy z wierzchołków pochodzących ze wspólnej puli wątków. 
+
+W ogólności - może więc zajść, że stan danego fragmentu systemu (A) zmieni się (B) i wróci z powrotem do (A) co jest nierozróżnialne dla compareAndSet w porównaniu do braku zmian. AtomicStampedReference pozwala rozwiązać ten problem.
+
+-- nowe
+A B A jest to rodzaj błędu, który występuje w procesie synchronizacji. Wynika to z (niejawnego) założenia przez programistę, że jeżeli wartość czegoś lub wskaźnik na coś jest taka, jak przed pewnym okresem czasu, to ta wartość (lub ten wskaźnik) nie uległ "po drodze" żadnej zmianie. Jest to oczywiście założenie niepoprawne (zbyt optymistyczne). Może zajść tak, że jakiś obiekt w pamięci uległ dwukrotnej (lub więcej-krotnie) zmianie w taki sposób:
+wartość A -> wartość B -> wartość A (stąd nazwa ABA), lub ogólniej
+wartość A -> {...} (potencjalnie wielokrotnie różne zmiany) ->  wartość A.
+
+Jest to problem, gdy używamy compareAndSet'a - bo nie możemy rozróżnić sytuacji o której pisałem wyżej od sytuacji gdy kompletnie nic się nie zmieniało.
+
+Problem ten można rozwiązać korzystając z klasy AtomicStampedReference,
+ponieważ zapamiętamy wtedy w obiekcie znacznik czasu ostatniej zmiany,
+więc metoda compareAndSet() będzie mogła wykryć zmianę i zadziała poprawnie.
+
+### zamku kolejkowym Andersona
+
+![](https://i.imgur.com/FkHlkrG.png)
+
+
+###  Do czego służy klasa AtomicMarkableReference<> i jakie metody ona oferuje? Wymień przynajmniej 2 przykłady algorytmów, w których implementacji w języku Java wykorzystuje się tę klasę.  Czy można zamiast powyższej klasy wykorzystać tam AtomicReference<>?
+
+1) Służy do opakowania referencji na zmienną poprzed dodanie pola 'marked' (typu bool).  Oferuje metody 'isMarked', 'compareAndSet'. Dzięki temu możemy (np. dla implementacji kolejki) zapisać informację, że węzeł jest usunięty, i nie podmienimy tego wierzchołka wywołując w odpowiedni sposób metodę compareAndSet. Przykłady algorytmów: algorytmy operujące na listowej implementacji zbioru (nie można zastosować AtomicReference bo stracimy 'marked', która informuje o logicznym usunięciu węzła). Ponadto jest używana w klasie Window. Ponadto w LockFreeList (implementacja była podana w książce) - również zapobiega użyciu usuniętego węzła.
+
+2) Klasa AtomicMarkableReference opakowuje referencję do obiektu dodając pole marked typu boolean. Udostępnia metody isMarked() oraz
+compareAndSet()
+
+### Oto standardowa implementacja kolejki
+
+![](https://i.imgur.com/oDdyqHB.png)
+
+1. Wątek A dodaje element do kolejki, zostaje wywłaszczony przed  wykonaniem instrukcji tail++, przez co wątek B wstawi swoją wartość do tej samej komórki tablicy, nadpisując wartość wątku A. 
+W takiej sytuacji może również dojść do nierzucenia wyjątku FullException - jeśli po wykonaniu enq() przez wątek A kolejka będzie pełna, a zmienna tail nie została zwiększona, to wątek B nie zauważy, że kolejka jest pełna, więc nie rzuci wyjątku.
+
+#### 
+Błędy w działaniu tej kolejki które zauważyłem:
+może zajść sytuacja, że jeden z działających wątków (nazwijmy A) wywoła enq, zapisze swój element w items[...] = x.
+
+Teraz rozważmy, że wątek ten zostanie wywłaszczony (zanim zwiększy wartość tail). Zacznie zaś pracować inny wątek (nazwę jako B), który zapisze swoją wartość w tym samym miejscu w tablicy i zwiększy wartość tail. Zatem wartość wątku A zostanie zapomniana. Potencjalnie potem też wątek A może się wybudzić i "zwiększyć" długość listy powyżej maksymalnego rozmiaru.
+
+### MRMW timestamp
+![](https://i.imgur.com/ejKOHNa.png)
+
+W rejestrze MRMW znaczniki czasu (time-stamps) nie muszą być unikalne - może dojść do sytuacji, w której 2 wątki zapiszą wartość z takim samym znacznikiem. Jeśli znaczniki będą identyczne, to o zwracanej wartości decyduje kolejność indeksów (maksujemy iterując pętlą po strukturze).
+
+-----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+
+
+
+
+Nie, znaczniki czasu nie muszą być unikalne. Zauważmy, że istnieje taka sekwencja wykonań, że 2 lub więcej ze znaczników będzie miała równą wartość. Wyjaśniam więc wariant "jeśli nie ..." - wartość zwracana przez odczytujący rejestr w przypadku wielu równych znaczników czasu jest tą, która jest najbardziej po lewo ze wszystkich (bo wykonujemy MAX na StampedValue). Jest to jednoznaczne kryterium - więc wiele równoległych czytelników zwróciłoby tą samą wartość, co jest istotne bo rozważamy atomowe rejestry.
+
+
+### Podaj najważniejszy argument uzasadniający, dlaczego linearyzacja, a nie sekwencyjna spójność,  jest właściwą notacją dla poprawności algorytmów współbieżnych.
+
+To linearyzacja jest mocniejszym warunkiem - pozwala na ustalenie kolejności operacji między kilkoma wątkami. Sekwencyjna spójność dotyczy jedynie zapewnienia, że operacje w obrębie 1 wątku są wykonywane zgodnie z kolejnością w kodzie. Zatem to linearyzacja jest pojęciem bezpośrednio związanym ze współbieżnością. Linearyzacja (w przeciwieństwie do sekw. spój.) pozwala też myśleć o działaniu wielu wątków w aspektach 'osi czasu'.
+
+2) Sekwencyjna spójność pozwala na zamianę kolejności instrukcji wykonywanych w odrębnych wątkach, a gwarantuje jedynie, że instrukcje w jednym wątku są wykonywane zgodnie z kolejnością. Jest to zbyt słaby warunek - linearyzacja daje możliwość ustalenia kolejności operacji między kilkoma wątkami.
+
+
+
+
+### wspoldzielona magistrala
+   ![](https://i.imgur.com/AqvW2kg.png)
+B 
+
+### atomowa migawka
+![](https://i.imgur.com/uclkg83.png)
+B
+
+### długie otwarte java sekwencyjnie kompilator
+
+![](https://i.imgur.com/2FXK4ic.png)
+1. bo jest zbyt mocnym założeniem, bez sekwencyjnej spójności możemy znacznie zoptymalizować wykonywanie kodu
+2. zamiana kolejności wykonywania operacji w celu optymalizacji
+
+2 -> Akcje podejmowane przez kompilator to zamiana kolejności instrukcji, które programista umieścił w kodzie. Zatem może zajść np. że instrukcje typu "x := 1" oraz "y = a+b" będą wykonane w odwrotnej kolejności (co nie będzie problemem dla progamów jednowątkowych, ale może być problemem gdy myślimy o współbieżności). W szczególności ten problem może się uwidocznić dla 'doorway section' lock'ów. 
+
+4. volatile przy deklaracji zmiennych, synchronized przy metodach
+DOKLADNIE TAKA JEST MOJA, ZMIENIC SLOWA!!!!!!!!!!
+### barlock ![](https://i.imgur.com/OfzfJqA.png)
+d (dla solo sie zakleszczy)
+
+b (wg MJ)
+
+### Rozważamy poznaną przez nas konstrukcję m-wartościowego regularnego rejestru MRSW używającą tablicy binarnych regularnych rejestrów MRSW. W jaki sposób w tej tablicy pamiętamy wartości z przedziału [0,..m-1]?  Czy podczas zapisów i odczytów do tak skonstruowanego rejestru w tablicy może pojawić się wiele wartości niezerowych?
+
+1) Poprzez zapalenie bitu na odpowiedniej pozycji w tablicy 'r_bit' (zapalenie na k-tym polu tablicy oznacza reprezentację wartości k). Tj. operacja 'write' (z argumentem k) polega na zaznaczeniu k-tego bitu jako zapalony oraz zgaszeniu wszystkich bitów po lewo od niego (idąc od k-1 do 0).
+
+Tak, może pojawić się wiele niezerowych wartości, ale to nie szkodzi nam w niczym - uznajemy wtedy, że zapalona wartość położona najbardziej na lewo jest prawdziwa.
+
+2) Wartości z przedziału [0, ...m-1] pamiętamy poprzez ustawianie bitu na odpowiedniej pozycji w tablicy (ustawienie i-tego pola w tablicy  reprezentuje wartość i). Operacja zapisu z argumentem i polega na ustawieniu i-tego bitu oraz zgaszeniu wszystkich mniejszych bitów 
+(w kolejności k-1, k-2, ...0).
+
+W tablicy może pojawić się wiele wartości niezerowych, ale nie psuje to algorytmu, ponieważ wybieramy wtedy ustawioną wartość o największym indeksie.
+
+### drzew protokołów
+
+![](https://i.imgur.com/MIORVK0.png)
+Odp: A
+
+
+### Poziom konsensusu wielowątkowych
+
+![](https://i.imgur.com/8KIQEas.png)
+
+Odp: A
+
+![](https://i.imgur.com/q59mxj2.png)
+
+### torunament tree barier
+![](https://i.imgur.com/YXvQFr4.png)
+skip
+
+
+To drzewowa struktura danych która implementuje strukturę bariery. Ma +- 2n wierzchołków gdzie n jest liczbą wątków (i przy okazji potęgą dwójki). Liście drzewa reprezentują wątki, a całość to drzewo binarne. Dzieci (nazywane "partnerami") parami są określone jako "aktywny"/"przegrany". 
+
+Na bazie przechodzenia "dół" -> "góra" (od liści do korzenia) określa się zwycięzców. Każdy z wątków, który jest w wierzchołku, którego stan jest "aktywny" czeka (wiruje) aż jego partner będzie gotowy (patrzy na zmienną określaną zazwyczaj jako "sense"). Gdy zmienna zmienia wartość dana bariera się "otwiera" - wtedy wątek kieruje się ku górze drzewa - do wierzchołka rodzica. Gdy dojdziemy do korzenia (bariera w korzeniu się "otworzy" informacja przechodzi z powrotem w dół drzewa (aż do liści). Teraz zmienia się to które wierzchołki są pasywne a które aktywne - stąd unikamy głodzenia.
+
+------------------------------
+------------------------
+------------------------
+------------------------
+-------------------------
+-------------------------
+-------------------------
+-------------------------
+-------------------------
+------------------------------
+-------------------------
+--------------------------
+-------------------------
+Algorytm barier korzystający z drzewa turniejowego to struktura danych imitująca nieco drzewo binarne. Wyróżnić można fakty:
+-> ilość liści jest równa n, a liczba n to potęga 2
+-> drzewo ma 2n-1 wierzchołków (tak jak każde drzewo binarne o n liściach).
+
+Każdy wierzchołek (poza liścmi oczywiście) ma 2 dzieci. Każde z dzieci określa się mianem aktywnego bądź pasywnego. Ponadto przyjęła się konwencja nazewnicza iż dzieci są 'partnerami' wierzchołka (a przynajmniej tak zapamiętałem). Całość algorytmu polega na drabince turniejowej - idąc od liści do korzenia. Wątek aktywny czeka na pasywnego i dopiero wtedy idzie 'w górę'. Wątek, który dojdzie do korzenia uzyskuje dostęp do locka. Całość działania polega na otwieraniu się kolejnych barier na poziomach coraz bliżej korzenia. Na koniec - po określeniu kto wygrał przekazujemy stosowne informacje w dół. Pamiętamy przy tym, że musimy z tych informacji skorzystać modyfikując notatkę aktywny/pasywny. Nie może więc zajść, że jakiś proces cały czas będzie reprezentowany w wierzchołkach pasywnych (zostałby niestety wtedy zagłodzony).
+
+
+### zag lock
+![](https://i.imgur.com/kKpfk1h.png)
+wszystko fałszywe 
+
+
+
+## Wyjaśnij, z czego wynika różnica w wydajności pomiędzy współbieżnym niewstrzymywanym (ang. lock-free) stosem (klasa LockFreeStack), a tym samym stosem używającym dodatkowo  tablicy eliminacji (klasa EliminationBackoffStack).
+
+1) Różnica działa na korzyść rozwiązania z tablicą eliminacji (EliminationBackoffStack). Jego wydajność jest porównywalna z LockFreeStack działającym dla niskiej liczby wątków. Dzieje się tak przez mechanizmy eliminacji zwiększające wydajność w stosunku do LockFreeStack (per wątek) gdy liczba wątków rośnie. Operacja "znoszące" się nie mają wpływu na działanie całości co znacząco usprawnia system. 
+---
+---
+---
+
+2) Bardziej wydajne jest rozwiązanie z tablicą eliminacji - tj. EliminationBackoffStack. Przy dużej ilości wątków mechanizmy eliminacji znacząco zwiększają wydajność pojedynczego wątku w stosunku do implementacji podanej dla LockFreeStack. Operacje "znoszące się" znacząco poprawiają wydajność systemu, ponieważ wykonują się niezależnie od reszty.  
+
+3) Różnica wynika z niewykonywania 'bezsensownych' operacji dodawania i zdejmowania ze stosu w przypadku, w którym dużo wątków jednocześnie próbuje dodać i zdjąć elementy. Z tablicą eliminacji wątki zdejmujące ze stosu w ogóle nie będą go modyfikowały, tylko 'odbiorą' szukaną wartość od wątków próbujacych dodać na stos. Pozwala to na istotne zwiększenie wydajności w przypadku działania wielu wątków w sposób zbalansowany (tj. około tyle samo średnio 'dodaje' co 'zabiera')
+
+### tablicy haszującej
+
+![](https://i.imgur.com/hCrfrax.png)
+
+### waitfreequeue
+
+![](https://i.imgur.com/6nqOrIv.png)
+
+
+### OptimisticList 
+
+![](https://i.imgur.com/WEZJzbG.png)
+
+Jeśli pominiemy weryfikację, to możliwa jest sytuacja, w której zostaniemy wywłaszczeni, a inny wątek usunie element pred (usuwanie logiczne), za którym chcemy wstawić nowy element. Wtedy wykonane wstawienie będzie błędne, bo na nowy węzeł będzie wskazywać węzeł usunięty.
+
+
+Takie błędne wykonanie może wyglądać następująco - znajdujemy 'pred' i 'curr' między które chcemy wstawić nowy element (przez wątek A). Teraz wątkowi odbierany jest procesor. Następnie wierzchołek 'pred' jest usuwany przez inny wątek (B). Wątek A z powrotem dostaje procesor. Ustawia pred.next -> node, oraz node.next -> curr. Ale wierzchołek "pread" nie jest już osiągalny z "head"-a (głowy) listy. Zatem wątek A nie dodał skutecznie nowego elementu - nie znajduje się on logicznie w liście. Ta sytuacja jest możliwa przez specyfikację "OptimisticList" - bo nie "trzymamy" lock'ów przechodząc po liście.

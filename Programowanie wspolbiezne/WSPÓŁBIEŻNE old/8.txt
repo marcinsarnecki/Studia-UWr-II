@@ -1,0 +1,233 @@
+# Ćwiczenia 8, grupa cz. 10-12, 9. grudnia 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Przemysław Hoszowski     |       |  X  |     |     |     |     |  X  |
+Dominik Komła            |       |  X  |  X  |     |     |     |     |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |       |   X  |  X   |     |     |  X   |   X  |
+Łukasz Pluta             |       |     |  X   |     |     |     |     |
+Antoni Pokusiński        |       |  X  |     |     |     |     |     |
+Szymon Rysz              |       |     |     |     |     |     |     |
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |  X  |     |     |     |     |     |
+Jan Wańkowicz            |       |     |     |     |     |     |     | 
+Michał Zieliński         |       |     |     |     |  X  |     |    |
+:::
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Mateusz Sidło
+:::
+:::info
+Mamy trzy wątki: A, B, C oraz rejestry MRSW: XA, XB, XC. Każdy wątek może zapisywać swój rejestr oraz odczytywać wszystkie z nich. Poza tym, każdej parze wątków przypisujemy rejestr typu RMW (ang. Read Modify Write) udostępniający atomową operację `compareAndSet()`. Te rejestry to: RAB, RBC oraz RAC, a używać ich mogą jedynie wątki do nich przypisane. Wykaż, że nie istnieje nieczekająca implementacja protokołu binarnego konsensusu dla trzech wątków, używająca wyłącznie wymienionych wyżej zasobów.
+:::
+
+Załóżmy, że mamy nieczekającą implementację protokołu binarnego konsensusu dla trzech wątków, używająca wyłącznie wymienionych wyżej zasobów. Rozważmy punkt krytyczny. Bez utraty ogólności załóżmy, że następna wykonana przez A instrukcja wprowadza nas w stan 0-walentny, a następna wykonana przez B wprowadza nas w stan 1-walentny. Punktem krytycznym może być jedynie sytuacja w której dwa wątki wykonują operację na tym samym obiekcie.
+
+1. 2x read() na obiekcie rejestru MRSW. Nie może być stanem krytycznym.
+
+2. write() i read() na obiekcie rejestru MRSW. Nie może być stanem krytycznym.
+
+![](https://i.imgur.com/p8vMAf9.png)
+
+3. compareAndSet() na obiekcie rejestru RMW. 
+
+    Rozpatrzmy następujący stan krytyczny. Weźmy wątki A i B, oraz rejestr RAB. A i B wykonują operację cAS. Nie może być stanem krytycznym.
+    
+![](https://i.imgur.com/vzbQ0pH.png)
+
+## Zadanie 2
+
+:::success
+Autor: Antoni Pokusiński
+:::
+```java=
+FIRST = -1;
+int decide(int v) {
+    propose(v);
+    int i = getID();
+    // double_cAS(r1, r2, expected, update)
+    if (double_CAS(myreg1, myreg2, FIRST, i)) {
+        return proposed[i]
+    }
+    else {
+        if (myreg1.get() != -1)
+            return proposed[myreg1.get()];
+        return proposed[myreg2.get()];
+    }
+}
+```
+## Zadanie 3
+
+:::success
+Autor: Dominik Komła
+:::
+
+```
+Zadanie 3. Definiujemy n-ograniczoną funkcję compareAndSet(r,
+expected, update) tak: pierwszych n wywołań funkcji na
+rejestrze r ma semantykę taką samą, jak standardowa funkcja
+compareAndSet(), w szczególności wartościami zwracanymi są
+true lub false, zależnie od wykonania aktualizacji rejestru.
+Następne wywołania funkcji wprowadzają rejestr r w stan
+wadliwy, co sprawia że wartością zwracaną jest ⊥. Pokaż, że
+poziom konsensusu n-ograniczonej funkcji compareAndSet() dla
+𝑛 ≥ 2 to dokładnie n.
+```
+
+
+
+
+
+```
+Da się dla n wątków.
+```
+
+Bardzo łatwo możemy pokazać, że da się to zrobić dla n wątków. Po prostu stosujemy algorytm z wykładu.
+
+```
+Nie da się dla n+1 wątków.
+```
+
+Zauważmy, że tylko n wątków może użyć funkcji compare_and_set. N+1szy wątek nie może jej już użyć. Możemy teraz zauważyć, że mamy n wątków, które wykonały compare_and_set i jeden, który nie może tego wykonać. Ta sytuacja jest analogiczna, do próby wykonania konsensusu dla 2 wątków jedynie za pomocą rejestrów atomowych. A jak wiadomo, nie da się tego zrobić.
+## Zadanie 4
+
+:::danger
+Autor: PWit
+:::
+
+
+:::info
+Podaj nieczekającą implementację dwuwątkowego
+obiektu 2/3-przypisania (tablica ma 3 elementy, każdy wątek
+zapisuje ustalone 2 z nich) używając trzech obiektów
+(rejestrów) oferujących funkcje compareAndSet() oraz get()
+oraz (ewentualnie) rejestrów atomowych MRMW.
+:::
+
+
+```java=
+public class Assign23<T> {
+    AtomicReference<T> [] r  = (AtomicReference <T> []) new Object [3];
+    
+    public Assign23(T init) {
+        for(int i =0; i < r.length; i++)
+            r[i] =  new AtomicRefernce<T>(init);
+        
+    }
+    
+    public void assign (T v0, T v1, int ind0, int ind1) {
+        
+        T t0 = r[ind0].get(); /*pierwszy etap*/
+        T t1 = r[ind1].get();
+ 
+        r[ind0].compareAndSet(t0,v0); /*drugi etap*/
+        r[ind1].compareandSet(t1,v1);
+        
+    }
+    
+    public T read(int index) {
+        return r[index].get()
+    }    
+    
+}
+
+```
+
+Analiza funkcji ``assign``. Są trzy przypadki:
+
+* obydwa wywołania `compareAndSet` powiodły się. Wątek wołający `assign` atomowo zmienił zawartość obydwu pól tablicy.
+* obydwa wywołania `compareandSet` zawiodły. To oznacza, że wartości zapisane w tablicy pod indeksami ind0 i ind1 zmieniły się pomiędzy etapem pierwszym a drugim. Czyli współbieżnie z obecnym wywołaniem assign dziaało wywołanie tej metody przez drugi wątek. Można zatem zlinearyzować te wywołania tak, by wywłołanie tej metody przez wątek drugi było późniejsze niż wywołanie obecnie analizowane. Obecne wywołanie assign działa tak, jak gdyby atomowo zmieniło obydwa rejestry, ale zostało od razu nadpisane przez assign drugiego wątku.
+* jedno z wywołań `compareAndSet` powiodło się a drugie zawiodło. To oznacza, że obydwa wątki mają tylko jeden wspólnie modyfikowany indeks w tablicy. Podobnie jak w punkcie poprzednim to oznacza, że dwa wywołania `assign` działają współbieżnie. Wybieramy punkt linearyzacji tego drugiego tak, by był późniejszy niż punkt linearyzacji obecnego wywołania. W efekcie `assign` działa tak, jak gdyby atomowo zmieniło wartość pól o indeksach ind0 i ind1 i było zaraz nadpisane przez to drugie współbieżne wywołanie. 
+
+
+
+
+
+## Zadanie 5
+
+:::success
+Autor: Michał Zieliński
+:::
+
+### Treść
+Rozważmy następujący dwuwątkowy obiekt QuasiConsensus z metodą decide(v), gdzie v jest wartością binarną. Jeśli obydwa wątki, A i B,  wywołały decide() z tą samą wartością v, to wspólnie uzgodnioną wartością jest v — decide() zwraca v. Jeśli wątki wywołały decide() z różnymi argumentami to albo muszą uzgodnić jedną z nich, albo B otrzyma wartość 0 i A otrzyma wartość 1 (ale nie na odwrót).
+Dokładnie jedno z poniższych zadań ma rozwiązanie. Wybierz odpowiednie i rozwiąż je.
+1. Pokaż, że poziom konsensusu dla obiektów QuasiConsensus
+jest . Tzn. zaimplementuj dwuwątkowy protokół≥2
+konsensusu używając obiektów QuasiConsensus i rejestrów
+atomowych.
+2. Pokaż, że poziom konsensusu dla obiektów QuasiConsensus
+wynosi 1.
+### Rozwiązanie
+Wiemy, że istnieje stan krytyczny. Rozważmy przypadki:
+#### A - decide(0), B - decide(0)
+Mamy te same argumenty, więc ustalone zostanie 0. B nie wie czy A miało jako argument 1 czy 0.
+#### A - decide(1), B - decide(1)
+Mamy te same argumenty, więc ustalone zostanie 1.
+#### A - decide(1), B - decide(0)
+A nie jest w stanie odróżnić tej sytuacji, od tej w której B - decide(1) (w ktorej zwrocone byłoby 1)
+#### A - decide(0), B - decide(1)
+Jezeli A proponuje 1, A nie odróżnia sytuacji, gdy B dostanie do wskazania 1 i 0.
+## Zadanie 6
+
+:::success
+Autor: Mateusz Opala
+:::
+
+Rozpatrzmy drzewo stanów z dowodu niemożliwości skonstruowania binarnego konsensusu przy pomocy jedynie rejestrów. W tym dowodzie korzystaliśmy z własności wait-free jedynie w celu pokazania, że dojdziemy do stanu krytycznego, a w zasadzie jedynie, że nie pozostaniemy w pewnym niekrytycznym stanie biwalentnym nieskończenie długo. Niewstrzymywanie gwarantuje nam dokładnie tą samą właśność. Z jej definicji nigdy nie będziemy w żadnym stanie przez nieskończenie długo czasu. Reszta dowodu jest identyczna jak w przypadku wait-free.
+
+## Zadanie 7
+
+:::success
+Autor: Przemysław Hoszowski
+:::
+Zadanie 4 z listy 7
+```java=
+public class ConsensusProposal {
+    Boolean proposed[] = new Boolean[2];
+    Integer[] speed = new Integer[2];
+    Integer[] position = new Integer[2];
+    
+    public ConsensusProposal(){
+        position[0] = 0;
+        position[1] = 0;
+        speed[0] = 3;
+        speed[1] = 1;
+    }
+    
+    public Boolean decide(Boolean value) {
+        int i = ThreadID.get(); //0 or 1
+        int j = 1 - i;
+        proposed[i] = value;
+        
+        while (true) {
+            position[i] = position[i] + speed[i];
+            if (position[i] > position[j] + speed[j]) // I am far ahead of you
+                return proposed[i];
+            else if (position[i] < position[j]) // I am behind you
+                return proposed[j];
+        }
+    }
+}
+```
+Poprawność algorytmu konsensusu była udowodniona na poprzedniej liście.
+
+Korzystamy tylko z rejestrów atomowych, więc nie mamy algorytmu wait-free.
+
+Zauważmy, że jak wątek będzie w metodzie w izolacji to po maksymalnie kilku obrotach pętli zwróci on wartość. Jest więc niehamowana, a nie nieczekająca.

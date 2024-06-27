@@ -1,0 +1,598 @@
+# L5 GRUPA 1# Ćwiczenia 5, grupa śr. 12-14, 23 listopada 2022
+
+## Zadanie 1
+:::success
+Autor:	Mateusz Kisiel	
+:::
+![](https://i.imgur.com/7mzTMyc.png)
+### Sekwencyjnie spójne:
+a)
+![](https://i.imgur.com/Vo5GppV.png)
+b)
+![](https://i.imgur.com/8rQveEG.png)
+c)
+![](https://i.imgur.com/JzSgTdy.png)
+
+### Sekwencyjnie niespójne:
+a)
+![](https://i.imgur.com/dn6gS37.png)
+`p.enq(y)` musi być przed `p.enq(x)`, aby zgodziło się `p.deq(y)`, zatem także `q.enq(y)` musi być przed `p.enq(x)` czyli także przed `q.enq(x)`. Jednak wtedy `q.deq(x)` nie zwróci prawidłowej wartości.
+b)
+![](https://i.imgur.com/DQQkXAp.png)
+Pomiędzy write(0) a read(0) nie może być write(1), bo się zepsuje read(0), ani read(1), ponieważ nie zwróciłoby on prawidłowej wartości.
+Analogicznie dla write(1) i read(1) - nic nie może być pomiędzy nimi.
+
+Zatem jedyne możliwości to `write(1) read(1) write(0) read(0)`
+oraz `write(0) read(0) write(1) read(1)`
+Musi być jednocześnie zachowana kolejność funkcji w wątkach. Wątek pierszy wymaga najpierw operacji z zerami a nastepnie z jedynkami, a drugi odwrotnie. Sprzeczność.
+
+## Zadanie 2
+:::success
+Autor:	Jan Dalecki	
+:::
+![](https://i.imgur.com/5iirAUf.png)
+
+Własność kompozycji:
+
+Jeżeli $H|p$ i $H|q$ są sekwencyjnie spójnie to $H$ jest sekwencyjnie spójne.
+
+Przykład dla, którego tak nie zachodzi:
+
+![](https://i.imgur.com/miacpCN.png)
+
+Nie możemy zmieniać kolejności wykonywanych operacji dla poszczególnych wątków. Możemy jednak przestawiać operacje na osi z zachowaniem ich kolejności wywołań. W powyższym przykładzie `p.enq(y)` powinno wykonać się przed `p.enq(x)` to implikuje, że `q.enq(y)` wykona się przed `q.enq(x)`.
+
+## Zadanie 3
+:::success
+Autor:	Marcin Wróbel	
+:::
+![](https://i.imgur.com/p0nyDyX.png)
+
+```java
+public class WaitFreeQueue {
+    int head = 0, tail = 0;
+    items = (T[]) new Object[capacity];
+    public void enq(Item x) {
+        if (tail - head == capacity) throw new FullException();
+        items[tail % capacity] = x;
+        tail++;
+    }
+    public Item deq() {
+        if (tail == head) throw new EmptyException();
+        Item item = items[head % capacity];
+        head++;
+        return item;
+    }
+}
+```
+1. Tylko wątek używający metody **enq(Item x)** zmienia zmienną **tail**
+2. Tylko wątek używający metody **deq()** zmienia zmienną **head**
+Niech \[6, 2\) mod 8 oznacza liczby 6,7,0,1
+4. Wątek **enq** może wstawiać elementy w przedziale od **\[tail, head\)** mod capacity
+5. Wątek **deq** może wyciągać elementy w przedziale **\[head, tail\)** mod capacity
+6. Powyższe przedziały są rozłączne
+![](https://i.imgur.com/lRTSryB.png)
+Na czerwono jest zaznaczony przedział dostępny przez wątek deq, na zielono zaznaczony jest przedział dostępny przez wątek enq
+7. Każdy wątek najpierw wykonuje jakieś działanie na elemencie ze swojego przedziału i dopiero potem "oddaje" ten element do obsługi przez drugi wątek. Wątki mają tak jakby założonego lock'a na elementy w swoim przedziale
+8. Powyższa własność (6) jest także, realizowana na maszynie z sekwencyjnie spójną pamięcią, ponieważ zależy nam tylko na tym, aby kolejność dostępów do pamięci była zachowana w obrębie wątku
+
+Powyższa analiza omawia sytuację, gdy kolejka jest niepusta i niepełna
+
+W sytuacji, gdy kolejka jest pusta punktami linearyzacji są
+```java
+(tail == head)
+tail++;
+```
+W sytuacji, gdy kolejka jest pełna punktami linearyzacji są
+```java
+(tail - head == capacity)
+head++;
+```
+Historie omawiane podczas prezentacji:
+![](https://i.imgur.com/RfdL0Ig.png)
+
+## Zadanie 4
+:::success
+Autor:	Mikołaj Depta	
+:::
+
+Przypomnij dowód własności wzajemnego wykluczania dla algorytmu Petersona. Pokaż dlaczego ten dowód może się załamać dla procesora o modelu pamięci *słabszym* niż sekwencyjna spójność.
+
+```java=
+public void lock() {
+    flag[i] = true;
+    victim = i;
+    while (flag[j] && victim == i) {};
+}
+
+public void unlock() {
+    flag[i] = false;
+}
+```
+
+Przypomnienie dowodu, wazjemnego wykluczenia:
+
+```
+//A wszedł do sekcji krytycznej pierwszy.
+write_A(flag[A] = true) -> 
+write_A(victim = A) -> 
+read_A(flag[B] == false) ->
+read_A(victim = B) ->
+
+// skoro B wszedł
+read_B(flag[A] == false) -> write_A(flag[A] = true)
+
+write_B(flag[B] = true) -> 
+write_B(victim = B) -> 
+read_B(flag[A] == false) -> 
+read_B(victim = A) ->
+```
+
+Z powyższego można wyprowadzić sprzeczność.
+
+```
+write_B(flag[B] = true) ->
+read_B(flag[A] == false) ->
+write_A(flag[A] = true) ->
+read_A(flag[B] == false)
+```
+
+Dlaczego algorytm może nie zadziałać.
+
+> A load may be reordered with a prior store to a different location but not with a prior store to the same location.
+
+Odczyt z pamięci, do której nie piszemy, może zostać wykonany w dowolnej kolejności względem wcześniejszych zapisów pod inny adres.
+
+Oznacza, to że procesor może wykonać coś podobnego do takiego kodu.
+
+```java=
+public void lock() {
+    flag_temp = flag[j];
+    flag[i] = true;
+    victim = i;
+    while (flag_temp && victim == i) {};
+}
+
+public void unlock() {
+    flag[i] = false;
+}
+```
+
+Wówczas następujący przeplot spowoduje wejście dwóch wątków do sekcji krytycznej.
+
+```
+A: read(flag[B] == false)
+A: *sleep*
+
+B: read(flag[A] == false)
+A: *wake*
+
+A, B: write(flag[_] = true)
+A, B: write(victim = _)
+A, B: flag_temp (false) && victim == _ -> false
+A, B: wejdź do sekcji krytycznej
+```
+
+
+## Zadanie 5
+:::success
+Autor:	Wiktor Bukowski	
+:::
+
+![](https://i.imgur.com/vHAljFD.png)
+
+
+```java=
+public class WaitFreeQueue {
+    int head = 0, tail = 0; 
+    items = (T[]) new Object[capacity];
+    
+    public void enq(Item x) {
+        if (tail-head == capacity) 
+            throw new FullException();
+        temp = tail
+        temp2 = temp + 1
+        tail = temp2
+        items[temp % capacity] = x;
+    }
+    public Item deq() {
+        if (tail == head) 
+            throw new EmptyException();
+        Item item = items[head % capacity];
+        head++;
+        return item;
+    }
+}
+```
+
+Przykład niepoprawnego działania:
+Przy wstawianiu elementu do kolejki `tail` najpierw zostaje zwiększony, a dopiero potem w odpowiednie miejsce tablicy wstawiany jest element. W tym samym czasie `deq` odczytuje nową wartość `tail` i próbuje odczytać element z tablicy, podczas gdy nie ma tam jeszcze pożądanego elementu.
+
+
+## Zadanie 6
+:::success
+Autor:	Bartosz Szczeciński	
+:::
+
+![](https://i.imgur.com/t1NRXIb.png)
+
+```java
+class IQueue<T> {
+    AtomicInteger head = new AtomicInteger(0);
+    AtomicInteger tail = new AtomicInteger(0);
+
+    T[] items = (T[]) new Object[Integer.MAX_VALUE];
+
+    public void enq(T x) {
+        int slot;
+
+        do {
+            slot = tail.get();
+        } while (!tail.compareAndSet(slot, slot+1));
+
+        items[slot] = x;
+    }
+    
+    public T deq() throws EmptyException {
+        T value;
+        int slot;
+
+        do {
+            slot = head.get();
+            value = items[slot];
+            if (value == null)
+                throw new EmptyException();
+        } while (!head.compareAndSet(slot, slot+1));
+
+        return value;
+    }
+}
+```
+![](https://i.imgur.com/0TcKLhZ.png)
+
+
+
+1. A p.enq(x)
+2. B p.enq(y)
+3. B p:void
+4. B p.deq()
+5. B p:EmptyException
+6. A p:void()
+
+W tym wykonaniu wątek A zatrzymał się pomiędzy instrukcjami `tail.compareAndSet()` i `items[slot] = x`, czyli zarezerwował slot, ale jeszcze nie wstawił elementu do tablicy. Wątek B wykonał `enq()`, a później `deq()`, które zwróciło `EmptyException`, bo głowa wskazuje na `null`.
+
+Taka historia nie jest linearyzowalna - `B.deq(x)` wykonuje się po operacji `B.enq(y)`, czyli mamy gwarancję, że w FIFO znajduje jakiś element, a mimo to dostajemy `EmptyException`. Jest to niezgodne z sekwencyjną specyfikacją FIFO.
+
+
+
+## Zadanie 7
+:::success
+Autor:	Andrzej Morawski	
+:::
+
+```java=
+public class HWQueue < T > {
+    AtomicReference < T > [] items;
+    AtomicInteger tail;
+    static final int CAPACITY = Integer.MAX_VALUE;
+    public HWQueue() {
+        items = (AtomicReference < T > []) Array.newInstance(AtomicReference.class,
+            CAPACITY);
+        for (int i = 0; i < items.length; i++) {
+            items[i] = new AtomicReference < T > (null);
+        }
+        tail = new AtomicInteger(0);
+    }
+    public void enq(T x) {
+        int i = tail.getAndIncrement();
+        items[i].set(x);
+    }
+    public T deq() {
+        while (true) {
+            int range = tail.get();
+            for (int i = 0; i < range; i++) {
+                T value = items[i].getAndSet(null);
+                if (value != null) {
+                    return value;
+                }
+            }
+        }
+    }
+}
+```
+### Pierwsza instrukcja nie jest punktem linearyzacji:
+
+
+$int$ $i = tail.getAndIncrement();$
+
+Mamy zatem następujący ciąg instrukcji:
+
+![](https://i.imgur.com/uQK0HRR.png)
+
+
+Jeżeli chcielibyśmy zlinearyzować tą historię względem pierwszej instrukcji metody enq() otrzymamy nastepującą kolejność:
+
+    A: enq(x)
+    B: enq(y)
+    B: deq(y)
+
+Ponieważ wątek B jako piewszy przed wątekiem A zapisze swoją zmienną do kolejki to podczas wykontywania metody deq() kolejka zwróci wartość y, ponieważ $items[i]$ cały czas będzie równe null. Zatem jest to sprzeczne.
+
+
+### Druga instrukcja nie jest punktem linearyzacji:
+
+$items[i].set(x);$
+
+Mamy zatem następujący ciąg instrukcji:
+
+![](https://i.imgur.com/Z2dbUCa.png)
+
+
+Jeżeli chcielibyśmy zlinearyzować tą historię względem drugiej instrukcji metody enq() otrzymamy nastepującą kolejność:
+
+    B: enq(y)
+    A: enq(x)
+    B: deq(x)
+ 
+
+Pomimo, że wątek B zapisuje zmienną y do pamięci wcześniej niż wątek A, to index elementu x będzie mniejszy zatem podczas wyciągania elementu z kolejki najpierw zostanie wyciągnięty element x.
+
+Dokładniej:
+ A: int i = tail .getAndIncrement(); // i == 0 
+ B: int i = tail .getAndIncrement(); // i == 1
+ B: items[ 1 ]. set (y);
+ A: items[ 0 ]. set (x);
+ // według punktów linearyzacji kolejność elementów w kolejce to: y x
+ B: dequeue() // zwróci x
+ B: dequeue() // zwróci y
+ 
+ 
+ 
+## Zadanie 8
+:::success
+Autor:	Marcin Wróbel	
+:::
+
+![](https://i.imgur.com/3MY08HP.png)
+```java
+public class HWQueue < T > {
+    AtomicReference < T > [] items;
+    AtomicInteger tail;
+    static final int CAPACITY = Integer.MAX_VALUE;
+    public HWQueue() {
+        items = (AtomicReference < T > []) Array.newInstance(AtomicReference.class,
+            CAPACITY);
+        for (int i = 0; i < items.length; i++) {
+            items[i] = new AtomicReference < T > (null);
+        }
+        tail = new AtomicInteger(0);
+    }
+    public void enq(T x) {
+        int i = tail.getAndIncrement();
+        items[i].set(x);
+    }
+    public T deq() {
+        while (true) {
+            int range = tail.get();
+            for (int i = 0; i < range; i++) {
+                T value = items[i].getAndSet(null);
+                if (value != null) {
+                    return value;
+                }
+            }
+        }
+    }
+}
+```
+
+Obserwacje:
+1. Do każdej komórki w tablicy zapisze co najwyżej jeden wątek (dzięki temu, że metoda .getAndIncrement() jest wykonywana atomowo, będzie ona zwracać kolejne liczby naturalne).
+2. Stąd metoda enq(T x) zawsze doda gdzieś w wolne miejsce x.
+3. Każdy element komórki tablicy items zostanie wyciągnięty co najwyżej raz dzięki atomowej metodzie .getAndSet(null)
+4. Wszystkie obiekty czekające w kolejce muszą mieć znajdować się w komórkach o indexie od 0 do tail. Stąd jeżeli jakiś element jest już w kolejce, to metoda deq(), go wyciągnie.
+
+Początkowo możemy ustawić punkt linearyzacji deq w momencie wykonania items[i].getAndSet(null).
+
+W przypadku, gdy kolejność deq nie zgadza się z kolejnością items[i].set(x), czasem można ustawić enq w kolejności zgodnej z tail.getAndIncrement()
+
+``` 
+    ↓                        ↓        ↓
+A < i   enq(x)      set > <deq(x)> <deq(y)>
+      ↓ 
+B <   i  enq(y) set     >
+                    
+```
+Może się jednak zdarzyć, że to nie zadziała, ponieważ jakiś wątek umożliwi przeskoczenie elementu z mniejszym indeksem, dodanym wcześniej, taka sytuacja jest możliwa tylko, gdy enq są współbieżne i jakieś inne enq zwiększyło wartość zmiennej tail. Wtedy należy ustawić punkt linearyzacji tak, aby były one ustawione zgodnie z kolejnoścjią deq.
+
+``` 
+                                                        ↓
+A                    <  i enq(z)                       set >
+                          ↓ 
+B < i enq(x)               set > 
+                       ↓
+C                  < i enq(y)  set >
+                                     ↓          ↓
+D                         <        deq(y)>   <deq(x)>
+                    
+```
+
+<!-- Należy jeszcze pokazać, że jeżeli 
+$enq(x)→enq(y)$, to 
+$deq(x)→deq(y)$
+
+
+Załóżmy nie wprost, że
+$enq(x)→enq(y)$ i
+$deq(y)→deq(x)$
+
+Skoro 
+$enq(x)→enq(y)$ to x znajdzie się w komórce o indeksie mniejszym niż indeks komórki w której znajduje się y
+Musi zachodzić
+$enq(y)→deq(y)$
+Stąd
+$enq(x)→enq(y)→deq(y)→deq(x)$
+$enq(x)→deq(y)$
+Wiemy, że x znajduje się w komórce o mniejszym indeksie niż y, stąd
+deq(y) w swojej pętli natrafiłoby na x przed y -->
+
+ 
+=====
+
+# L5 GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor:	Rafał Starypan	
+:::
+![](https://i.imgur.com/8hzDtsO.png)
+
+1. Sekwencyjnie spójne
+ ![](https://i.imgur.com/rYKV60m.png)
+ ![](https://i.imgur.com/DpqsG0m.png)
+
+2. Sekwencyjnie niespójne
+![](https://i.imgur.com/lKVlips.png)
+![](https://i.imgur.com/221z7zu.png)
+
+ Aby można było wykonać p.deq(y), to p.enq(y) musi być przed q.enq(x). Spowoduje to, że q.enq(y) będzie przed p.enq(x), czyli również przed q.enq(x).
+Zatem q.deq(x) nie zwróci poprawnej wartości 
+
+## Zadanie 2
+:::success
+Autor:	Magdalena Rzepka	
+:::
+
+
+**Własność kompozycji** - jeżeli dla każdej składowej x historii H H|x ma jakąś ceche, to historia H też ją ma.
+
+
+**Sekwencyjna spójność nie ma własności kompozycji.**
+
+Przykład:
+
+![](https://i.imgur.com/3uewXor.png)
+
+
+A p.enq(x) #1
+B q.enq(y) #2
+A q.enq(x) #3
+B p.enq(y) #4
+A p.deq(y) #5
+B q.deq(x) #6
+
+Sekwencyjna spójność składowych p i q wystąpi, po zmianie #1 i #4 miejscami oraz po zmienie #2 i #3.
+
+H|p
+B p.enq(y) #4
+A p.enq(x) #1
+A p.deq(y) #5
+
+H|q
+A q.enq(x) #3
+B q.enq(y) #2
+B q.deq(x) #6
+
+#4 -> #1 -> #5
+#3 -> #2 -> #6
+
+Ale w obrębie wątku nie możemy zmieniać miejscami, więc musi zachodzić również:
+
+#1 -> #3 -> #5
+#2 -> #4 -> #6
+
+Podsumowując:
+
+#4 -> #1 -> #3 -> #2 -> #4
+#4 -> #4
+
+Akcja 4 musi nastąpić przed samą w sobie.
+Sprzeczność!
+
+## Zadanie 3
+:::success
+Autor:	Hubert Obrzut	
+:::
+![](https://i.imgur.com/fSZZFuo.png)
+![](https://i.imgur.com/jGKu0H9.jpg)
+
+![dsa](https://i.imgur.com/hs2jZAB.png)
+
+
+## Zadanie 4
+:::success
+Autor:	Patryk Mazur	
+:::
+![](https://i.imgur.com/xoJY7wH.png)
+![](https://i.imgur.com/UnlmeH6.png)
+
+Zał. że wątek A wszedł do sekcji krytycznej:
+`write_A(flag[A] = true) -> write_A(victim = A) -> read_A(flag[B] == false || victim == B)`
+
+Żeby B wszedł musiałoby zachodzić: 
+`write_B(flag[B] = true) ->  write_B(victim = B) -> read_B(flag[A] == false || victim == A)` 
+
+Jako, że A jest w sekcji krytycznej to `flag[A] == true` oraz `victim == B` ponieważ B ustawił na siebie zmienną victim.
+
+W modelu procesora słabszym niż sekwencyjna spójność może się okazać, że procesor zamieni kolejność operacji w celu optymalizacji (domyślnie `flag[] = false`):
+
+`read_A(flag[B] == false) -> read_B(flag[A] == false) -> write_A(flag[A] = true) -> write_B(flag[B] = true)`
+
+Zatem oba wątki wejdą do sekcji krytycznej
+
+## Zadanie 5
+:::success
+Autor:	Adam Jarząbek	
+:::
+
+
+Ponieważ mamy model pamięci słabszy niż sekwencyjna spójność, może się zdarzyć, że instrukcje nie zostaną wykonane w takiej kolejności, jak są w kodzie. W szczególności w klasie wstawiającej element do kolejki możemy ustalić wartość `tail % capacity`, następnie zwiększyć wartość `tail` i dopiero zapisać nowy element pod wyliczonym indeksem. Jeżeli pomiędzy zwiększeniem wartości zmiennej, a zapisem do tablicy wątek odczytujący będzie chciał odczytać wartość zapisaną pod zwiększonym już `tail`, odczyta nieprawidłową wartość. Z tego powodu współdzielone między wątkami zmienne takie jak `tail` powinny być przechowywane w odpowiednio przystosowanych obiektach. 
+
+## Zadanie 6
+:::success
+Autor:Mikołaj Jaszcza	
+:::
+
+![](https://i.imgur.com/EDWaND0.png)
+![](https://i.imgur.com/6uP3Bem.png)
+
+Aby pokazać fakt, iż IQueue nie jest poprawnym obiektem współ. pokażę, że nie jest linearyzowalny. Aby to zrobić posłużę się podaniem przykładu nielinearyzowalnej historii:
+![](https://i.imgur.com/ZG7BXZc.png)
+
+(tj. w tym scenariuszu zajdzie, że wątek A zostanie wywłaszczony po wyjściu z pętli).
+Możemy więc to interpretować jako sytuację, gdzie zajęliśmy slot w tablicy, ale jeszcze go nie zapełniliśmy. Zauważmy, że w trakcie wykonywania funkcji deq przez wątek B 'head' będzie wskazywał na wartość null (komórka zajęta przez A, jak opisane powyżej). A zatem skoro head wskazuje na null - funkcja 'zwróci' EmptyException. 
+
+Zauważmy jednak, że historia opisana powyżej nie może zostać zlinearyzowana. Ponieważ wywołujemy deq już po zakończeniu jednego enq, wiadomo więc, że kolejka nie jest pusta, lecz uzyskujemy EmptyException. Uzyskaliśmy tym samym sprzeczność - zatem pokazaliśmy, że przedstawiona implementacja jest niepoprawna.
+
+## Zadanie 7
+:::success
+Autor:	Maria Szlasa	
+:::
+:::info
+![](https://i.imgur.com/4G44uzw.png)
+:::
+**AtomicInteger** An int value that may be updated atomically. An AtomicInteger is used in applications such as atomically incremented counters, and cannot be used as a replacement for an Integer. However, this class does extend Number to allow uniform access by tools and utilities that deal with numerically-based classes.
+**AtomicReference\<T\>** An object reference that may be updated atomically.
+**Punkt linearyzacji** miejsce w którym metoda daje efekt.
+****
+Pokażemy, że enq nie ma pojedynczego punktu linearyzacji.
+
+### Dla instrukcji *i = tail.getAndIncrement()*
+![](https://i.imgur.com/tJ5M5nW.png)
+
+Najpierw wątek A zwiększy licznik, a następnie wątek B. Potem wątek B umieści swoją wartość w kolejce i zacznie się wykonywać q.deq. Ponieważ wątek A nie wstawił jeszcze swojej wartości, pod zajętym przez niego indeksem będzie null. Pętla for obróci się ponownie i ściągniemy y.
+
+### Dla instrukcji *items[i].set(x)*
+![](https://i.imgur.com/CTVw1p4.png)
+Wątek A otrzyma indeks i, a wątek B otrzyma i+1. Mimo, że punkt linearyzacji wątku B zakończy się szybciej (wątek B szykciej skończy wykonywać enq), to ponieważ wątek A otrzymał mniejszy indeks, to wątek C przeczyta wartość zapisaną przez A.
+
+### Czy z tego wynika, że historia nie jest linearyzowalna?
+Nie! Punktem linearyzacji może być grupa instrukcji.
+## Zadanie 8
+:::success
+Autor: Hubert Obrzut	
+:::
+![](https://i.imgur.com/AY7q4mo.png)
+![](https://i.imgur.com/h3HWYD1.jpg)
+
+

@@ -1,0 +1,353 @@
+# Ćwiczenia 1, grupa cz. 10-12, 14. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8  |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |--- |
+Dominik Budzki           |       |  X  |  X  |  X  |  X  |  X  |     | X  |
+Jakub Grabarczuk         |       |     |     |     |     |     |     |    |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |  X  |     |  X |
+Tomasz Mróz              |   X    |  X   |  X   |  X   |     |     |     |    |
+Mateusz Opala            |   X    |   X  |   X  | X    |   X  |   X  |   X  |  X  |
+Łukasz Pluta             |    X   |  X   |  X   |  X   |   X  |   X  |  X   |  X  |
+Antoni Pokusiński        |   X   |  X  |==X==|  X  |  X  |     X |     |  X  |
+Szymon Rysz              |   X   |==X==|  X  |  X  |  X  |  X  |     | X  |
+Dominik Samorek          |       |     |     |     |     |     |     |    |
+Mateusz Sidło            |   X   |  X  |  X  |  X  |  X  |     |     |    |
+Paweł Sikora             |   X   |  X  |  X  |  X  |  X  |==X==|     | X  |
+Mateusz Szwelengreber    |       |  X  | X   |  X  |  X  |  X  |     |    |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |   X  |     |  X |
+Michał Zieliński         |    X   |  X   |  X   |   X  |   X  |   X  |   X  | X   |
+:::
+
+## Zadanie 1
+
+:::danger
+Autor: Mateusz Sidło
+:::
+
+$$
+P = CV^2f\\
+\text{ }\\
+C = c \cdot n \text{, n - liczba tranzytstorów} \\
+V = k\cdot f\text{ - V liniowo zależy of f}\\\text{ }\\
+P_1 = cn_1k^2f_1^3\\\text{ }\\
+P_2 = 2cn_2k^2f_2^3
+$$
+Jeżeli zmniejszymy $f$ to czas potrzebny na wykonanie zadania zwiększy się proporcjonalnie do dokonanej redukcji.
+$$
+\text{Niech } n_2 = n_1\text{, }f_2 = \frac{1}{2}f_1\text{, wtedy:}\\
+P_2 = 2cn_1k^2\frac{1}{8}f_1^3= \frac{1}{4}P_1
+$$
+
+## Zadanie 2
+
+:::danger
+Autor: Szymon Rysz
+:::
+
+**Problem sekcji krytycznej** - conajmniej dwa wątki korzystają z jakiegoś wspólnego zasobu, np. z jeziora. Jednocześnie tylko jeden proces może z niego korzystać. Chcemy więc, żeby było wzajemne wykluczenie i brak zakleszczenia.
+
+**Standardowe rozwiązanie:**
+
+*Alicja:*
+1. Podnieś flagę
+2. Poczekaj aż flaga Boba będzie obniżona
+3. Wypuść smoka
+4. Poczekaj aż smok wróci i opuść flagę
+
+*Bob:*
+1. Podnieś flagę
+2. Dopóki flaga alicji jest w górze
+2.1 Obniż flagę
+2.2 Poczekaj aż jej flaga opadnie
+2.3 Podnieś flagę 
+3. Wypuść smoka
+4. Poczekaj aż smok wróci i opuść flagę
+
+![](https://i.imgur.com/XIF0gxt.png)
+
+
+**Nowe rozwiązanie:**
+*Alicja:*
+1. Podnieś flagę
+2. Dopóki flaga Boba jest w górze
+2.1. Jeśli napis wskazuje Bob:
+    2.1.1 Obniż flagę
+    2.1.2 Czekaj aż napis wskaże Alicja
+    2.1.3 Podnieś flagę
+3. Wypuść smoka
+4. Poczekaj aż smok wróci
+5. Ustaw napis na Bob
+6. Obniż flagę
+
+*Bob:*
+1. Podnieś flagę
+2. Dopóki flaga Alicji jest w górze:
+2.1 Jeśli napis wskazuje Alicja:
+    2.1.1 Obniż flagę
+    2.1.2 Poczekaj aż napis wskaże Bob
+    2.1.3 Podnieś flagę
+3. Wypuść smoka
+4. Poczekaj aż smok wróci
+5. Ustaw napis na alicja
+6. Opuść flagę
+
+**Wzajemne wykluczanie**
+
+Załóżmy nie wprost, że w jeziorze znalazły się 2 smoki jednocześnie. Bez utraty ogólności załóżmy, że napis wskazuje Boba. Wtedy Alicja i Bob mają podniesione flagi. Bob wpuszcza smoka. Jeśli Alicja również wpuściła smoka, oznacza to, że nie zastosowała sie do przepisów i nie poczekała aż napis wskaże jej imię, a więc mamy sprzeczność.
+
+**Zakleszczenie**
+
+Załóżmy nie wprost, że doszło do zakleszczenia, czyli zarówno Alicja jak i Bob chcą wpuścić smoka do jeziora, ale żadne z nich nie może tego zrobić. Bez utraty ogólności załóżmy, że napis wskazuje Alicję. Skoro obydwoje chcą wpuścić smoka, to obydwoje podnieśli flagi. Alicja widzi, że flaga Boba jest w górze, ale widzi również że napis wskazuje ją, więc może wpuścić smoka, więc dochodzimy do sprzeczności.
+
+**Zagłodzenie**
+
+Załóżmy nie wprost, że doszło do zagłodzenia, czyli jeden ze smoków nigdy nie wejdzie do jeziora. Bez utraty ogólności załóżmy, że to smok Boba będzie poszkodowany. Skoro Bob chce wpuścić smoka, a nie może, to znaczy, że ma obniżoną flagę i czeka aż napis wskaże jego imię. Jeśli Alicji smok wróci, to ustawi ona napis na Bob, czyli Bob będzie mógł wpuścić smoka, a więc mamy sprzeczność.
+
+## Zadanie 3
+
+:::danger
+Autor: Antoni Pokusiński
+:::
+
+:::info
+**Problem producenta-konsumenta**
+Mamy 2 procesy mające dostęp do pewnego zasobu/bufora - jeden z nich produkuje i dodaje do niego elementy, drugi je konsumuje. Problemy:
+* producent i konsument nie mogą mieć dostępu do bufora jednocześnie
+* konsument może pobierać dane, tylko gdy bufor jest niepusty
+* producent nie może dodawać elementów do bufora, jeśli jest on niepusty
+:::
+
+Przykład z Alicją, Bobem i smokami:
+
+Alicja (konsument):
+1. Czeka aż puszka zniknie z parapetu.
+2. Wypuszcza smoki.
+3. Gdy zwierzęta wrócą, Alicja sprawdza, czy zjadły
+wszystko. Jeśli tak, to ustawia puszkę z powrotem na
+miejscu.
+
+Bob (procudent):
+1. Czeka aż puszka stanie na parapecie.
+2. Zostawia jedzenie w jeziorze.
+3. Pociąga za sznurek i strąca puszkę.
+
+-------------------------
+
+Pojawia się problem, gdy Bob nie widzi puszki Alicji (czyli nie dostaje powiadomienia, że jezioro jest puste). Rozwiązanie - dowiązać puszkę na drugi koniec sznurka:
+
+Alicja:
+1. Czeka aż puszka zniknie z parapetu.
+2. Wypuszcza smoki.
+3. Gdy zwierzęta wrócą, Alicja sprawdza, czy zjadły
+wszystko. Jeśli tak, to ustawia puszkę z powrotem na
+miejscu, **pociąga za sznurek i strąca puszkę Boba**
+
+Bob:
+1. Czeka aż ~~puszka stanie na parapecie~~ **jego puszka zostanie strącona**.
+2. Zostawia jedzenie w jeziorze.
+3. **Ustawia swoją puszkę z powrotem na miejsce**
+4. Pociąga za sznurek i strąca puszkę
+
+------------
+* smoki i Bob nigdy nie będą razem w jeziorze: załóżmy nie wprost, że w chwili $t$ są razem, niech $t_1$ - ostatni raz, gdy Alicja strąciła puszkę Boba, $t_2$ - ostatni raz, gdy Bob strącił puszkę Alicji. Jeśli najpierw nastąpiło $t_1$, a potem $t_2$, to oznacza, że w chwili $t_2$ Bob był nad jeziorem, a więc nie mógł strącić puszki Alicji - sprzeczność (analogicznie uzasadniamy, gdy $t_2$ przed $t_1$)
+
+* smoki nigdy nie wejdą do pustego jeziora: załóżmy nie wprost, że wejdą do niego w pewnej chwili *t*. To wejście musiało być poprzedzone strąceniem puszki Alicji przez Boba, co z kolei następuje po napełnieniu jeziora - sprzeczność. (analogicznie uzasadniamy, że Bob nigdy nie dołoży jedzenia do niepustego jeziora).
+
+## Zadanie 4
+
+:::danger
+Autor: Dominik Budzki
+:::
+Które spełniają własności **bezpieczeństwa** (“nigdy nic złego się nie stanie”) a które **żywotności** (“kiedyś stanie się coś pożądanego”)?
+
+1. Klienci są obsługiwani zgodnie z kolejnością przybycia.
+    * Bezpieczeństwo, żaden klient nie zostanie nierówno potraktowany.
+2. Co idzie do góry, musi zejść na dół.
+    * Żywotność, pożądanym jest że coś zejdzie na dół
+3. Jeśli co najmniej dwa wątki oczekują na wejście do sekcji krytycznej, to przynajmniej jednemu to się udaje.
+    * Żywotność, pożądanym jest to że jednemu z wątków się uda.
+4. Jeśli nastąpi przerwanie, to w ciągu sekundy drukowany jest komunikat.
+    * Bezpieczeństwo, złym byłoby niewydrukowanie komunikatu w ciągu sekundy od przerwania.
+5. Jeśli nastąpi przerwanie, to drukowany jest komunikat.
+    * Żywotność, pożądanym jest komunikat który zostanie wydrukowany
+6. Koszt życia nigdy nie spada.
+    * Bezpieczeństwo, "złą" rzeczą jest spadek kosztu życia, a to się nigdy nie stanie
+7. Dwie rzeczy są pewne: śmierć i podatki.
+    * Żywotność, "pożądanymi" rzeczami są śmierć i podatki i kiedyś się "staną"
+
+## Zadanie 5
+
+:::danger
+Autor: Jan Wańkowicz
+:::
+
+Podczas narady zapamiętujemy, ile jest łącznie więźniów. 
+
+Protokół dla nas:
+* jeśli widzimy włączony przełącznik, dodajemy jeden do pewnego licznika (początkowo ustawionego na 0) i wyłączamy przełącznik,
+* jeśli licznik jest równy liczbie pozostałych więźniów, wychodzimy z więzienia.
+
+Protokół dla pozostałych:
+* jeśli przełącznik jest wyłączony i jeszcze nigdy go nie włączaliśmy, włączamy go teraz.
+
+Zauważmy, że żaden inny więzień nie wyłączy nam przełącznika, więc w końcu na pewno go zliczymy. Każdy więzień włącza przełącznik tylko raz, więc na pewno nie policzymy więźniów kilkukrotnie.
+
+## Zadanie 6
+
+:::danger
+Autor: Paweł Sikora
+:::
+
+![](https://i.imgur.com/f9xVbqY.png)
+
+Załóżmy, że jest 10 więźniów i lider.
+
+**Strategia:**
+Jeśli więzień wchodzi do pokoju i przycisk był wyłączony to go włącza. Jeśli był włączony to go nie rusza.
+
+Gdy lider wchodzi do pokoju i przycisk jest włączony to dodaje 1 do licznika i wyłącza przycisk. Gdy wejdzie do pokoju i doliczy do $2n$ gdzie $n$ to liczba więźniów (bez lidera) to wie, że każdy był przynajmniej raz.
+
+1. Lider nie liczy siebie
+2. Lider liczy do 20
+3. Każdy więzień włącza przełącznik 2 razy
+
+Co znaczy, że licznik dobił do 20?
+
+- ludzie włączyli przycisk 19 razy i 1 był włączony początkowo
+- ludzie włączyli przycisk 20 razy i przycisk był wyłączony na wstępie.
+
+W obu przypadkach jednoznacznie możemy wskazać że było ich 20 (bo 19 kliknięć nie mogło wykonać mniej niż 10 osób).
+
+Niech $n$ będzie liczbą więźniów bez lidera - czyli $n+1$ więźniów.
+Wystarczy, że lider doliczy do $2n$. Skoro więźniowie nie wiedzą, w jakim stanie był przełącznik, to jeśli był włączony na starcie, lider policzy o $1$ za dużo. Jeśli lider doliczy do $2n$, to znaczy, że musiało być conajmniej $2n-1$ prawdziwych kliknięć. $2n-1$ prawdziwych kliknięć mogło wygenerować tylko $\lceil \frac{2n-1}{2} \rceil = n$ więźniów.
+
+## Zadanie 7
+
+:::danger
+Autor: Łukasz Pluta
+:::
+
+1. W oczywisty sposób przy n->inf zrównoleglona cześć wykona sie pomijalnie szybko wiec otrzymamy 2.5 krotne przyspieszenie.
+
+2. Niech k oznacza przyspieszenie. Wtedy wyliczamy k ze wzoru:(0.3/k + 0.7/n) * 2 = 0.3 + 0.7/n
+
+
+Finalnie k = (0.6n) / (0.3n - 0.7)
+
+3. Niech a oznacza czesc programu , którą zajmuje metoda M. Wtedy liczymy a ze wzoru:
+a + (1 - a) / n = 2 * (a / 3) + 2 * (1 - a) / n 
+
+Finalnie a = 1 / (1/3n + 1)
+
+## Zadanie 8
+
+:::danger
+Autor: Michał Zieliński
+:::
+```java=
+class Philosopher extends Thread {
+    int id;
+    Fork left;
+    Fork right;
+
+    public Philosopher(int myID, Fork myLeft, Fork myRight) {
+        id = myID;
+        left = myLeft;
+        right = myRight;
+    }
+
+    public void run() {
+        Random random = new Random();
+        while (true) {
+            try {
+                sleep(random.nextInt(1000));
+                sleep(100);
+                System.out.println("Philosopher " + id + " is hungry");
+                left.get();
+                right.get();
+                left.put();
+                right.put();
+            } catch (InterruptedException ex) {
+                return;
+            }
+        }
+    }
+
+}
+
+public class Main {
+    static final int N = 10;
+
+    public static void main(String[] args) throws InterruptedException {
+        System.out.println("Starting...");
+
+        Fork forks[] = new Fork[N];
+        Philosopher philos[] = new Philosopher[N];
+
+        for (int i = 0; i < N; i++)
+            forks[i] = new Fork(i);
+
+        Philosopher p;
+
+        for (int i = 0; i < N; i++) {
+            p = new Philosopher(i,
+                    forks[i],
+                    forks[(i + 1) % N]);
+            philos[i] = p;
+            p.start();
+        }
+
+        for (int i = 0; i < N; i++) {
+            System.out.printf("Waiting for philosopher %d to finish\n", i);
+            philos[i].join();
+        }
+    }
+}
+
+
+```
+![](https://i.imgur.com/gy95bKs.png)
+
+```java=
+while (true) {
+            try {
+                Fork larger;
+                Fork smaller;
+                sleep(random.nextInt(1000));
+                sleep(100);
+                System.out.println("Philosopher " + id + " is hungry");
+                if (left.id > right.id)
+                {
+                    right.get();
+                    left.get();
+                }
+                else
+                {
+                    left.get();
+                    right.get();
+                }
+                left.put();
+                right.put();
+            } catch (InterruptedException ex) {
+                return;
+            }
+        }
+```
+![](https://i.imgur.com/boXI58s.png)
+
+Wprowadzamy porządek widelców - 1A jest "pierwszy", 1B ostatni.
+Filozof 1. kończy jeść, filozof 2. bierze 1A, 5. 1B, 5. kończy jeść, więc 4. może jeść, później 3., później 2.
+
+Aby doszło do zakleszczenia n filozofów musi podnieśc po jednym widelcu. Oznacza to, że n różnych widelców musiałoby być mniejszymi z tych dostępnych dla któregoś z filozofów. Ostatnia pałeczka nie jest jednak dla nikogo najmniejsza. Oznacza to, że w skrajnym przypadku n-1 filozofów podniesie n-1 widelce, jeden żaden (bo czeka najpierw na już zabrany widelec), a ostatni widelec weźmie ktoś, kto już ma jeden, więc może jeść, a póxniej zwolni sztućce dla innych.

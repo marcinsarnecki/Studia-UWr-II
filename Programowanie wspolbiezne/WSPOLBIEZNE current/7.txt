@@ -1,0 +1,734 @@
+# L7 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Mateusz Kisiel	
+:::
+![](https://i.imgur.com/BqnMDsq.png)
+![](https://i.imgur.com/OhBUKqc.png)
+
+* Funkcja collect zrobi nam kopię tablicy. W trakcie robienia kopi mogły np. nastąpić dwa updaty na początku i na końcu tablicy, przez co w kopi pojawi się zmiana tylko ta z dołu tablicy (w tym momencie nasza kopia nie jest prawidłowym snaphotem). 
+
+
+Załóżmy nie wprost, że atomowa migawka SimpleSnaphot nie działa prawidłowo i zwróciła błędny wynik. Wykonanie metody scan zwróciło nam pewien stan tablicy, który nigdy nie istniał. W pewnym momencie funkcji scan musiało wykonać się `Array.equals(oldCopy, newCopy)` i zwrócić true. Mogło to nastąpić tylko jeżeli nie zmienił się żaden timestamp, a skoro się nie zmienił to znaczy w szczególności, że nie nastąpiła żadna zmiana w trakcie wykonania drugiej kopii tablicy. Zatem druga kopia tablicy jest prawidłowym snapshotem. A skoro pierwsza kopia jest równa drugiej to także jest prawidłowym snapshotem. Sprzeczność.
+
+Timestampy są potrzebne, aby mieć pewność, że bład nie nastąpił 2 razy w ten sam sposób.
+
+* W najgorszym przypadku, gdy jest dużo updatów będziemy ponawiać scan w nieskończoność, jeżeli jednak zatrzymamy drugi wątek i pozwolimy pracować scan'owi w odizolowaniu na pewno się on zakończy, zatem jest obstruction-free.
+* update wykonuje się atomowo, bez żadnych pętli, zatem jest lock-free, a zatem cały system jest lock-free
+
+![](https://i.imgur.com/SmrOJg2.png)
+
+
+## Zadanie 2
+:::success
+Autor: Bartosz Szczeciński	
+:::
+
+![](https://i.imgur.com/2lheGsH.png)
+
+Załóżmy nie wprost, że istnieje nieczekająca implementacja protokołu binarnego konsensusu dla n > 2 wątków, używająca jedynie rejestrów atomowych.
+
+Skoro jest nieczekająca, to może się zdarzyć, że n - 2 wątki umrą i zostaną tylko dwa wątki. Ale z wykładu wiemy, że nie istnieje taka implementacja dla 2 wątków - sprzeczność.
+
+
+## Zadanie 3
+:::success
+Autor: 	Wojciech Pokój	
+:::
+
+konsensus m-wartościowy
+
+Pseudokod:
+
+```java=
+
+class MValuedConsensus<T> {
+  private BinaryConsensus cons[];
+  private AtomicRegister<T> values[];
+  
+  public MValuedConsensus() {
+    values = new AtomicRegister<T>[N]; // N - liczba wątków
+    threads = new BinaryConsensus[N];
+  }
+  
+  public T decide(T value) {
+    int self = ThreadID.get();
+    
+    values[self] = value;
+    
+    cons[self].decide(true);
+    
+    for(int i = 0; i < N; i++) {
+      if(cons[i].decide(false)) {
+        return value[i];
+      }
+    }
+  }
+}
+
+```
+
+Algorytm ma następujące własności:
+
+### Jest wait free
+
+Wynika z faktu że używamy konsensusu który jest wait-free
+
+### Zawsze zwróci wartość
+
+Przynajmniej jednemu wątkowi uda się ustawić wartość swojego konsensusu na prawdę.
+
+Gdyby żadnemu się nie udało oznaczałoby że każdy musiałby być poprzedzony przez któregoś innego, ale to jest sprzeczne, musi istnieć jeden któremu jako pierwszemu udało się zakończyć wywoływanie swojego konsensusu
+
+### Zwróci tylko jedną wartość
+
+Wynika to z prostego faktu że gdy w pętli (18) dochodzimy do consensusu z wartością prawda wszystkie pozostałye mają już ustaloną wartość. Żaden ze wcześniejszych nie może zmienić swojej wartości, więc możemy conajwyżej zmienić stan tych późniejszych, jednak to nie wpłynie na zwracaną wartość
+
+
+## Zadanie 4
+:::success
+Autor: Mikołaj Depta
+:::
+
+Załóżmy nie wprost, że da się taki konsensus osiągnąć dla wątków `A`, `B`, `C`. Taki protokół ma stan krytyczny `S`. Załóżmy bez straty ogólności, że następny ruch `A` przeniesie nas do wierzchołka 0 walentnego a `B` do 1 walentnego. Rozpatrzmy możliwe scenariusze.
+
+1. `A deq`, `B deq`
+
+Niech `S'` będzie stanem pamięci po tym jak `A` wykonał się pierwszy a `B` wykonał się po nim a `S''` stanem gdzie te operacje wykonały się w odwrotnej kolejności.
+
+![](https://i.imgur.com/pfvc3pY.png)
+
+Rozważmy teraz możliwe ruchy `C`, który wykonałby się z tych stanów w sposób nieprzerwany. Ze stanu `S'` dowolna sekwencja ruchów spowoduje, że `C` osiągnie konsensus 0, a dla stanu `S''` byłoby to 1. Otrzymalibyśmy różne wartości konsensusu mimo tego, że stan pamięci z perspektywy wątku `C` jest taki sam dla stanów `S'` i `S''`. Co jest niemożliwe podczas wykonywania deterministycznej sekwencji ruchów.
+
+2. `A enq(a), B enq(b)`
+
+Ponownie chcielibyśmy znaleźć sekwencję ruchów, która dałaby nam dwa identyczne stany o różnej walentności.
+
+Dwa symetryczne scenariusze:
+
+`A` woła `deq` pierwszy a następnie `B` - kolejka `[a, b]`.
+
+Aby osiągnąć konsensus wątki muszą odczytać wartości z kolejki. Wykonajmy więc teraz `A` nieprzerwanie aż wykona `deq -> a`, po czym wstrzymajmy jego wykonanie i zróbmy to samo dla `B`. Otrzymamy w ten sposób stan `S'`, w którym kolejka jest pusta.
+
+Analogicznie możemy stworzyć stan `S''`, gdzie kolejność wątków `A` i `B` jest odwrócona.
+
+Ostatecznie ponownie otrzymamy dwa stany o różnych walentnościach, które dla wątku `C` są identyczne a mimo tego mają prowadzić do różnych wartości konsensusu, co ponownie znaczy sprzeczność.
+
+![](https://i.imgur.com/Q0cUAHH.png)
+
+
+2. `A enq(a), B deq`
+
+Gdy kolejka jest niepusta kolejność wykonania `A` i `B` nie ma znaczenia - stan będzie taki sam ponieważ `A` doda element na koniec a `B` zdejmie jakiś inny element `x` z początku, który będzie inny niż `a` i nie zależnie od kolejności wykonania taki sam za każdym razem.
+
+Gdy kolejka jest pusta z perspektywy wątku `C` stan kolejki będzie taki sam niezależnie od tego czy wykona się pierwszy wątek `B` a następnie `A` od samego wykonania `A`, ponieważ wykonanie `dec` na pustej kolejce z perspektywy `C` ma taki sam efekt jak nie wykonanie go wcale. Co znaczy, że można osiągnąć ten sam stan kolejki poprzez ruchy przenoszące nas odpowiednio do 0 walentnego stanu i 1 walentnego stanu.
+
+## Zadanie 5
+:::success
+Autor: Marcin Sarnecki	
+:::
+
+![](https://i.imgur.com/I5O5J5E.png)
+![](https://i.imgur.com/eWrHYnJ.png)
+* Załóżmy nie wprost, że zwrócono wartość różną od zaproponowanych przez dwa wątki. Zauważmy, że aby do tego doszło, wątek pierwszy musiałby wykonać $return\space proposed[j];$ na niezainicjowanej $proposed[j]$. Dochodzimy do sprzeczności, ponieważ wtedy musiało zajść $position[i] < position[j]$, co implikuje przypisanie wartości $proposed[j]$ 
+
+* Załóżmy nie wprost, że dwa wątki zwróciły różne wartości. 
+
+Rozważmy przypadek wykonania 
+```java
+if (position[i] < position[j]) // I am behind you
+return proposed[j];
+```
+Jeden z wątków musiał wykonać tego ifa jako pierwszy, wartości $position[]$ mogą się tylko zwiększać, zatem niemożliwe jest, że drugi wątek następnie odczytał swoje position jako mniejsze
+
+Rozważmy przypadek wykonania
+```java
+if (position[i] > position[j] + speed[j]) // I am far ahead of you
+return proposed[i];
+```
+Jeden z wątków musiał wykonać tego ifa jako pierwszy, drugi z wątków na pewno wykona drugiego ifa zwracającego $proposed[j]$
+
+* To rozwiązanie nie jest $wait-free$, jeśli wartości $position[]$ są takie same, to wolniejszy wątek może wykonać trzy razy pętlę $while$, następnie szybszy wątek wykona raz pętle i wracamy so sytuacji z równymi $position[]$
+
+## Zadanie 6
+:::success
+Autor: Julia Matuszewska	
+:::
+
+![](https://i.imgur.com/DeJdq3v.png)
+
+---
+![](https://i.imgur.com/YWOqTA8.png)
+
+---
+
+### 1. Pojedyńczy obiekt klasy StickyBit wystarczy, by rozwiązać problem nieczekającego konsensusu binarnego dla dowolnej liczby wątków
+
+Weźmy $n$ wątków. Niech zapisują one jednocześnie do obiektu klasy **StickyBit**
+
+**Możliwe przypadki:**
+1. Jeżeli wszystkie zapisywały $A$ to **StickyBit** zwróci $A$
+2. Jeżeli część zapisywała $A$, a drugie $B$ ($B$ może być równe lub różne od $A$), to wtedy wszystkie zapisane wartości poza pierwszą zostaną zignorowane.
+Wtedy stanem obiektu będzie wartość zapisana jako pierwsza.
+
+### 2. Przy pomocy tablicy zawierającej $log_2m$ obiektów StickyBit i pewnej liczby atomowych rejestrów można podać nieczekającą implementację protokołu konsensusu dla dowolnej liczby wątków, gdy istnieje $m$ możliwych wartości wejściowych
+
+pseudokod działania
+```powershell=
+m <- ilosc mozliwych wartosci wejsciowych
+N <- ilosc watkow
+// tworzymy tablice obiektow StickyBit o wielkosci log2m
+StickyBit wynik[log2m] 
+MRSW[N] // dla kazdego watku tworzymy rejestr MRSW
+
+dla kazdego watku wykonujemy:
+    dla i w 0..log2m:
+        // bit niezapisany lub zgodny
+        jezeli wynik[i] == ⊥ || wynik[i] == MRSW[ID]: 
+            // i-ty bit wartosci z rejestru tmp watku ID
+            b_i = MRSW[ID][i] 
+            wynik[i] = b_i // zapisujemy i-ty bit wyniku
+        wpp:
+            //przeszukujemy inne watki w poszukiwaniu
+            //wartosci ktora zgadza sie z prefiksem dotychczasowym wyniku
+            dla ID2 w 0..N: 
+                jezeli wynik[0..i] == MRSW[ID2][0..i] 
+                    //podmieniamy wartosc naszego watku w rejestrze na
+                    //zgodna wartosc w innym watku
+                    MRSW[ID] = MRSW[ID2] 
+    zwroc wynik
+                    
+         
+```
+
+**Pomysł:**
+Niech każdy bit liczby będzie obiektem klasy **StickyBit**, oraz weźmy tablicę T atomowych komórek MRSW, po jednej dla każdego wątku.
+Na początku każdy wątek wpisze swoją wartość do swojej komórki, a potem dla każdego wątku będziemy iterować się po kolejnych bitach.
+
+Dla bitu $b_i$ robimy `write(b_i)` do $i$-tego StickyBity, a potem zczytujemy z tego bitu wartość.
+
+Jeżeli jest taka sama, to kontynuujemy.
+Jeżeli jest różna, iterujemy się po T i znajdujemy wartość $v$ innego wątku, którą prefiksem jest aktualnie przeczytany stan ze StickyBitów, i kontynuujemy algorytm dla wartości $v$. Po zakończeniu iteracji zwracamy tę liczbę.
+
+W ten sposób każdy wątek zwróci tę samą wartość.
+
+Zatem algorytm rozwiązuje problem konsensusu dla $M$ wartości i $n$ wątków
+
+
+## Zadanie 7
+:::success
+Autor: Wiktor Bukowski	
+:::
+
+![](https://i.imgur.com/FHxD0Rr.png)
+
+Pokażemy implementację protokołu przybliżonej zgody używającej jedynie rejestrów atomowych. Tym samym udowodnimy, że poziom konsensusu obiektów przybliżonej zgody jest równy 1.
+
+Protokół:
+```
+1. Oba rejestry ustawiamy początkowo na wartości -1.
+2. Każdy wątek zapisuje swoją wartość do własnego rejestru.
+3. Jeśli drugi rejestr ma wciąż wartość -1 - zwracamy swoją wartość.
+4. Każdy wątek uaktualnia swój rejestr w następujący sposób:
+    a) jeśli wartość rejestru drugiego wątku jest oddalona o co najwyżej eps, to zwraca wynik
+    b) jeśli nie, to do swojego rejestru zapisuje średnią z wartości rejestrów i powtarza krok 4
+```
+
+Protokół jest `wait-free`, ponieważ każdy z wątków skończy swoje działanie niezależnie od stanu drugiego.
+
+## Zadanie 8
+:::success
+Autor: Marcin Wróbel	
+:::
+![](https://i.imgur.com/MDdJAhk.png)
+
+```java 
+public class FIFOwithPeekConsensus<T> extends ConsensusProtocol<T> {
+    FIFOQueue fifoQueue;
+    T[] propose;
+    
+    public FIFOwithPeekConsensus(int n) {
+        fifoQueue = new FIFOQueue();
+        propose = new T[n];
+    }
+    
+    T decide (T value) {
+        int me = ThreadID.get();
+        propose[me] = value;
+        fifoQueue.enq(me);
+        return propose[fifoQueue.peek()];
+    }
+    
+}
+```
+
+1. Powyższa implementacja jest wait-free.
+2. Wartość zwracana przez decide() jest jedną z wartości zaproponowanych przez wątki, ponieważ kolejka q zawiera tylko id tych wątków, które już wpisały swoją propozycję do propose[];
+3. Metoda ta zwraca dla każdego wątku tą samą wartość. Jest to wartość, którą zaproponował wątek, którego id jest pierwsze w kolejce.
+
+Powyższe właściwości zachodzą dla dowolnej liczby wątków, więc poziom konsensusu wynosi ∞.
+
+## Zadanie 9
+:::success
+Autor: Maksymilian Komarnicki	
+:::
+
+_Czyste podwójne zbieranie_ - tablice zwracane przez dwa kolejne wywołania metody collect() są równe.
+
+_Lemat 1_
+Jeśli wątek skanujący A wykonał czyste podwójne zbieranie, to wartości które zwrócił były prawdziwymi wartościami rejestrów.
+
+Załóżmy, że wątek A wykonał czyste podwójne zbieranie, ale wartości które zwrócił nigdy nie były wartościami rejestrów. Skoro wykonał czyste podwójne zbieranie, to znaczy, że wszystkie wartości _stamp_ z pierwszego zbierania odpowiadały wszystkim wartością _stamp_ z drugiego zbierania. Oznacza to, że pomiędzy odczytami i-tego rejestru nie było żadnej zmiany, zatem pomiędzy ostatnim odczytem pierwszego zbierania, a pierwszym odczytem drugiego zbierania nie miała miejsca żadna zmiana rejestrów. Zatem zwrócone wartości istniały w przerwie między zbieraniami.
+
+_Lemat 2_
+Jeśli wątek skanujący A zaobserwował zmiany w rejestrze modyfikownym przez wątek B podczas dwóch różnych podwójnych zbierań, to wartość rejestru wątku B przeczytana podczas ostatniego zbierania była zapisana przez wywołanie update() rozpoczęte po pierwszym rozpoczętym zbieraniu.
+
+Załóżmy, że wątek skanujący A zaobserwował zmiany w rejestrze modyfikownym przez wątek B podczas dwóch różnych podwójnych zbierań. Przypuśćmy, że wartość rejestru wątku B przeczytana podczas ostatniego zbierania była zapisane przez wywołania update() rozpoczęte przed rozpoczęciem pierwszego zbierania. W takiej sytuacji ten update() byłby jedynym wykonanym przez wątek B w czasie wykonywania skanu przez wątek A, co przeczy temu co zaobserwował wątek A.
+
+_Lemat 3_
+Wartości zwrócone przez scan() były wartościami rejestrów pomiędzy wywołaniem metody, a zwróceniem wyniku.
+
+Jeśli miało miejsce czyste podwójne zbieranie, to twierdzenie wynika z _Lematu 1_. Jeśli scan() zwrócił wartości rejestrów z rejestru jakiegoś wątku B, to z _Lematu 2_ wynika, że wartości te były uzyskane podczas wywołania scan(). Indukcyjnie wątek B wywołujący scan() w metodzie update() uzyskał rzeczywiste wartości rejestrów. Indukcje możemy zastosować maksymalnie n-1 razu, gdzie n to liczba wątków. Ostatecznie jakiś zagnieżdżony scan() wykona podwójne czyste zbieranie.
+
+_Lemat 4_
+Każde wywołanie scan() oraz update() są wolne od czekania.
+
+Mamy dane n wątków. Dla pierwszego wywołania scan() może istnieć co najwyżej n-1 innych wątków modyfikujących rejestry. Po n+1 operacji podwójnego zbierania, albo któreś będzie czyste, albo jakiś wątek zmienił drugi raz wartość swojego rejestru. Oznacza to, że w ciągu tego wywołania scan() maksymalnie będzie mieć miejsce n wywołań update(). Każdy update() wywołuje scan(), z tym, że liczba wątków, które mogą modyfikować rejestry zmniejsza się. Z tego wynika, że scan() oraz update() są wolne od czekania. 
+
+====
+
+# L7 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Kamila Goszcz	
+:::
+
+![](https://i.imgur.com/BqnMDsq.png)
+![](https://i.imgur.com/OhBUKqc.png)
+
+![](https://i.imgur.com/SmrOJg2.png)
+
+### Dowód nie wprost
+Załóżmy, że funkcja scan() SimpleSnapshot zwróciła nam pewien stan pośredni pomiędzy spowodowany wywoływaniem współbieżnym update(). Skoro tak to musieliśy ominąć if-a, a zatem zaszło `Array.equals(oldCopy, newCopy) == true`. Jako, że w funkcji scan() porównujemy timestampy, oznacza to, że pomiędzy punktai linearyzacji (ktore wypadają na koniec tych funkcji) `oldCopy.collect()` a `newCopy.collect()` nie nastąpił żaden update. Porównywanie timestampów zamiast wartości gwarantuje nam, że nie nastąpiły dwa update(), które mogłyby wrzucić tą samą wartość w trakcie wywoływania obu collectów. Skoro tak to nie nastąpił żaden zapis w trakcie `newCopy.collect()`. Wynika z tego, że `newCopy` jest poprawnym snapshotem. A więc doszliśmy do sprzeczności
+
+[c;c;c;c;c] -> oldCopy: [c;c;]
+[a;c;c;c;c]
+[a;c;c;c;a] -> oldCopy: [c;c;c;c;a]
+[a;c;c;c;c]
+[c;c;c;c;c] -> newCopy: [c;c;]
+[a;c;c;c;c]
+[a;c;c;c;a] -> newCopy: [c;c;c;c;a]
+
+### Scan
+Może się zdarzyć tak, że wielokrotnie`Array.equals(oldCopy, newCopy) == false`. Będzie tak, gdy update() będziemy wykonywać na tyle często, że scan nie będzie w stanie wykonać 2 collectów między nimi. Zauważmy jednak, że gdy odizolujemy wątek scan(), to nie zmienią się wartości w tablicy, zatem zajdzie `Array.equals(oldCopy, newCopy) == true`. Scan będzie miał własność obstruction-free.
+
+### Update
+Update jest lock-free. Nie ma możliwości, żeby się zapętliła, jeżeli tylko dostanie czas procesora to zrbi pewien postęp a co za tym idzie cały system jest lock-free
+
+## Zadanie 2
+:::success
+Autor: Adam Jarząbek	
+:::
+![](https://i.imgur.com/TBfBEzL.png)
+
+Aby pokazać, że nie istnieje implementacja protokołu binarnego konsensusu dla $n$ wątków używająca jedynie rejestrów atomowych załóżmy nie wprost, że istnieje.
+
+Mamy skorzystać z tego, że dla dwóch wątków taka implementacja nie istnieje. Wiemy również, że ta implementacja jest nieczekająca. Skoro jest nieczekająca to znaczy, że każdy z jej $n$ wątków dokonuje postępu i kończy swoje działanie w skończonej liczbie kroków. W skończonym czasie dojdziemy więc do momentu, kiedy zostaną tylko dwa pracujące wątki. 
+
+Ale wiemy, że implementacja działająca na dwóch wątkach nie istnieje, więc mamy sprzeczność.
+
+Nie wprost dowiedliśmy, że nie istnieje implementacja protokołu binarnego konsensusu dla $n$ wątków używająca jedynie rejestrów atomowych.
+
+## Zadanie 3
+:::success
+Autor: Daniel Wiczołek	
+:::
+![](https://i.imgur.com/uRizKO6.png)
+
+- idea: niech dogadają się bit po bicie
+- mozemy zalozyc ze kazda ma tyle samo bitow, poprostu padding zerami
+- problem: co jesli jakis dostał wartosc 2 inny wartosc 1, a wartosci 3 nie ma w zbiorze ale jest mozliwym wynikiem
+    - wniosek: musimy updetowac obecna wartosc - ta z ktorej bierzemy bity
+    - wez dowolna wartosc która ma bity zgodne już z tymi ustalonymi, wtedy nie moze być tak, że ustalimy inny bit niż dozwolony, bo binarny konsensus działa, a zawsze na wejsciu wrzucasz jedna z mozliwych wartosci do bin_decide(bit) Potrzbujemy decide obiektu dla każdego bitu.
+- problem: powinnismy zwracac tylko wartosc ktora byla inputem a nie z calego zbioru
+    - więc dodajmy te wartosci na poczatku przed wykonaniem pętli i sprawdzajmy czy jest valid, czyli czy ta wartosc jest wartoscia wpisana przez jakis watek.
+
+szkic:
+```java 
+// współdzielone zasoby:
+BinConsensus[ILOSC_BITOW] // dla kazdego bitu osobny
+(bool, T) candidates[n] // zb wartosci (tylko to co bylo inputem do jakiegos thread)
+bit result[ILOSC_BITOW] // WYNIK KONSENSUSU ZAPISYWANY TUTAJ
+
+decide(T val) 
+    valid = true
+    candidates[THREAD_id] = (valid, val); // zalozenie ze threads maja id po kolei...
+    for (int i=0; i < ILOSC_BITOW; ++i) {
+        bit = i_bit(val)
+        // result moze byc wspolny bo wiemy ze decide zwraca zawsze to samo.
+        result[i] = bin_consensus[i].decide(bit); 
+        if(result[i] != bit) {
+            val = get_random_valid_candidate_with_matching_bits(result[0 .. i])
+        }
+    }
+    return result;
+```
+![](https://i.imgur.com/ILVc1ZR.png)
+- consistent, bo result jest wypełniany wynikami funckcji decide, a skoro binary jest consistent, to zawsze będzie ta sama wartość. Więc każdy wątek zwraca tą samą wartość.
+- valid, bo niezmiennikiem jest to, że każdy bit w input do bin_consensus, pochodzi z valid wartosci czyli wartosci ktora byla inputem jakiegos watku.
+- wiat-free, skończona liczba instr - ograniczona max liczbą bitów potrzbną do reprezentacji wartości.
+
+---
+
+formalniej:
+Lemat: Istnieje wątek, którego wartość wejściowa jest równa result (algorytm jest "valid").
+
+Niezmiennik pętli: 
+- $i$ pierwszych bitów w $result$ oraz $val$ są równe.
+- $val$ jest jedną z wartości wejściowych.
+
+Przed pętlą:
+$val$ jest wartością wejściową.
+zero bitów jest zgodnych.
+
+Załóżmy, że dla iteracji <= $i$-tej  jest to prawda.
+Pokażmy że po (i+1)-szej też jest.
+1. jeśli wynik decide był taki sam jak ten zaproponowany, to:
+    - Funckja $bin\_consensus[i+1].decide$ dostaje jako wartość wejściowa (i+1)-szy bit z $val$ więc  $result$ i $val$ się zgadzają w i+1 bitach. 
+    - $val$ się nie zmienia więc z założenia jest jedną z wartości wejściowych. 
+2. wynik był inny niż zaproponowany
+    - Zgodnie z algorytmem do $val$ zapisujemy wartość, w której bity \[0; i+1\] są zgodne z tymi w $result$, więc się zgadzają.
+    - $val$: wybieramy jedną z wartości wejściowych (czyli takich, które mają ustawioną flagę valid).
+    - Pokażmy, że istnieje wartość, która jest jedną z wejściowych i ma zgodne bity \[0; i+1\]. Załóżmy niewprost, że nie istnieje taka, która ma do i+1-szego zgodne, wiemy z założenia, że decide dostało i+1-szy bit wartości zgodnej na [0; i] bitach z result. Ale skoro nie ma takiej, która ma i+1-szy zgodny to decide zwróciło wartość, która nie jest (i+1)-szym bitem żadnej wartości wejściowej, sprzeczność z tym, że $bin_consesus$ implementuje binarny konsensus (nie byłby valid).
+
+Więc 
+- $i+1$-szy bit w $result$ oraz $val$ są równe.
+- $val$ jest jedną z wartości wejściowych.
+
+Wniosek: $result$ jest równy jednej z wartości wejściowych.
+
+## Zadanie 4
+:::success
+Autor: Zuzanna Kania	
+:::
+
+![](https://i.imgur.com/kE0QNLB.png)
+
+Chcemy udowodnić, że nie istnieje implementacja protokołu binarnego konsensusu dla trzech wątków korzystających tylko z kolejek FIFO i rejestrów atomowych.
+
+Załóżmy więc niewprost, że taka implementacja istnieje. Wiemy, że w każdym protokole istnieje przynajmniej jeden stan krytyczny. Weźmy taki stan krytyczny $s$. Bez utraty ogólności załóżmy, że następny ruch wątku A prowadzi do stanu 0-walentnego, natomiast następny ruch wątku B prowadzi do stanu 1-walentnego.
+
+Wiemy już, że A i B nie mogą czytać ani pisać jedynie do współdzielonych rejestrów (taki przypadek udowodniliśmy na wykładzie). Nie mogą także wykonywać operacji na różnych obiektach, ponieważ operacje te można w oczywisty sposób zamienić kolejnością i otrzymać nierozróżnialne stany. Będziemy zatem analizować jedynie operacje na jednej kolejce.
+
+Rozważmy zatem następujące przypadki:
+* oba wątki wykonują `deq()`
+    Niech $s'$ będzie stanem po wywołaniu `deq()` na stanie $s$ najpierw przez wątek A, a potem przez B, natomiast $s''$ będzie stanem po wywołaniu `deq()` na stanie $s$ najpierw przez wątek B, a potem przez A. Ponieważ $s'$ jest 0-walentny to wątek C działający na nim solo zwróci wartość 0. Z kolei działanie C solo na $s''$ zwróci 1. Jednak $s'$ i $s''$ są dla C nierozróżnialne (bo usunięto z kolejki te same elementy) i wątek ten powinien zwrócić taką samą wartość w obu przypadkach. Sprzeczność.
+    ![](https://i.imgur.com/ZsEee9A.png)
+
+* wątek A wykonuje `enq(a)`, a wątek B `deq()`
+    Jeśli kolejka jest niepusta, to mamy sytuację analogiczną do poprzedniej - dostaniemy dwie różne wartości, mimo że wątek C nie widzi różnicy w kolejności wykonania tych operacji. Sprzeczność.
+    Z kolei jeśli kolejka jest pusta, to C nie jest w stanie rozróżnić $s'$ po wykonaniu tylko `enq(a)` przez A oraz $s''$ po wykonaniu najpierw `deq()` na pustej kolejce przez B, a następnie `enq(a)` przez A. Również mamy sprzeczność.
+* wątek A wykonuje `enq(a)`, a wątek B `enq(b)`
+    Niech $s'$ będzie stanem po następującym wykonaniu:
+    1. A i B wkładają do kolejki kolejno elementy a i b
+    2. Wątek A działa nieprzerwanie dopóki nie wyjmie z kolejki a.
+    3. Wątek B działa nieprzerwanie dopóki nie wyjmie z kolejki b.
+    
+    Niech $s''$ będzie stanem po następującym wykonaniu:
+    1. B i A wkładają do kolejki kolejno elementy b i a
+    2. Wątek A działa nieprzerwanie dopóki nie wyjmie z kolejki b.
+    3. Wątek B działa nieprzerwanie dopóki nie wyjmie z kolejki a.
+    
+    $s'$ jest 0-walentny, a $s''$ 1-walentny, jednak są one nierozróżnialne dla C, ponieważ działanie A jest takie samo do momentu wyciągnięcia a lub b i tak samo dzieje się dla wątku B. Stąd mamy sprzeczność.
+    ![](https://i.imgur.com/prZrveC.png)
+
+
+Zatem nie istnieje implementacja protokołu binarnego konsensusu dla trzech wątków korzystających tylko z kolejek FIFO i rejestrów atomowych.
+
+## Zadanie 5
+:::success
+Autor: Mikołaj Jaszcza	
+:::
+
+![](https://i.imgur.com/vrJQnYi.png)
+![](https://i.imgur.com/7bNInMx.png)
+
+1) **"wartość zwracana przez decide() jest jedną z wartości zaproponowanych przez wątki"**
+Ten warunek oczywiście jest spełniony, zauważmy że metoda decide zwraca wartość która została umieszczona w tablicy proposed. Jedyne miejsca w kodzie, które modyfikują wartości tej tablicy, to linijka "proposed[i] = value", czyli wartość propozycji od danego wątku.
+    
+Zauważmy też, że nigdy nie zwrócimy niezainicjalizowanej wartości, bo instrukcja "proposed[i] = value" w każdym przypadku poprzedza wykonanie "return proposed[...]". Tzn, oczywiście proposed[i] = ... poprzedza return proposed[i] w tym samym wątku. Natomiast gdy wykonujemy "return proposed[j]" musi zajść że position[i] < position[j]. To może zajść dopiero, gdy drugi wątek wykonałby position[i] = position[i] + speed[i] (na bazie warunków początkowych), a to następuje póżniej niż jego wykonanie proposed[i] = ... (jego i to nasze j, więc wszystko zostało spełnione).
+
+
+2) **"metoda ta zwraca tę samą wartość obydwu wątkom"**
+To stwierdzenie możemy sprowadzić do stwierdzenia, że jeden z wątków zwróci wartość będąc w przypadku "if" a drugi w przypadku "else if". Wtedy jeden z wątków zwraca "swoją" wartość a drugi wartość drugiego z wątków, tj. tą samą wartość.
+
+Pokażę więc, że **2a) nie jest możliwe żeby oba wątki zwróciły wartość będąc w przypadku "else if"**
+BSO wątek A zwrócił pierwszy. Jeżeli tak, to position[A] < position[B]. Zauważmy, że od tego momentu wartość position[A] pozostanie stała, a wartość position[B] może się jedynie zwiększać. Zatem nie może zajść odwrotne, tj position[B] < position[A], czyli wątek B na pewno nie zwróci wartości będąc w przypadku "else if".
+
+oraz **2b) nie jest możliwe żeby oba wątki zwróciły wartość będąc w przypadku "if"**
+BSO wątek A zwrócił pierwszy, tj. position[A] > position[B] + speed[B]. Zauważmy że w każdej sekwencji wykonań może nastąpić w wątku B co najwyżej jedno wykonanie position[B] = position[B] + speed[B], ponieważ jeśli nie wejdzie do "if", to na pewno wejdzie do "else if" (bo position[B] zwiększone o speed[B] wciąż jest mniejsze od position[A] - wiemy to z warunku wyjścia dla wątku A). Zauważmy też że nie wejdzie do "if'a" - stałoby to w sprzeczności z tym, że spełnia warunek z "else if'a". Zatem nie jest możliwe, aby oba wątki zwróciły będąc w "if" (bo pokazaliśmy, że drugi wątek na pewno wejdzie do "else if'a".
+
+Łącząc a) oraz b) wiemy że jeden z wątków zwrócił wartość będąc w "if" a drugi będąc w "else if", zatem zwrócili tą samą wartość. 
+
+**Dlaczego ten wynik nie jest sprzeczny z faktem, że poziom konsensusu
+dla rejestrów atomowych wynosi 1?**
+
+Zauważmy że prezentowane rozwiązanie nie jest wait-free. Jeżeli mamy sytuację, że position[A] = position[B] a procesy będą wykonywać się w taki sposób, że na każdy obrót while'a w A będą przypadały 3 obroty while'a w B to pętla nie zakończy się. Natomiast poziomy konsensusu są określane dla algorytmów wait-free. Nie stoi więc to w sprzeczności z określonym poziomem konsensusu dla rejestrów atomowych =1.
+
+## Zadanie 6
+:::success
+Autor: Rafał Starypan	
+:::
+
+![](https://i.imgur.com/cimkri4.png)
+
+A. Rozważmy n wątków zapisujących jednocześnie do obiektu klasy StickyBit. Mamy 2 przypadki:
+
+	a) Wszystkie wątki zapisały taką samą wartość X - wtedy zwrócona zostanie wartość X
+	b) Jeżeli wątek, który jako pierwszy wykonywał zapis, zapisał wartość X, a któryś z późniejszych Y, to wszystkie wartości poza pierwszą zostaną zignorowane, zatem stanem obiektu będzie wartość zapisana przez pierwszy wątek. 
+        
+
+B. Każdy z ${log_2m}$ bitów naszego końcowego wyniku przechowujmy w obiekcie klasy StickyBit. Niech $i$-ty bit wyniku znajduje się w rejestrze $b_i$. Ponadto dla każdego z $n$ wątków przygotujmy pojedynczy rejestr atomowy MRSW $r_j$. Na początku zainicjujemy rejestry $r_j$ każdego wątku wartością tego wątku. Następnie w celu ustalenia wspólnej wartości będziemy iterować się po kolejnych bitach. 
+    
+1. Niech zmienna lokalna $i$ (początkowo równa 0) oznacza numer bitu, który próbuje zapisać 
+wątek A.
+2. Wątek A ustawi bit $b_i$ zgodnie z tym, co przechowuje w swoim rejestrze $r_A$. 
+3. Dopóki nie zapisaliśmy wszystkich bitów, tj. $i <= \log_2 M$
+4. Wątek A zapisuje bit $b_i$.
+5. Wątek A odczyta wartość bitu $b_i$ metodą read(). Jeśli odczytana wartość będzie zgodna z tym co A ma rejestrze (czyli będzie to wartość zapisana przez A), to inkrementujemy $i$, po czym przechodzimy do kroku 2.
+6. W przeciwnym razie należy przeiterować się po rejestrach $r_j$ i znaleźć wartość $w$ innego wątku, której binarny prefiks [0...$i$] jest zgodny z bitami przechowywanymi 
+w obiektach [$b_0$...$b_i$].
+7. Wykonujemy przypisanie $r_A$ = $w$, a następnie przechodzimy do kroku 2.
+ 
+Każdy wątek zwróci taką samą wartość, która jest wartością wejściową pewnego z wątków, co dowodzi, że algorytm rozwiązuje problem konsensusu dla $M$ wartości i $n$ wątków.
+
+
+## Zadanie 7
+:::danger
+Autor: dodeklarować
+:::
+
+> [name=PWit] Wskazówka: poziom konsensusu to 1. Zaimplementować protokół przybliżonej zgody używając jedynie zapisów/odczytów do rejestrów atomowych.
+
+## Zadanie 8
+:::success
+Autor: Wiktor Hamberger	
+:::
+![](https://i.imgur.com/TUVn3hq.png)
+
+```java!
+public class QueueConsensus<T> extends ConsensusProtocol<T> {
+    Queue queue;
+
+    public QueueConsensus() {
+        queue = new Queue();
+    }
+
+    public T decide(T Value) {
+        int i = ThreadID.get();
+        propose(value);
+        queue.enq(i);
+        return proposed[queue.peek()];
+    }
+}
+```
+
+* wartość zwracana przez decide() jest jedną z wartości zaproponowanych przez wątki 
+    * peek() nie może zwrócić niczego, co nie zostało wrzucone na kolejkę
+* metoda ta zwraca tę samą wartość wszystkim wątkom 
+    * metoda zawsze zwraca pierwszego w kolejce i nigdy go nie ściąga, więca każdy dostnie tę samą wartość
+
+## Zadanie 9
+:::success
+Autor: Daniel Wiczołek
+:::
+
+![](https://i.imgur.com/TRJM8YK.png)
+
+<!-- 1. prostsza idea nie zadziala:
+![](https://i.imgur.com/K8ErcEQ.png)
+![](https://i.imgur.com/oveDTxm.png)
+>Ta jest niepoprawna bo nawet jesli mozemy stwierdzic ze jakis watek sie ruszył, to nie mozemy byc pewni ze jego snap jest aktualny, bo inny mogl juz nadpisac, wiec musimy wziac pod uwage all threads.
+
+2. poprawna -->
+<!-- ![](https://i.imgur.com/B2MFINt.png)
+
+
+![](https://i.imgur.com/mK1QxF0.png)
+- poprostu atomowy rejestr MRSW, w ktoym mozemy zapisac
+- trzy wartości: timestamp, wartosc, jakiś snapshot
+
+![](https://i.imgur.com/h6Xji90.png)
+^a to kod, 
+- ctor: mamy tablice atomic MRSW rejestrow
+- update: robi scan, zapisuje w swoim (w nim jest writerem) MRSW rejestrze nowa wartosc z nowym timestamp'em wraz z outputem scan()
+- collect: KOPIUJE CAŁĄ TABELĘ TYCH MRSW REJESTRÓW i zwraca kopię.
+
+![](https://i.imgur.com/fbbxRcn.png)
+- scan: 
+    - ma `bool moved[num_of_threads]` mowi czy dany thread sie ruszył podczas naszego skanowania.
+    - tak jak wczesniej robimy 2 scany
+    - idziemy po all wartosciach snapow:
+        - jak wyjdzie clean (czyli timestampy te same dla kazdej wartosci - kazdego rejestru - to return)
+        - wpp:
+            - jesli jakis ruszyl sie w przeszłości to zwracamy jego scan
+            - wpp oznacz ze sie ruszył, oldCopy = newCopy,  i zaczynamy od nowa - collect znowu: `newCopy = collect()` 
+ -->
+
+<!-- ![](https://i.imgur.com/mxUMpDg.png) -->
+<!-- 4.3.1
+Jasne, udowodnione w zad1. 
+Timestapmy się nie zmieniły więc żaden rejestr nie został aktualizowany pomiędzy collectami.
+
+4.3.2
+Czyli, że jak zrobilismy double collect, 
+a potem powtarzamy, to jesli timestampy sa znowu inne dla tego thread,
+(pamiętajmy ze to sa rejestry t,ze kazdy ma jednego writera.)
+to wtedy wartosc przeczytaana przez ostatnie wywolanie collect byla 
+napisana przez update ktory zaczął się po tym jak pierwszy collect sie zaczął.
+
+![](https://i.imgur.com/5MWK6pF.png)
+więc faktycznie punkt linearyzacji jest na koncu wykonania metody
+B updetowal swój rejestr pomiedzy 1 a 2 i 2 i 3. bo timestampy rosnął, a do B rejestru zapisuje tylko B
+czyli były 2 diff double collect na tym samym rejestrze, oba nie clean 
+i oba z tego samego powodu. -->
+
+<!-- ![](https://i.imgur.com/rTT0fsT.png)
+![](https://i.imgur.com/lhthMJy.png) -->
+<!-- 4.3.3.
+czyli ze wartosc jest jedna z zapisanych - jest faktycznie snapshotem
+Uwaga: skoro my robilismy scan, to nie zmienialismy swojej komorki, wiec nasza napewno ok.
+
+Jeśli double collect to ok.
+Jeśli snap innego, to wiemy z lematu 2, że $scan_B()$ był między pierwszym 
+i ostanim $read_A(rejestr_B)$ jego rejestru. 
+- itd. dla B, ktoś ostatecznie zwrobił clean_double collect -->
+<!-- 
+Czyli flaga moved[] mówi, że wątek się ruszył w trakcie naszego scan.
+dlaczego jego snap jest ok? co znaczy ze sie nie zgadza? to ze jakis update 
+musial sie dokonac, kiedy sie dokonał? Z lematu 2 wiemy, że miedzy ostatnimi 2 readami.
+
+ok. czyli on robiac ten update zrobil scan, skoro my robilismy scan,
+to nie zmienialismy swojej komorki, wiec nasza napewno ok
+wszystko sie powtarza az zostanie jeden
+watek n-1: ten jeden ma taka sytuacje ze wszyscy robia scan, wiec jego scan 
+przed update musiał być clean double collectem, bo reszta robila scan wiec nie updateowała..
+Więc ten ostani miał clean, ale skoro on miał clean i go zapisal, 
+to ten ktory wykryl dwa razy rozne mogl sobie zwrocic jego bo wiedzial, ze byl to clean scan itd. w górę.
+Zwracamy więc poprawny snapshot. -->
+
+<!-- ![](https://i.imgur.com/khZahNF.png)
+![](https://i.imgur.com/fbMkI6n.png) -->
+<!-- 4.3.4
+jasne
+
+4.3.5
+to wniosek z tego co udowodnilismy. -->
+<!-- ![](https://i.imgur.com/2aDj2eT.png) -->
+<!-- 
+Czyli rownowazne temu sequential, czyli, że faktycznie to jest stan z 
+zapisu. zapis ma ten punkt linearyzacji w:
+![](https://i.imgur.com/5MWK6pF.png)
+![](https://i.imgur.com/DBxnrL2.png) -->
+
+---
+
+- *wb* - współbierzny
+* **Snapshot** : **atomowy** odczyt **wielu** komórek.
+    - Niepoprawny snapshot:
+        - ![](https://i.imgur.com/WfTeSAu.png)
+            - Nie jest to snapshot, bo odczyt nie był **atomowy**,
+                - A nie zwrócił wartośći z poprzedniego zapisu (update)
+                - A nie zwrócił wartości z żadnego zapisu  (update), z którym był współbierzny (był jeden - $update_B$)
+                - Pytanie czy czerwony, a potem zielone jest poprawny?
+                    - Tak, jest bo chodzi o taki odczyt, który istniał w pewnym momencie czasu, a nie o to, żeby traktować tablicę jak atomowy m-val rejestr.
+- timestamp : ściśle rosnący licznik
+- collect : kopiowanie rejestrów jeden po jednym, **nieatomowo**
+- **CDC : clean double collect**
+    - Double collect jest clean gdy timestampy są równe dla każdego rejestru.
+        - oznacza to, że wartości w rejestrze R (dla każdego R) nie były aktualizowane pomiędzy pierwszym i drugim odczytem tego rejestru.
+            - bo jeśli były to licznik by się zmienił, bo jest ściśle rosnący
+        - wynik CDC to snapshot z momentu od razu po pierwszym collect.
+        - czyli pierwszy ma jakiś stan zapisany, a drugi potwierdza: skoro nic się nie zmieniło to jest to snapshot - nie zajdzie sytucja "zielone .. czerwony".
+- Nas interesuje:
+    -  ![](https://i.imgur.com/mmJkiuy.png)
+        - tylko jeden wątek może wykonywać funkcję na tym obiekcie w danym momencie czasu - jest sekwencyjny.
+    - linearyzowalność - czy instnieją punkty linearyzacji, dla których wywołanie jest równoważne sekwencyjnemu. Punkty linearyzacji - kiedy metoda 'ma efekt'. Dla zapisu/odczytu do rejestru jasne. Czasmi potrzebne jest więcej niż 1 punkt dla jednego wyołania metody. Zależy od metody.
+
+---
+
+## kod
+
+![](https://i.imgur.com/B2MFINt.png)
+
+
+![](https://i.imgur.com/mK1QxF0.png)
+- poprostu atomowy rejestr MRSW, w ktoym mozemy zapisac
+- trzy wartości: timestamp, wartosc, jakiś snapshot
+
+![](https://i.imgur.com/h6Xji90.png) 
+- ctor: mamy tablice atomic MRSW rejestrow
+- update: robi scan, zapisuje w swoim (w nim jest writerem) MRSW rejestrze nowa wartosc z nowym timestamp'em wraz z outputem scan()
+- collect: KOPIUJE CAŁĄ TABELĘ TYCH MRSW REJESTRÓW i zwraca kopię.
+
+![](https://i.imgur.com/fbbxRcn.png)
+- scan: 
+    - ma `bool moved[num_of_threads]` mowi czy dany thread sie ruszył podczas naszego skanowania.
+    - tak jak wczesniej robimy 2 scany
+    - idziemy po all wartosciach snapow:
+        - jak wyjdzie clean (czyli timestampy te same dla kazdej wartosci - kazdego rejestru - to return)
+        - wpp:
+            - jesli jakis ruszyl sie w przeszłości to zwracamy jego scan
+            - wpp oznacz ze sie ruszył, oldCopy = newCopy,  i zaczynamy od nowa - collect znowu: `newCopy = collect()` 
+
+## dowód
+
+Lemat 1: Jeśli wątek zwrócił wynik CDC to zwrócił snapshot.
+
+
+- każdy wątek ma swój rejestr MRSW, do którego zapisuje.
+    - więc snapshot oznacza, że nikt nie zmienił swojego w trakcie robienia scan
+>CleanDC oznacza, że żaden wątek nie zauktualizował swojego rejestru
+w przedziale od jego odczytu w collect_1 do odczytu w collect_2, więc jest to snapshot. Jeśli wątek X by zauktualizował swój, to zmieniłby timestamp, więc nie byłby to **clean**DC.
+
+
+Lemat 2: Jeśli robimy 2 razy double collect : $collect_1, collect_2$ oraz $collect_k collect_{k+1}$ i dwukrotnie obserujemy inne timestampy w collect wątku B, to pomiędzy każdą parą wywołań collect miało miejsce wywołanie $update_B()$
+
+>Dla dowolnego DC: załóżmy, że nie było $update_B()$, skoro mamy rejestry MRSW i każdy wątek zapisuje do własnego to wartość w rejestrze B (czyli (timstamp, value, snap)) nie uległa zmianie, sprzeczność.
+
+Lemat 3:
+Pokażmy, że scan() zwraca poprawny snapshot.
+
+- Przypomnienie: każdy wątek zapisuje do swojego rejestru 3 wartości: timestamp, value, snap.
+
+- **Fakt 3.1**: Jeśli wątek jest trakcie wykonywania $scan() to jego rejestr się nie zmienia.
+    - wynika z faktu, że dany rejestr jest zmieniany tylko przez jeden wątek.
+    - oraz z tego, że w scan() nie zmieniamy rejestrów.
+    
+- **Fakt 3.2**: Jeśli wątek A zwraca $snap$ z rejestru wątku B to ostatnie wywołanie $update_B$ miało miejsce w całości podczas scanu A.
+    - jeśli A zwraca $snap$ to zrobiliśmy 2 DC w obu 2 różne timestampy
+        - więc z Lematu 2 wiemy, że w pomiędzy obiema parami $collect$ miał miejsce $update_B$ (bo jego rejestr B się zmienił, a tylko on tam zapisuje)
+        - więc drugi $update_B()$ miał miejsce po zakończeniu pierwszego, który miał efekt w trakcie $scan_A$, czyli drugi $update_B()$ był w całości wykonany podczas $scan_A()$.
+
+- **Fakt 3.3**: Jeśli wątek A zwraca $snap$ z rejestru wątku B, to jest to $snap$ pochodzący ze scanu wywołanego w ramach ostatniego wywołania $update_B$.
+    - rejestr jest atomowy, tylko B tam zapisuje, i robi to w ramach ostatniej instrukcji $update_B$, tylko $update$ zmienia $snap$ w rejestrze.
+
+- **Fakt 3.4**: Jeśli wątek A zwraca $snap$ z rejestru wątku B to jest wynik $scan_B$ wykonanego w trakcie $scan_A$ wew. ostatniego $update_B$.
+    - z faktów 3.2 i 3.3
+
+Teraz lemat:
+>Dla n wątków: $W_0, W_1, .. W_{n-1}$: załóżmy, że $W_0$ robi scan i, że nie zwrócił snapshota. Czyli zwrócił $snap$, który nie był wynikiem CDC, z faktu 3.4 wiemy, że to wynik scanu wb ze $scan_{W_0}()$.
+Ale z faktu 3.1 wiemy, że rejestr wątku skanującego się nie zmienia, więc aplikując powyższe rozumowanie n-1 razy wnioskujemy, że był przedział czasowy w przeszłości w którym każdy wątek próbował wykonać scan, ze ściśłym zawieraniem przedziałów czasowych kolejnych skanów. Ale to oznacza, że ostatni w hierarchii musiał wykonać CDC, bo skoro reszta skanuje to nie zmienia swojego rejestru (fakt 3.1), sprzeczność.
+
+Lemat 4: $O(n^2)$
+
+>$scan$:
+Możemy zrobić max n double collect (dla n wątków), potem albo zrobimy clean albo ktoś ruszył się 2 razy. Każdy collect to n odczytów, więc $O(n^2)$
+$update$:
+scan + $O(1)$
+
+Tw 5: (wniosek)
+![](https://i.imgur.com/xJC5qmF.png)

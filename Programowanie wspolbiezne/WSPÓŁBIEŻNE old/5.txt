@@ -1,0 +1,335 @@
+# Ćwiczenia 5, grupa cz. 12-14, 18. listopada 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Błaszczyk         |   X   |     |  X  |  X  |     |     |  X  |
+Dawid Dudek              |   X   |  X  |  X  |  X  |  X  |     |==X==|
+Mateusz Gil              |       |     |     |     |     |     |     |
+Wiktor Hamberger         |       |     |     |     |     |     |     |
+Krzysztof Juszczyk       |       |  X  |==X==|  X  |  X  |     |  X  |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |     |  X  |
+Kacper Kingsford         |       |     |     |     |     |     |     |
+Kacper Komenda           |   X   |  X  |  X  |  X  |     |     |  X  |
+Aleksandra Kosińska      |       |  X  |  X  |  X  |     |     |  X  |
+Łukasz Orawiec           |       |  X  |  X  |  X  |  X  |     |  X  |
+Kamil Puchacz            |       |     |     |     |     |     |     |
+Paweł Sikora             |       |  X  |  X  |  X  |     |     |  X  |
+Michał Sobecki           |       |  X  |  X  |  X  |  X  |     |  X  |
+Cezary Stajszczyk        |       |  X  |  X  |  X  |     |     |  X  |
+Piotr Stokłosa           |       |  X  |  X  |  X  |     |     |  X  |
+Cezary Troska            |       |  X  |  X  |  X  |  X  |     |  X  |
+Daniel Wiczołek          |       |     |     |     |     |     |     |
+:::
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+:::success
+Autor: Kacper Komenda
+:::
+1. a) Gdy za sekcję wejściową przyjmiemy jedynie instrukcję 
+```java=
+int i = ThreadID.get();
+```
+Może się zdarzyć taka sytuacja, że wątek A wykona jako pierwszy sekcję krytyczną, następnie wątek B wykona swoją sekcję krytyczną i wyprzedzi wątek A (mam na myśli, że wykona instrukcję victim = i; jako pierwszy). Wtedy wątek A ustawi victim jako drugi, dlatego w pętli odblokuje wątek B, a sam poczeka. Tak więc nie będzie to TCFS. 
+b) Gdy za sekcję wejściową przyjmiemy jedynie instrukcję 
+```java=
+flag[Thread.getID] = true;
+```
+Mamy tutaj podobną sytuację, może zdarzyć się tak, że wątek A wykona sekcję wejściową jako pierwszy, lecz przed wejściem do sekcji krytycznej wątek B zdąży wykonać victim=i; jako pierwszy. Wtedy ponownie zostanie on odblokowany w pętli i wejdzie do sekcji krytycznej jako pierwszy, pomimo że sekcję wejściową spełnił jako drugi. 
+c) Gdy za sekcję wejściową przyjmiemy jedynie instrukcję
+```java=
+victim = Thread.getID();
+```
+Tutaj może zdarzyć się tak, że wątek A wykonuje swoją sekcję krytyczną, następnie zanim zdąży ustawić flagę, to wątek B już będzie sprawdzał warunek w pętli, jako że flaga nie jest jeszcze ustawiona to wejdzie on do sekcji krytycznej. Następnie to wątek A sprawdzi warunek w pętli i jako, że victim != i, to także przejdzie do sekcji krytycznej. Taki algorytm nie spełni więc wzajemnego wykluczenia
+
+> [name=Piotr Witkowski] Tutaj powinienem był dać inny przykład wariantu alg. Petersona (taki, który zachowuje wzajemne wykluczanie):
+
+```java=
+foo = Thread.getID(); // foo jest współdzielone pomiędzy wątkami, nie występuje w innych wierszach programu
+//pozostałe instrukcje metody lock() takie same jak w oryginalnym alg Petersona.
+```
+
+Rozumowanie wygląda tak. Załóżmy, że istnieje algorytm spełniający warunki z punktu 2 (wzajemne wykluczanie, brak głodzenia, fcfs, sekcja wejściowa to pierwsza instrukcja metody locj). Pokażemy, że to prowadzi do sprzeczności.
+
+Przypadki:
+
+def. "stan systemu" -> zawartość wszystkich komórek pamięci systemu.
+
+1. Pierwszą instrukcją sekcji wej. jest odczyt z pamięci.
+
+Mamy dwa wątki, A i B.
+
+a) Wątek A wykonuje sekcję wejściową jako pierwszy, a następnie sekcję wejściową wykonuje wątek B
+b) Wątek B wykonuje sekcję wejściową jako pierwszy, a następnie robi to wątek A
+
+Gdyby algorytm był FCFS to w punkcie a) wątek A powinien jako pierwszy wejść do sekcji krytycznej. W punkcie b) powinien zrobić to wątek B.
+Ale stan pamięci systemu po wykonaniu sekcji wejściowych w punkcie a) jest taki sam jak po wykonaniu tych sekcji w punkcie b). Sprzeczność, bo do sekcji krytycznej musiałyby wejść obydwa wątki.
+
+2. Pierwszą instrukcją jest zapis do róznych komórek
+
+a) Wątek A wykonuje sekcję wejściową jako pierwszy, a następnie sekcję wejściową wykonuje wątek B
+b) Wątek B wykonuje sekcję wejściową jako pierwszy, a następnie robi to wątek A
+
+W przypadku gdy algorytm jest FCFS, to w punkcie a) pierwszy powinien do sekcji krytycznej wejść wątek A, w przypadku gdy B wykonał sekcję wejściową jako pierwszy, to on powinien dojść do sekcji krytycznej jako pierwszy. Stan programu w obu tych przypadkach jest jednak dokładnie taki sam (w obu przypadkach mamy konsekwencję zapisu, a dlatego że to różne komórki, to ostatecznie dochodzi do tego samego). Jest to sprzeczność, bo w takim przypadku do sekcji krytycznej musiałyby zostać wpuszczone oba wątki. 
+
+3. Pierwszą instrukcją jest zapis do wspólnej komórki 
+
+a) Wątek A wykonuje sekcję wejściową jako pierwszy, a następnie sekcję wejściową wykonuje wątek B
+b) Wątek A śpi (albo wykonuje jakiś inny kod) a jedynie wątek B uruchamia metodę lock() i wykonuje sekcję wejściową.
+
+Gdyby algorytm był FCFS to w punkcie a) wątek A powinien jako pierwszy wejść do sekcji krytycznej (a wątek B powinien czekać).
+W punkcie b) wątek B powinien natychmiast wejść do sekcji krytycznej (bo algorytm jest niegłodzący). 
+Ale stan pamięci systemu po wykonaniu sekcji wejściowych w punkcie a) jest taki sam jak po wykonaniu sekcji wejściowej w punkcie b). Sprzeczność, z tego samego powodu co w pkcie 1.
+
+
+
+
+
+## Zadanie 2
+:::success
+Autor: Cezary Troska
+:::
+
+
+
+```                     
+A p.enq(x) #1  
+B q.enq(y) #2
+A q.enq(x) #3
+B p.enq(y) #4
+A p.deq(y) #5
+B q.deq(x) #6
+```
+
+Kolejka p potrzebuje do sekwencyjnej spójności wykonania komend w kolejności 4-1-3, kolejka q potrzebuje 3-2-6. Obie kolejki są sekwencyjnie spójne przy indywidualnym rozważeniu. Aby zachować sekwencyjną spójność całości pottrzebujemy jeszcze zachować kolejności 1-3-5 oraz 2-4-6. 
+
+Zachowanie wszystkich wymogów 4-1-3, 3-2-6, 1-3-5 i 2-4-6 prowadzi do sprzeczności np. wymusza kolejność 4-3-2-4
+
+## Zadanie 3
+:::success
+Autor: Krzysztof Juszczyk
+:::
+Zakładamy architekturę x86 omawianą na wykładzie z własnościami:
+1. Kolejność odczytu z pamięci nie jest zmieniana względem innych odczytów.
+2. Kolejność zapisu do pamięci nie jest zmieniana względem innych zapisów.
+3. Kolejność zapisu do pamięci nie jest zmienia względem wcześniejszych odczytów.
+4. Kolejność odczytu pamięci może być zmieniona względem wcześniejszych zapisów jeśli dotyczą one innych lokacji w pamięci.
+5. Zapisy do tej samej lokacji zawsze są wykonywane zgodnie z porządkiem globalnym.
+
+Wykorzystamy w tym zadaniu własność z punktu  **4**.
+
+Przypomnijmy jak wyglądała funkcja `lock()` w algorytmie Petersona:
+```java=
+    public void lock() {
+        int i = ThreadID.get();
+        int j = 1 - i;
+        flag[i] = true;
+        victim = i;
+        while (flag[j] && victim == i) {};
+    }
+```
+
+Załóżmy, że dwa wątki próbują jednocześnie wejść do sekcji krytycznej i rozważmy operacje wykonywane w architekturze x86:
+| Czas. | Wątek 0.                              | Wątek 1.                            |
+| ----- | ------------------------------------- | ----------------------------------- |
+| 1.    | `flag[0] = true`                      | `flag[1] = true`                    |
+| 2.    | `victim = 0`                          | `victim = 1`                        |
+| 3.    | `while(flag[1]==true && victim == 0)` | `while(flag[0]==true && victim==1)` |
+| 4.    | Critical section                      | Critical section                    |
+
+Przełóżmy te operacje na instrukcje maszynowe (`r0, r1` to rejestry procesorów):
+| Czas. | Wątek 0.               | Wątek 1.               |
+| ----- | ---------------------- | ---------------------- |
+| 1.    | `store(flag[0], true)` | `store(flag[1], true)` |
+| 2.    | `store(victim, 0)`     | `store(victim, 1)`     |
+| 3.    | `r0 = load(flag[1])`   | `r0 = load(flag[0])`   |
+| 4.    | `r1 = load(victim)`    | `r1 = load(victim)`    |
+| 5.    | `r0 && r1`             | `r0 && r1`             |
+
+Powołując się na zasadę **4.** możemy rozważać, że efekty wykonych instrukcji mogą być zauważone przez oba wątki w następujacy sposób:
+
+| Czas. | Wątek 0.                        | Wątek 1.                        |
+| ----- | ------------------------------- | ------------------------------- |
+| 1.    | `r0 = load(flag[1]) #odczyt false`  | `r0 = load(flag[0]) #odczyt false`  |
+| 2.    | `store(flag[0], true)`          | `store(flag[1], true)`          |
+| 3.    | `store(victim, 0)`              | `store(victim, 1)`              |
+| 4.    | `r1 = load(victim)`             | `r1 = load(victim)`             |
+| 5.    | `r0 && r1 #ewaluacja do false`  | `r0 && r1 #ewaluacja do false`  |
+
+Ponieważ na początku tablica `flag[0..1] = false` to oznacza, że na architekturze x86 może wystąpić sytuacja, w której nie zostanie zachowana własność wzajemnego wykluczenia dla algorytmu Petersona.
+
+## Zadanie 4
+:::success
+Autor: Michał Błaszczyk
+:::
+
+Aby pokazać, że obiekt `IQueue` nie jest poprawnym obiektem współbieżnym, wystarczy wskazać nielinearyzowalną historię wykonania.
+
+Rozpatrzmy trzy wątki: A, B, C, oraz oznaczmy współdzieloną instancję klasy `IQueue` przez `q`.
+Przyjrzyjmy się następującej historii wykonania.
+
+```
+    A q.enq(0) (wywłaszczony po pętli while)
+    B q.enq(1)
+    B q:void
+    C q.deq()  (czyta ze slotu ustalonego przez A)
+    C q:EmptyException
+    A q:void
+```
+
+Powyższej historii nie da się zlinearyzować ponieważ `B.enq` poprzedza `C.deq`, więc każda sekwencyjna historia nie spełni sekwencyjnej specyfikacji.
+
+## Zadanie 5
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/910261421420470272/unknown.png?width=588&height=499)
+
+```java=
+public class HWQueue<T> {
+    AtomicReference<T>[] items;
+    AtomicInteger tail;
+    static final int CAPACITY = Integer.MAX_VALUE;
+    
+    public HWQueue() {
+        items = (AtomicReference<T>[]) Array.newInstance(AtomicReference.class,
+        CAPACITY);
+        for (int i = 0; i < items.length; i++) {
+            items[i] = new AtomicReference<T>(null);
+        }
+        tail = new AtomicInteger(0);
+    }
+    public void enq(T x) {
+        int i = tail.getAndIncrement();
+        items[i].set(x);
+    }
+    public T deq() {
+        while (true) {
+            int range = tail.get();
+            for (int i = 0; i < range; i++) {
+                T value = items[i].getAndSet(null);
+                if (value != null) {
+                    return value;
+                }
+            }
+        }
+    }
+}
+```
+### a Pierwsza instrukcja (pomarańczowa strzałka)
+![](https://media.discordapp.net/attachments/895259310702088223/910269439616909362/unknown.png)
+
+W momencie wystąpienia punktu linearyzacji dla wątku B zwiększamy zakres sprawdzanych indexów. Następnie dla nowego indexu odczytujemy wartość inną niż null. Zatem wcześniej odczytamy wartość z wątku B, mimo że punkt linearyzacji dla wątku A zdarzył się wcześniej. 
+### b Druga instrukcja (zielona strzałka)
+![](https://media.discordapp.net/attachments/895259310702088223/910269890009636874/unknown.png)
+
+Wątek B zapisał wartość do pamięci wcześniej niż wątek A, ale wykorzystał do tej operacji większy index. W konsekwencji wątek C wcześniej odczyta wartość z wątku A mimo że punkt linearyzacji wypadł wcześniej.
+
+### Czy z powyższych punktów wynika, że enq() nie jest linearyzowalna?
+Nie. Punktem linearyzacji nie musi być pojedyncza instrukcja.
+![](https://images-ext-2.discordapp.net/external/_cH3ky6nTMmQa_o1vN6rnqWt34UkDEyXJAzAdTW68EA/https/media.discordapp.net/attachments/891385625360629812/910274645683499018/unknown.png)
+## Zadanie 6
+:::success
+Autor: Jacek Bizub
+:::
+
+```java=
+public class HWQueue<T> {
+  AtomicReference<T>[] items;
+  AtomicInteger tail;
+  static final int CAPACITY = Integer.MAX_VALUE;
+    
+  public HWQueue() {
+    items = (AtomicReference<T>[]) Array.newInstance(AtomicReference.class, CAPACITY);
+      
+    for (int i = 0; i < items.length; i++) {
+      items[i] = new AtomicReference<T>(null);
+    }
+    tail = new AtomicInteger(0);
+  }
+    
+  public void enq(T x) {
+    int i = tail.getAndIncrement();
+    items[i].set(x);
+  }
+
+  public T deq() {
+    while (true) {
+      int range = tail.get();
+      for (int i = 0; i < range; i++) {
+        T value = items[i].getAndSet(null);
+        if (value != null) {
+          return value;
+        }
+      }
+    }
+  }
+}
+```
+
+> Uzasadnij, że HWQueue<T> jest poprawną implementacją kolejki FIFO dla wielu wątków.
+    
+-----------------------------
+
+
+- Dla każdego slotu w kolejce, co najwyżej jeden wątek będzie mógł do niego zapisać (nie dojdzie do nadpisania wartości)
+- Jeżeli **AtomicInteger** jest niezakleszczający i niezagłodzający to **enq** tez ma takie własności
+
+```java=
+  public void enq(T x) {
+    int i = tail.getAndIncrement();
+    items[i].set(x);
+  }
+```
+
+- Dla każdego slotu w kolejce, co najwyżej jeden wątek wyciągnie wartość z tego slotu
+- Jeżeli w kolejce znajduje się jakiś element to jest on możliwy do wyciągnięcia (nawet jeśli we wcześniejszych slotach znajduje się "dziura")
+- Jeżeli **AtomicInteger** jest niezakleszczający oraz **AtomicReference** jest niezakleszczające to **deq** tez ma taką własność
+
+```java=
+  public T deq() {
+    while (true) {
+      int range = tail.get();
+      for (int i = 0; i < range; i++) {
+        T value = items[i].getAndSet(null);
+        if (value != null) {
+          return value;
+        }
+      }
+    }
+  }
+```
+
+- Jest linearyzowalna
+
+
+## Zadanie 7
+:::success
+Autor: Dawid Dudek
+:::
+
+![](https://i.imgur.com/bcizgjq.png)
+
+
+![](https://i.imgur.com/KTxRk8G.png)
+
+
+Metoda jest nieczekająca ponieważ wiemy, że zawsze się skończy ( w skończonej liczbie kroków). Nie jest jednak bounded wait-free bo nie da się postawić tej granicy
+

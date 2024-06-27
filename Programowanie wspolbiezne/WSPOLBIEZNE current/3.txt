@@ -1,0 +1,1937 @@
+# L3 GRUPA 1# Ćwiczenia 3, grupa śr. 12-14, 9 listopada 2022
+
+## Zadanie 1
+:::success
+Autor: Kamil Galik	
+:::
+
+```java
+package zad1;
+
+class MergeSort implements Runnable {
+    protected int arr[];
+    protected static int helper_arr[];
+    protected int l, r;
+
+    MergeSort(int arr[], int l, int r) {
+        this.arr = arr;
+        this.l = l;
+        this.r = r;
+    }
+
+    private void prepare_helper_array(int arr[], int l, int m, int r, int left_size, int right_size) {
+        for (int i = 0; i < left_size; i++) {
+            helper_arr[l + i] = arr[l + i];
+        }
+        for (int i = 0; i < right_size; i++) {
+            helper_arr[m + 1 + i] = arr[m + 1 + i];
+        }
+    }
+
+    private void merge_to_arr(int[] arr, int l, int m, int r, int left_size, int right_size) {
+        int i = 0, j = 0;
+        int k = l;
+        while (i < left_size && j < right_size) {
+            if (helper_arr[l + i] <= helper_arr[m + 1 + j]) {
+                arr[k] = helper_arr[l + i];
+                i += 1;
+            } else {
+                arr[k] = helper_arr[m + 1 + j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i < left_size) {
+            arr[k] = helper_arr[l + i];
+            k += 1;
+            i += 1;
+        }
+        while (j < right_size) {
+            arr[k] = helper_arr[m + 1 + j];
+            k += 1;
+            j += 1;
+        }
+    }
+
+    private void merge(int l, int m, int r) {
+        int left_size = m - l + 1;
+        int right_size = r - m;
+
+        prepare_helper_array(arr, l, m, r, left_size, right_size);
+        merge_to_arr(arr, l, m, r, left_size, right_size);
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    @Override
+    public void run() {
+        Thread t = Thread.currentThread();
+        System.out.printf("Started thread ID: %d\n", t.getId());
+        if (l < r) {
+            int m = (l + r) / 2;
+            MergeSort left = new MergeSort(arr, l, m);
+            MergeSort right = new MergeSort(arr, m + 1, r);
+            Thread left_thread = new Thread(left);
+            Thread right_thread = new Thread(right);
+            left_thread.start();
+            right_thread.start();
+            try {
+                left_thread.join();
+                right_thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(l, m, r);
+        }
+    }
+}
+
+public class RookieMergeSort {
+
+    public static void main(String[] args) {
+        int arr[] = { 4, 3, 2, 1, 6, 7, 8, 5 };
+        MergeSort.helper_arr = new int[8];
+        MergeSort ms = new MergeSort(arr, 0, 7);
+
+        Thread ms_thread = new Thread(ms);
+
+        ms_thread.start();
+        try {
+            ms_thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < 8; i++)
+            System.out.printf("%d ", arr[i]);
+
+    }
+}
+```
+
+## Zadanie 2
+:::success
+Autor: Mikołaj Depta	
+:::
+
+```java
+import java.io.Console;
+
+class MergeSort implements Runnable {
+
+    final int THRESHOLD = 32;
+    protected int temporary[];
+    protected int arr[];
+    protected int l, r;
+    MergeSort(int arr[], int temp[], int l, int r) {
+        System.out.println("New Sorter thread");
+        this.arr = arr;
+        this.temporary = temp;
+        this.l = l;
+        this.r = r;
+    }
+
+    private synchronized void merge(int l, int m, int r) {
+        int left_index = l;
+        int right_index = m + 1;
+        int left_range = m + 1;
+        int right_range = r + 1;
+
+        for(int i = left_index; i < right_range; i++) {
+            temporary[i] = arr[i];
+        }
+
+        int main_index = left_index;
+        while (left_index < left_range && right_index < right_range) {
+            if (temporary[left_index] <= temporary[right_index]) {
+                arr[main_index] = temporary[left_index];
+                left_index += 1;
+            } else {
+                arr[main_index] = temporary[right_index];
+                right_index += 1;
+            }
+            main_index += 1;
+        }
+        while (left_index < left_range) {
+            arr[main_index] = temporary[left_index];
+            main_index += 1;
+            left_index += 1;
+        }
+        while (right_index < right_range) {
+            arr[main_index] = temporary[right_index];
+            main_index += 1;
+            right_index += 1;
+        }
+    }
+
+    public void sort_one_thread(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort_one_thread(l, m);
+            sort_one_thread(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            if(this.r - this.l + 1 < THRESHOLD) {
+                System.out.println("Sorting in one thread. Size: " + (this.r - this.l + 1));
+                this.sort_one_thread(this.l, this.r);
+            } else {
+                int m = (this.l + this.r) / 2;
+                MergeSort left_sub_array_sorter = new MergeSort(arr, temporary, this.l, m);
+                Thread left_thread = new Thread(left_sub_array_sorter);
+                left_thread.start();
+                int prev_l = this.l;
+                this.l = m + 1;
+                this.run();
+                this.l = prev_l;
+                try {
+                    left_thread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                this.merge(this.l, m, this.r);
+            }
+        }
+    }
+}
+
+
+
+```
+
+## Zadanie 3
+:::success
+Autor: Bartosz Szczeciński	
+:::
+
+```java=
+class MergeSort3 implements Runnable {
+    public static final int MAX_THREADS = 3;
+    protected int[] arr;
+    protected int[] helperArr;
+    protected int left, right;
+
+    private static int threadCount = 0;
+    private static final Object threadCountLock = new Object();
+
+    MergeSort3(int[] arr, int left, int right, int[] helperArray) {
+        this.arr = arr;
+        this.left = left;
+        this.right = right;
+        this.helperArr = helperArray;
+    }
+
+    private void fillHelperArray(int left, int mid, int right){
+        if (mid + 1 - left >= 0)
+            System.arraycopy(arr, left, helperArr, left, mid + 1 - left);
+
+        if (right - mid >= 0)
+            System.arraycopy(arr, mid + 1, helperArr, mid + 1, right - mid);
+    }
+
+    private void merge(int left, int mid, int right) {
+        fillHelperArray(left, mid, right);
+
+        int leftIdx = left, rightIdx = mid + 1;
+        int outIdx = left;
+        while (leftIdx <= mid && rightIdx <= right) {
+            if (helperArr[leftIdx] <= helperArr[rightIdx]) {
+                arr[outIdx] = helperArr[leftIdx];
+                leftIdx += 1;
+            } else {
+                arr[outIdx] = helperArr[rightIdx];
+                rightIdx += 1;
+            }
+            outIdx += 1;
+        }
+        while (leftIdx <= mid) {
+            arr[outIdx] = helperArr[leftIdx];
+            outIdx += 1;
+            leftIdx += 1;
+        }
+        while (rightIdx <= right) {
+            arr[outIdx] = helperArr[rightIdx];
+            outIdx += 1;
+            rightIdx += 1;
+        }
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    private void runChildThreads(int m){
+        MergeSort3 left = new MergeSort3(arr, this.left, m, this.helperArr);
+        MergeSort3 right = new MergeSort3(arr, m + 1, this.right, this.helperArr);
+        Thread t1 = new Thread(left);
+        Thread t2 = new Thread(right);
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void run() {
+        boolean isThreadCountExceeded;
+        synchronized (threadCountLock) {
+            threadCount++;
+            isThreadCountExceeded = threadCount > MAX_THREADS - 2;
+        }
+
+
+        if (this.left < this.right) {
+            if (isThreadCountExceeded){
+                sort(this.left, this.right);
+            } else {
+                int m = (this.left + this.right) / 2;
+                this.runChildThreads(m);
+                this.merge(this.left, m, this.right);
+            }
+        }
+
+        synchronized (threadCountLock) {
+            threadCount--;
+        }
+    }
+}
+```
+
+## Zadanie 4
+:::success
+Autor: Mateusz Kisiel	
+:::
+![](https://i.imgur.com/spsYZw6.png)
+
+```java
+
+public class Zad4 implements Runnable{
+    protected int t[];
+    protected int l, r;
+    protected final int MIN_CONCURRENT_SIZE = 2;
+
+    public Zad4(int[] t, int l, int r) {
+        this.t = t;
+        this.l = l;
+        this.r = r;
+    }
+
+    protected int begVal, begAmount = 0;
+    protected int endVal, endAmount = 0;
+    protected int maxVal, maxAmount = 0;
+
+    private int size(){
+        return r-l+1;
+    }
+
+    private void process(){
+        int currentVal = maxVal = t[l];
+        int currentAmount = maxAmount = 1;
+        boolean isBegin = true;
+
+
+        for(int i = l+1; i<=r; i++){
+            if(t[i] == currentVal){
+                currentAmount++;
+                if(currentAmount > maxAmount){
+                    maxAmount = currentAmount;
+                    maxVal = currentVal;
+                }
+            }
+            else{
+                if(isBegin){
+                    begAmount = currentAmount;
+                    begVal = currentVal;
+                    isBegin = false;
+                }
+                currentAmount = 1;
+                currentVal = t[i];
+            }
+        }
+        endAmount = currentAmount;
+        endVal = currentVal;
+        if(isBegin){
+            begAmount = currentAmount;
+            begVal = currentVal;
+            isBegin = false;
+        }
+    }
+
+    public void print(){
+        System.out.print("[ ");
+        for(int i = 0; i<maxAmount; i++){
+            System.out.print(maxVal);
+            if(i+1 < maxAmount){
+                System.out.print(", ");
+            }
+        }
+        System.out.print(" ]");
+    }
+
+    @Override
+    public void run() {
+        if(r-l+1 < MIN_CONCURRENT_SIZE){
+            process();
+            return;
+        }
+        int m = (this.l + this.r) / 2;
+        Zad4 left = new Zad4(t, l, m);
+        Zad4 right = new Zad4(t, m+1, r);
+        Thread t1 = new Thread(left);
+        Thread t2 = new Thread(right);
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        if(left.maxAmount > right.maxAmount){
+            maxAmount = left.maxAmount;
+            maxVal = left.maxVal;
+        }
+        else{
+            maxAmount = right.maxAmount;
+            maxVal = right.maxVal;
+        }
+
+        this.begAmount = left.begAmount;
+        this.begVal = left.begVal;
+        this.endAmount = right.endAmount;
+        this.endVal = right.endVal;
+
+        if(left.endVal == right.begVal){
+            int midAmount = left.endAmount + right.begAmount;
+            if(midAmount > maxAmount){
+                maxAmount = midAmount;
+                maxVal = right.begVal;
+            }
+            if(left.maxAmount == left.size())
+                this.begAmount = midAmount;
+            if(right.maxAmount == right.size()){
+                this.endAmount = midAmount;
+            }
+        }
+
+    }
+}
+
+```
+
+
+## Zadanie 5
+:::success
+Autor: Maksymilian Komarnicki	
+:::
+
+```java=
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+class ArrayScope {
+	protected int first, last;
+	protected boolean sorted;	
+
+	ArrayScope(int first, int last) {
+		this.first = first;
+		this.last = last;
+		this.sorted = false;
+	}	
+
+	public synchronized boolean isScopeSorted() { return sorted; }
+
+	public synchronized boolean setScopeSorted() { return this.sorted = true; }
+
+	public int getScopeBeg() { return first; }
+
+	public int getScopeEnd() { return last; }
+}
+
+class Task {
+	protected ArrayScope arrayScope_1, arrayScope_2, arrayScope_3;
+
+	Task(ArrayScope array) {
+		this.arrayScope_1 = array;
+	}
+
+	Task(ArrayScope leftArr, ArrayScope rightArr, ArrayScope  entireArr) {
+		this.arrayScope_1 = leftArr;
+		this.arrayScope_2 = rightArr;
+		this.arrayScope_3 = entireArr;
+	}
+
+	public boolean isSortTask() { return arrayScope_3 == null; }
+
+	public boolean areArraysReadyToMerge() {		
+		return !isSortTask() && arrayScope_1.isScopeSorted() && arrayScope_2.isScopeSorted();
+	}
+
+	public ArrayScope getScopeToSort() { return arrayScope_1; }
+
+	public ArrayScope getLeftScopeToMerge() { return arrayScope_1; }
+
+	public ArrayScope getRightScopeToMerge() { return arrayScope_2; }
+
+	public ArrayScope getEntireMergedScope() { return arrayScope_3; }
+}
+
+class QueueWorker implements Runnable {
+	private int[] array, auxArr;	
+	private ArrayScope entireArrayScope;	
+	private ConcurrentLinkedQueue<Task> queue;
+
+	QueueWorker(int[] array, int[] auxArr, ArrayScope entireArrScope, ConcurrentLinkedQueue<Task> queue) {
+		this.array = array;
+		this.auxArr = auxArr;
+		this.entireArrayScope = entireArrScope;
+		this.queue = queue;
+	}
+
+	private void sort(Task task) {
+		ArrayScope scope = task.getScopeToSort();
+		int first = scope.getScopeBeg();
+		int last = scope.getScopeEnd();
+		if(first < last) {
+			int middle = (first + last) / 2;
+			ArrayScope left = new ArrayScope(first, middle);
+			ArrayScope right = new ArrayScope(middle + 1, last);
+			queue.offer(new Task(left));
+			queue.offer(new Task(right));
+			queue.offer(new Task(left, right, scope));		
+		}		
+		else {
+			scope.setScopeSorted();
+		}
+	}
+
+ 	private void copyArrToAux(int first, int last) {
+        for (int i = first; i <= last; i++) {
+            auxArr[i] = array[i];
+        }
+    }
+
+    private void fillArrWithTheRestOfAux(int arrPos, int auxPos, int auxLast) {
+        while (auxPos <= auxLast) {
+            array[arrPos] = auxArr[auxPos];
+            arrPos += 1;
+            auxPos += 1;
+        }    
+    }
+
+	private void merge(Task task) {
+		ArrayScope wholeScope = task.getEntireMergedScope();
+		int first = wholeScope.getScopeBeg();
+		int last = wholeScope.getScopeEnd();
+		int middle = task.getLeftScopeToMerge().getScopeEnd();
+		copyArrToAux(first, last);
+
+        int i = first, j = middle + 1, k = first;        
+        while (i <= middle && j <= last) {
+            if (auxArr[i] <= auxArr[j]) {
+                array[k] = auxArr[i];
+                i += 1;
+            } else {
+                array[k] = auxArr[j];
+                j += 1;
+            }
+            k += 1;
+        }
+
+        fillArrWithTheRestOfAux(k, i, middle);
+        fillArrWithTheRestOfAux(k, j, last);
+        wholeScope.setScopeSorted();     
+	}
+
+	private void solveTask() {
+		Task task = queue.poll();
+		if(task != null) {
+			if(task.isSortTask()) {				 
+				sort(task);
+			} 
+			else if(task.areArraysReadyToMerge()) {				
+				merge(task);
+			}
+			else {			
+				queue.offer(task);
+			}
+		}
+	}
+
+	@Override
+	public void run() {
+		while(!entireArrayScope.isScopeSorted()) {			  
+			solveTask();
+		}
+	}
+}
+
+```
+
+## Zadanie 6
+:::success
+Autor: Wojciech Pokój	
+:::
+
+```java=
+import java.util.Random;
+import java.util.concurrent.LinkedBlockingQueue;
+
+class MargeSortWorker implements Runnable {
+    int arr[], aux[];
+    LinkedBlockingQueue<Task> queue;
+    MergeSortManager manager;
+
+    public MargeSortWorker(int arr[], LinkedBlockingQueue<Task> queue, MergeSortManager manager) {
+        this.arr = arr;
+        this.queue = queue;
+        this.manager = manager;
+    }
+
+    public void SplitArray(Task task) {
+        if(task.l >= task.r) {
+            task.NotifyTaskDone(queue);
+            task.NotifyTaskDone(queue);
+            return;
+        }
+
+        int m = (task.l + task.r) / 2;
+        Task lTask = new Task(task, task.l, m);
+        Task rTask = new Task(task, m + 1, task.r);
+        
+        try {
+            queue.put(lTask);
+            queue.put(rTask);
+        }
+        catch(InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void MergeArrays(Task task) {
+        int l = task.l, r = task.r, m = task.m;
+
+        int n1 = m - l + 1;
+        int n2 = r - m;
+        int[] left = new int[n1];
+        int[] right = new int[n2];
+
+        for (int i = 0; i < n1; i++) {
+            left[i] = arr[l + i];
+        }
+        for (int i = 0; i < n2; i++) {
+            right[i] = arr[m + 1 + i];
+        }
+        int i = 0, j = 0;
+        int k = l;
+        while (i < n1 && j < n2) {
+            if (left[i] <= right[j]) {
+                arr[k] = left[i];
+                i += 1;
+            } else {
+                arr[k] = right[j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i < n1) {
+            arr[k] = left[i];
+            k += 1;
+            i += 1;
+        }
+        while (j < n2) {
+            arr[k] = right[j];
+            k += 1;
+            j += 1;
+        }
+
+        task.NotifyTaskDone(queue);
+    }
+
+    @Override
+    public void run() {
+        while(!manager.isDone()) {
+            Task nTask = null;
+
+            try {
+                nTask = queue.take();
+            }
+            catch(InterruptedException e) {
+                e.printStackTrace();
+                continue;
+            }
+
+            if(nTask == null) continue;
+
+            System.out.println("picked task: " + nTask.taskName + " l = " + nTask.l + " r = " + nTask.r);
+
+            switch(nTask.taskName) {
+                case MergeSortManager.TaskMerge:
+                    MergeArrays(nTask);
+                    continue;
+                case MergeSortManager.TaskSplit:
+                    SplitArray(nTask);
+                    continue;
+                case MergeSortManager.TaskDone:
+                    nTask.NotifyTaskDone(queue);
+                    return;
+            }
+        }
+    }
+}
+
+class Task {
+    public String taskName;
+    public int l, r, m;
+
+    private int counter = 0;
+
+    public Task parent;
+    
+
+    public Task(Task parent, int l,  int r) { 
+        this.parent = parent;
+        this.l = l;
+        this.r = r;
+        this.m = (l + r) / 2;
+        this.taskName = MergeSortManager.TaskSplit;
+    }
+
+    public synchronized void NotifyTaskDone(LinkedBlockingQueue<Task> queue) {
+        if(taskName == MergeSortManager.TaskDone) {
+            try {
+                queue.put(this);
+            }
+            catch(InterruptedException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
+
+        counter++;
+        if(counter == 2) {
+            taskName = MergeSortManager.TaskMerge;
+
+            try {
+                queue.put(this);
+            }
+            catch(InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        if(counter == 3) {
+            taskName = MergeSortManager.TaskDone;
+
+            if(parent != null) {
+                parent.NotifyTaskDone(queue);
+            }
+            else {
+                try {
+                    queue.put(this);
+                }
+                catch(InterruptedException e) {
+                    e.printStackTrace();
+                }
+                return;
+            }
+        }
+    }
+
+    public boolean isDone() {
+        return taskName == MergeSortManager.TaskDone;
+    }
+}
+
+class MergeSortManager {
+    public static final String TaskMerge = "task.merge";
+    public static final String TaskSplit = "task.split";
+    public static final String TaskDone  = "task.done"; 
+
+    LinkedBlockingQueue<Task> queue;
+    Task mainTask;
+
+    public MergeSortManager(int arr[], int count) {
+        queue = new LinkedBlockingQueue<Task>();
+
+        mainTask = new Task(null, 0, arr.length - 1);
+
+        try {
+            queue.put(mainTask);
+        }
+        catch(InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        Thread workers[] = new Thread[count];
+
+        for(int i = 0; i < count; i++) {
+            workers[i] = new Thread(new MargeSortWorker(arr, queue, this));
+        }
+
+        for(int i = 0; i < count; i++) {
+            workers[i].start();
+        }
+
+        try {
+            for(int i = 0; i < count; i++) {
+                workers[i].join();
+            }
+        }
+        catch(InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public boolean isDone() {
+        return mainTask.isDone();
+    }
+}
+
+public class Zadanie6 {
+    public static void main(String[] args) {
+        Random  rand = new Random();
+
+        int arr[] = new int[200];
+
+        for(int i = 0; i < 200; i++) {
+            arr[i] = rand.nextInt(100);
+        }
+
+        new MergeSortManager(arr, 10);
+    
+        for(int i = 0; i < arr.length; i++) {
+            System.out.print(" " + arr[i]);
+        }
+
+        System.out.print("\n");
+    }
+}
+
+```
+
+
+## Zadanie 7
+:::success
+Autor Jan Dalecki	
+:::
+![](https://i.imgur.com/5PurHgD.png)
+
+```java=
+class OneBit implements Lock {
+    private boolean[] flag;
+    public OneBit (int n) {
+        flag = new boolean[n]; // all initially false
+    }
+    public void lock() {
+        int i = ThreadID.get(); // ThreadID.get() returns 0,1,..,n-1
+        do {
+            flag[i] = true;
+            for (int j = 0; j < i; j++) {
+                if (flag[j] == true) {
+                    flag[i] = false;
+                    while (flag[j] == true) {} // wait until flag[j] == false
+                    break;
+                }
+            }
+        } while (flag[i] == false);
+        for (int j = i+1; j < n; j++) {
+            while (flag[j] == true) {} // wait until flag[j] == false
+        }
+    }
+    public void unlock() {
+        flag[ThreadID.get()] = false;
+    }
+}
+```
+
+
+Deadlock może nastąpić jeżeli wszystkie procesy nie będą mogły opuścić pętli.
+
+W algorytmie występują 3 pętle `while`. Zauważmy, że wykonanie się pętli `for` jest ograniczone przez liczbę wątków.
+
+Indukcja po liczbie wątków $k > 0$.
+
+$k = 1$
+
+Zauważmy, że pętle `for` nie zostaną wykonane.
+Pierwsza pętla `while` również nie zatrzyma procesu, ponieważ poniższy przebieg zawsze będzie prawdziwy:
+
+$$
+write_{p_0}(flag[0] = true) \rightarrow read_{p_0}(flag[0] \not= false)
+$$
+
+$0 < k < n$
+
+Załóżmy, że algorytm nie zakleszcza się dla $0 < k < n$ wątków. Rozpatrzmy system w którym mamy $k = n$ wątków.
+
+W przypadku w którym przynajmniej jeden wątek $p_i$ nie podniósł swojej flagi algorytm będzie działał jak gdyby pracowało w nim mniej niż $n$ wątków. Warunkiem pozostania w pętli `while` jest bowiem podniesiona flaga innego wątku. Zatem nie grozi ryzyko zakleszczenia jeżeli istnieje przynajmniej jeden taki proces $p_i$.
+
+Załóżmy, że w pewnym momencie wszystkie flagi osiągnęły wartość `true`, a wątek $p_j$ jako ostatni podniósł swoją flagę. Jeżeli $j > 0$ to instnieje wątek $p_i$, $i < j$ którego flaga jest poniesiona zatem flaga $p_j$ zostanie opuszczona jeżeli tak pozostanie. Jeżeli $j = 0$ wszystkie wątki mogą czekać w ostatniej pętli. Wtedy wątek $n-1$ będzie miał pierwszeństwo wejścia do sekcji krytycznej.
+
+## Zadanie 8
+:::success
+Autor: Tomasz Wołczański
+:::
+:::info
+Poprzednie zadanie pokazało, że n współdzielonych bitów wystarczy do implementacji zamka dla n wątków. Okazuje się, że to ograniczenie jest dokładne, czyli że n współdzielonych bitów jest koniecznych do rozwiązania tego problemu. Udowodnij to twierdzenie.
+:::
+
+Pokażemy, że do implementacji zamka dla trzech wątków konieczne są 3 współdzielone bity.
+
+Załóżmy nie wprost, że istnieje wolny od zakleszczeń algorytm, który używa dwóch bitów do rozwiązania problemu wzajemnego wykluczania dla trzech wątków. 
+
+Pokażemy najpierw, że (1) każdy z wątków musi zmodyfikować przynajmniej jeden współdzielony bit przed wejściem do sekcji krytycznej. Załóżmy, że na początku stan obiektu zamka jest taki, jak w sytuacji, gdy w sekcji krytycznej nie znajduje się żaden wątek. Załóżmy nie wprost, że $A$ wszedł do sekcji krytycznej bez modyfikowania żadnego bitu. Może się zdarzyć tak, że przed opuszczeniem sekcji krytycznej przez $A$ będzie chciał się do niej dostać wątek $B$. Ponieważ wartości współdzielonych bitów są takie, jak w sytuacji, gdy w sekcji krytycznej nie znajduje się żaden wątek, a sam algorytm zamka jest wolny od zakleszczeń, to po pewnym czasie $B$ otrzyma dostęp do sekcji krytycznej. Tym samym w sekcji krytycznej znajdą się dwa wątki naraz, co przeczy temu, że algorytm rozwiązuje problem wzajemnego wykluczania.
+
+Jeśli w algorytmie każdy z wątków zapisuje wartości do własnej komórki pamięci (jak np. w algorytmie piekarni), to z (1) wynika, że w implementacji są potrzebne 3 współdzielone bity, więc mamy sprzeczność. Pozostaje zatem rozpatrzyć przypadek, w którym współdzielone bity mogą być modyfikowane przez dowolny wątek. Rozważmy takie wykonanie programu, w którym wątek $B$ wchodzi do sekcji krytycznej trzykrotnie. Na podstawie (1) $B$ musi zmodyfikować przynajmniej jeden współdzielony bit przed każdym wejściem do sekcji krytycznej, a ponieważ zamek używa dwóch współdzielonych bitów, to w przynajmniej dwóch spośród trzech wejść do sekcji krytycznej jako pierwszy zostanie zmodyfikowany ten sam bit; nazwijmy go $X_B$. Niech wątek $B$ zostanie uruchomiony i zatrzymany tuż przed zmodyfikowaniem bitu $X_B$ jako pierwszego po raz pierwszy (chodzi tu o zmodyfikowanie $X_B$ przed pierwszym z tych dwóch wejść, w których $X_B$ jest modyfikowany jako pierwszy; mogłoby się zdarzyć tak, że przed pierwszym wejściem do sekcji krytycznej $X_B$ został zmodyfikowany jako drugi).
+Zauważmy, że jeśli teraz uruchomiony zostanie wątek $A$, to zmodyfikuje on drugi z bitów, $X_A$. Gdyby zmodyfikował tylko $X_B$ i wszedł do sekcji krytycznej, to $B$ mógłby zostać wznowiony i nadpisałby to, co $A$ zapisał do $X_B$, więc nie byłby w stanie stwierdzić, czy jakiś wątek znajduje się w sekcji krytycznej, i mógłby wejść do niej po pewnym czasie (bo algorytm jest wolny od zakleszczeń) - w sekcji krytycznej znalazłyby się wtedy dwa wątki.
+Niech $A$ zostanie teraz uruchomiony i zatrzymany tuż przed zmodyfikowaniem $X_A$. Pozwólmy działać $B$ do momentu, aż będzie on chciał zmodyfikować bit $X_B$ jako pierwszy po raz drugi. Mamy teraz następującą sytuację: $A$ chce zmodyfikować $X_A$, $B$ chce zmodyfikować $X_B$, a wartości $X_A$, $X_B$ są takie, jak w sytuacji, gdy żaden wątek nie znajduje się w sekcji krytycznej (bo $B$ wywołał przynajmniej raz metodę `unlock`, cofając zmiany, które zostały wprowadzone do $X_A$, $X_B$).
+
+![](https://i.imgur.com/MvLfLg3.png)
+
+To oznacza, że jeśli uruchomiony zostanie teraz wątek $C$, to po pewnym czasie wejdzie on do sekcji krytycznej (bo algorytm jest wolny od zakleszczeń). Zauważmy jednak, że jeśli po wejściu do sekcji krytycznej przez $C$ wznowimy wątki $A$,$B$, to nadpiszą one to, co $C$ zapisał do $X_A$,$X_B$ (bo $A$ chce zmodyfikować $X_A$, a $B$ chce zmodyfikować $X_B$) i nie bedą w stanie wykryć, że $C$ znajduje się w sekcji krytycznej. Ponieważ algorytm zamka jest wolny od zakleszczeń, to jeden z wątków $A$,$B$ zostanie wpuszczony do sekcji krytycznej. W szczególności może to nastąpić wtedy, gdy jeszcze znajduje się w niej $C$, co przeczy temu, że algorytm rozwiązuje problem wzajemnego wykluczania.
+
+![](https://i.imgur.com/eSqzXUR.png)
+
+======
+
+
+# L3 GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Kamila Goszcz	
+:::
+
+```Java=
+class MergeSort implements Runnable {
+    protected int help_arr[];
+    protected int arr[];
+    protected int l, r;
+    final int SMALL = 20;
+
+    MergeSort(int arr[], int help[], int l, int r) {
+        this.arr = arr;
+        this.help_arr = help;
+        this.l = l;
+        this.r = r;
+    }
+
+    private void merge(int left, int middle, int right) {
+        int left_index = left;
+        int right_index = middle + 1;
+
+        for (int i = left; i <= right; i++) {
+            this.help_arr[i] = arr[i];
+        }
+        int index = left;
+        while (left_index < middle + 1 && right_index < right + 1) {
+            if (help_arr[left_index] <= help_arr[right_index]) {
+                arr[index] = help_arr[left_index];
+                left_index += 1;
+            } else {
+                arr[index] = help_arr[right_index];
+                right_index += 1;
+            }
+            index += 1;
+        }
+        while (left_index < middle + 1) {
+            arr[index] = help_arr[left_index];
+            index += 1;
+            left_index += 1;
+        }
+        while (right_index < right + 1) {
+            arr[index] = help_arr[right_index];
+            index += 1;
+            right_index += 1;
+        }
+    }
+
+    public void sort(int left, int right) {
+        if (left < right) {
+            int middle = (left + right) / 2;
+            sort(left, middle);
+            sort(middle + 1, right);
+            merge(left, middle, right);
+        }
+    }
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int m = (this.l + this.r) / 2;
+            MergeSort left = new MergeSort(arr, help_arr, this.l, m);
+            MergeSort right = new MergeSort(arr, help_arr, m + 1, this.r);
+            Thread t1 = new Thread(left);
+            Thread t2 = new Thread(right);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(this.l, m, this.r);
+        }
+    }
+}
+```
+
+## Zadanie 2
+:::success
+Autor: Adam Jarząbek	
+:::
+
+```Java=
+
+class MergeSort implements Runnable {
+
+	public static final int MIN_SIZE_TO_DO_MULTITHREADING = 4;
+	protected int array[];
+	protected int arrayCopy[];
+	protected int startIndex, endIndex;
+
+	MergeSort(int array[], int arrayCopy[], int startIndex, int endIndex) {
+
+		this.array = array;
+		this.startIndex = startIndex;
+		this.endIndex = endIndex;
+		this.arrayCopy = arrayCopy;
+	}
+
+	private void merge(int leftIndex, int middleIndex, int rightIndex) {
+
+		int leftArrayPivot = leftIndex;
+		int rightArrayPivot = middleIndex + 1;
+		int resultArrayPivot = leftIndex;
+
+		while (leftArrayPivot <= middleIndex && rightArrayPivot <= rightIndex) {
+			if (arrayCopy[leftArrayPivot] <= arrayCopy[rightArrayPivot]) {
+				array[resultArrayPivot] = arrayCopy[leftArrayPivot];
+				leftArrayPivot += 1;
+			}
+			else {
+				array[resultArrayPivot] = arrayCopy[rightArrayPivot];
+				rightArrayPivot += 1;
+			}
+			resultArrayPivot += 1;
+		}
+		while (leftArrayPivot <= middleIndex) {
+			array[resultArrayPivot] = arrayCopy[leftArrayPivot];
+			resultArrayPivot += 1;
+			leftArrayPivot += 1;
+		}
+		while (rightArrayPivot <= rightIndex) {
+			array[resultArrayPivot] = arrayCopy[rightArrayPivot];
+			resultArrayPivot += 1;
+			rightArrayPivot += 1;
+		}
+		updateArrayCopy(startIndex, endIndex);
+	}
+
+	public void updateArrayCopy(int startIndex, int endIndex) {
+
+		for (int i = startIndex; i <= endIndex; i++) {
+			arrayCopy[i] = array[i];
+		}
+	}
+
+	public void sort(int startIndex, int endIndex) {
+
+		if (startIndex < endIndex) {
+			int middleIndex = (startIndex + endIndex) / 2;
+
+			sort(startIndex, middleIndex);
+			sort(middleIndex + 1, endIndex);
+
+			merge(startIndex, middleIndex, endIndex);
+		}
+	}
+
+	@Override
+	public void run() {
+
+		System.out.println("Starting thread...");
+
+		if (this.startIndex < this.endIndex) {
+
+			if (endIndex - startIndex < MIN_SIZE_TO_DO_MULTITHREADING) {
+				sort(startIndex, endIndex);
+			}
+
+			else {
+				int middleIndex = (startIndex + endIndex) / 2;
+
+				MergeSort leftMerge = new MergeSort(array, arrayCopy, startIndex, middleIndex);
+				MergeSort rightMerge = new MergeSort(array, arrayCopy, middleIndex + 1, endIndex);
+
+				Thread leftHalfThread = new Thread(leftMerge);
+
+				leftHalfThread.start();
+
+				rightMerge.sort(middleIndex + 1, endIndex);
+
+				try {
+					leftHalfThread.join();
+				}
+				catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+				merge(startIndex, middleIndex, endIndex);
+			}
+		}
+	}
+}
+
+public class RookieMergeSort {
+
+	public static void main(String[] args) {
+
+		int arr[] = { 8, 5, 6, 7, 4, 3, 1, 2};
+
+		MergeSort mergeSort = new MergeSort(arr, new int[8], 0, 7);
+
+		mergeSort.updateArrayCopy(0, 7);
+
+		Thread thread = new Thread(mergeSort);
+
+		thread.start();
+		try {
+			thread.join();
+		}
+		catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		for (int element : arr)
+			System.out.printf("%d ", element);
+	}
+}
+
+
+
+```
+
+## Zadanie 3
+:::success
+Autor: Rafał Starypan	
+
+![](https://i.imgur.com/FpxqLvs.png)
+
+```java=1
+package zad3;
+
+class ThreadCounter {
+    private int currentThreadCount;
+    private int maxThreadCount;
+
+    public ThreadCounter(int maxThreadCount) {
+        this.currentThreadCount = 0;
+        this.maxThreadCount = maxThreadCount;
+    }
+
+    public synchronized int getCurrentThreadCount() {
+        return currentThreadCount;
+    }
+
+    public synchronized int incrementAndGetCurrentThreadCount() {
+        if (currentThreadCount < maxThreadCount) {
+            int temp  = currentThreadCount;
+            currentThreadCount = temp + 1;
+            return temp;
+        }
+        return currentThreadCount;
+    }
+}
+```
+
+```java=1
+package zad3;
+
+class MergeSort implements Runnable {
+    protected int arr[];
+    protected int l, r;
+
+    protected ThreadCounter counter;
+
+    private int sharedArr[];
+
+    MergeSort(int arr[], int l, int r, ThreadCounter counter) {
+        this.arr = arr;
+        this.l = l;
+        this.r = r;
+
+        this.sharedArr = new int [arr.length];
+
+        this.counter = counter;
+    }
+
+    private void merge(int l, int m, int r) {
+        for (int i = l; i <= r; i++) {
+            sharedArr[i] = arr[i];
+        }
+
+        int i = l;
+        int j = m + 1;
+        int sortedPos = l;
+
+        while (i <= m && j <= r) {
+            if (sharedArr[i] <= sharedArr[j]) {
+                arr[sortedPos] = sharedArr[i];
+                i++;
+            } else {
+                arr[sortedPos] = sharedArr[j];
+                j++;
+            }
+            sortedPos++;
+        }
+
+        while (i <= m) {
+            arr[sortedPos] = sharedArr[i];
+            sortedPos++;
+            i++;
+        }
+
+        while (j <= r) {
+            arr[sortedPos] = sharedArr[j];
+            sortedPos++;
+            j++;
+        }
+    }
+
+    private void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    private void sortWithThreading() {
+        int m = (l + r) / 2;
+
+        MergeSort L = new MergeSort(arr, l, m, counter);
+        MergeSort R = new MergeSort(arr, m + 1, r, counter);
+
+        Thread t1 = new Thread(L);
+        Thread t2 = new Thread(R);
+        t1.start();
+        t2.start();
+
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        this.merge(l, m, r);
+    }
+
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName());
+
+        if (l < r) {
+            int m = (l + r) / 2;
+            MergeSort left = new MergeSort(arr, l, m, counter);
+            MergeSort right = new MergeSort(arr, m + 1, r, counter);
+
+            Thread t1 = null;
+            Thread t2 = null;
+
+            try {
+                if (counter.incrementAndGetCurrentThreadCount() < RookieMergeSort.MAX_THREAD_COUNT - 1) {
+                    t1 = new Thread(left);
+                    t1.start();
+                } else {
+                    sort(l, m);
+                }
+
+                if (counter.incrementAndGetCurrentThreadCount() < RookieMergeSort.MAX_THREAD_COUNT - 1) {
+                    t2 = new Thread(right);
+                    t2.start();
+                } else {
+                    sort(m + 1, r);
+                }
+
+                if (t1 != null) {
+                    t1.join();
+                }
+                if (t2 != null) {
+                    t2.join();
+                }
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            this.merge(l, m, r);
+        }
+    }
+}
+
+```
+
+```java=1
+package zad3;
+
+public class RookieMergeSort {
+    public static final int MAX_THREAD_COUNT = 4;
+
+    public static void main(String[] args) {
+        int arr[] = {5, 10, 6, 7, 8, 9, 11, 4, 3, 2};
+
+        ThreadCounter counter = new ThreadCounter(MAX_THREAD_COUNT);
+        MergeSort w = new MergeSort(arr, 0, arr.length - 1, counter);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < arr.length; i++)
+            System.out.printf("%d ", arr[i]);
+
+        System.out.println(counter.getCurrentThreadCount());
+
+    }
+}
+```
+:::
+
+## Zadanie 4
+:::success
+Autor Zuzanna Kania	
+
+![](https://i.imgur.com/hqrlrv0.png)
+
+```java=1
+class LongestSubseq implements Runnable {
+    protected int arr[];
+    protected int left, right, longestLeftIdx, longestRightIdx, leftEndIdx, rightBeginIdx;
+
+    LongestSubseq(int arr[], int left, int right) {
+        this.arr = arr;
+        this.left = left;
+        this.right = right;
+        this.longestLeftIdx = right;
+        this.longestRightIdx = left;
+        this.leftEndIdx = left;
+        this.rightBeginIdx = right;
+    }
+
+    private void merge(int left, int mid, int right, LongestSubseq leftPart, LongestSubseq rightPart) {
+        // jeśli koniec lewej połowy == początek prawej połowy
+        if (this.arr[mid] == this.arr[mid + 1]) {
+            this.longestLeftIdx = leftPart.rightBeginIdx;
+            this.longestRightIdx = rightPart.leftEndIdx;
+        }
+        // jeśli w lewej połowie mamy dłuższy ciąg
+        if (leftPart.longestRightIdx - leftPart.longestLeftIdx + 1 > this.longestRightIdx
+                - this.longestLeftIdx + 1) {
+            this.longestLeftIdx = leftPart.longestLeftIdx;
+            this.longestRightIdx = leftPart.longestRightIdx;
+        }
+        // jeśli w prawej połowie mamy dłuższy ciąg
+        if (rightPart.longestRightIdx - rightPart.longestLeftIdx + 1 > this.longestRightIdx
+                - this.longestLeftIdx + 1) {
+            this.longestLeftIdx = rightPart.longestLeftIdx;
+            this.longestRightIdx = rightPart.longestRightIdx;
+        }
+        // aktualizuj koniec lewej części
+        if (leftPart.leftEndIdx == mid && this.arr[mid] == this.arr[rightPart.leftEndIdx]) {
+            this.leftEndIdx = rightPart.leftEndIdx;
+        } else {
+            this.leftEndIdx = leftPart.leftEndIdx;
+        }
+        // aktualizuj początek prawej części
+        if (rightPart.rightBeginIdx == mid + 1 && this.arr[mid + 1] == this.arr[leftPart.rightBeginIdx]) {
+            this.rightBeginIdx = leftPart.rightBeginIdx;
+        } else {
+            this.rightBeginIdx = rightPart.rightBeginIdx;
+        }
+    }
+
+    public int[] getResult() {
+        int resArr[] = new int[this.longestRightIdx - this.longestLeftIdx + 1];
+        int j = 0;
+        for (int i = this.longestLeftIdx; i <= this.longestRightIdx; i++) {
+            resArr[j] = this.arr[i];
+            j++;
+        }
+        return resArr;
+    }
+
+    @Override
+    public void run() {
+        if (this.left < this.right) {
+            int m = (this.left + this.right) / 2;
+            LongestSubseq leftSub = new LongestSubseq(arr, this.left, m);
+            LongestSubseq rightSub = new LongestSubseq(arr, m + 1, this.right);
+            Thread t1 = new Thread(leftSub);
+            Thread t2 = new Thread(rightSub);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(this.left, m, this.right, leftSub, rightSub);
+        }
+    }
+}
+
+public class zadanie4 {
+    public static void main(String[] args) {
+        int arr[] = { 1, 2, 1, 2, 1, 2, 1, 2, 3, 3, 3 };
+        LongestSubseq w = new LongestSubseq(arr, 0, arr.length - 1);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        int res[] = w.getResult();
+
+        for (int i = 0; i < res.length; i++)
+            System.out.printf("%d ", res[i]);
+
+    }
+}
+```
+:::
+
+## Zadanie 5
+:::success
+Autor: Hubert Obrzut	
+:::
+
+```java=
+class TaskPool
+{
+   ConcurrentLinkedQueue<Task> queue;
+   int tasksLeft;
+
+   TaskPool()
+   {
+      this.tasksLeft = 0;
+      queue = new ConcurrentLinkedQueue<Task>();
+   }
+
+   synchronized void updateTasksLeft(int delta)
+   {
+      tasksLeft += delta;
+   }
+}
+
+abstract class Task
+{
+   abstract boolean isReady();
+   abstract void execute();
+
+   void merge(int[] arr, int[] buf, int l, int m, int r)
+   {
+      for (int i = l; i <= r; ++i)
+         buf[i] = arr[i];
+
+      int i = l, j = m+1, k = l;
+      while (i <= m && j <= r)
+         arr[k++] = (buf[i] <= buf[j]) ? buf[i++] : buf[j++];
+      while (i <= m) arr[k++] = buf[i++];
+      while (j <= r) arr[k++] = buf[j++];
+   }
+}
+
+class SortTask extends Task
+{
+   int l, r;
+   int[] arr, buf;
+   MergeTask parent;
+   TaskPool pool;
+   static final int SEQUENTIAL_THRESHOLD = 50;
+
+   SortTask(int l, int r, int[] arr, int[] buf, TaskPool pool, MergeTask parent)
+   {
+      this.l = l;
+      this.r = r;
+      this.arr = arr;
+      this.buf = buf;
+      this.pool = pool;
+      this.parent = parent;
+   }
+
+   void execute()
+   {
+      if (r-l+1 <= SEQUENTIAL_THRESHOLD)
+      {
+         sort_sequential(l, r);
+         if (parent != null)
+            parent.childCompleted();
+      }
+      else
+      {
+         int m = (l+r) / 2;
+         MergeTask mergeTask = new MergeTask(l, m, r, arr, buf, pool, parent);
+         pool.queue.offer(new SortTask(l, m, arr, buf, pool, mergeTask));
+         pool.queue.offer(new SortTask(m+1, r, arr, buf, pool, mergeTask));
+         pool.queue.offer(mergeTask);
+         pool.updateTasksLeft(3);
+      }
+      pool.updateTasksLeft(-1);
+   }
+
+   void sort_sequential(int l, int r)
+   {
+      if (l < r)
+      {
+         int m = (l+r) / 2;
+         sort_sequential(l, m);
+         sort_sequential(m+1, r);
+         merge(arr, buf, l, m, r);
+      }
+   }
+   
+    boolean isReady() { return true; }
+}
+
+class MergeTask extends Task
+{
+   int l, m, r;
+   int childCompleted;
+   int[] arr, buf;
+   TaskPool pool;
+   MergeTask parent;
+
+   MergeTask(int l, int m, int r, int arr[], int buf[], TaskPool pool, MergeTask parent)
+   {
+      this.l = l;
+      this.m = m;
+      this.r = r;
+      this.childCompleted = 0;
+      this.arr = arr;
+      this.buf = buf;
+      this.pool = pool;
+      this.parent = parent;
+   }
+
+   void execute()
+   {
+      merge(arr, buf, l, m, r);
+      if (parent != null)
+         parent.childCompleted();
+      pool.updateTasksLeft(-1);
+   }
+   
+   boolean isReady() { return childCompleted == 2; }
+   synchronized void childCompleted() { ++childCompleted; }
+}
+
+class MergeSort implements Runnable
+{
+   int[] arr, buf;
+   TaskPool pool;
+
+   MergeSort(int[] arr, int[] buf, TaskPool pool)
+   {
+      this.arr = arr;
+      this.buf = buf;
+      this.pool = pool;
+   }
+
+   @Override
+   public void run()
+   {
+      while (pool.tasksLeft > 0)
+      {
+         Task task = pool.queue.poll();
+         if (task != null)
+         {
+            if (task.isReady())
+               task.execute();
+            else
+               pool.queue.offer(task);
+         }
+      }
+   }
+}
+
+public class PoolOfThreads
+{
+   static final int NUM_THREADS = 4;
+
+   public static void main(String[] args)
+   {
+      int n = 10000;
+      int[] arr = new int[n];
+      int[] buf = new int[n];
+      Random random = new Random();
+      for (int i = 0; i < n; ++i)
+         arr[i] = random.nextInt(n);
+
+      TaskPool pool = new TaskPool();
+      Task initialTask = new SortTask(0, n-1, arr, buf, pool, null);
+      pool.queue.offer(initialTask);
+      pool.tasksLeft = 1;
+
+      Thread[] threads = new Thread[NUM_THREADS];
+      for (int i = 0; i < NUM_THREADS; ++i)
+      {
+         MergeSort w = new MergeSort(arr, buf, pool);
+         threads[i] = new Thread(w);
+         threads[i].start();
+      }
+
+      try {
+         for (int i = 0; i < NUM_THREADS; ++i)
+            threads[i].join();
+      } catch (InterruptedException e) {
+         e.printStackTrace();
+      }
+
+      for (int i = 0; i < n-1; ++i)
+         assert arr[i] <= arr[i+1];
+
+      // for (int i = 0; i < n; ++i)
+         // System.out.printf("%d ", arr[i]);
+   }
+}
+
+```
+
+## Zadanie 6
+:::success
+Autor: Jan Jankowicz	
+:::
+
+![](https://i.imgur.com/eGhG8ly.png)
+
+Zakończenie wątku polega na skonsumowaniu przez niego eventu o specjalnym typie - TERMINATE. Jeśli wątek pobierze takie zadanie z kolejki, to przed zakończeniem swojego działania wrzuci na kolejkę taki sam event, aby poinformować następny czekający wątek o zakończeniu sortowania. Pierwsze wrzucenie zadania kończącego na kolejkę dzieje się w momencie skończenia zadania scalania całości tablicy.
+
+Empiryczne porównanie średnich czasów działania merge sorta zaimplementowanego z użyciem LinkedBlockingQueue i z użyciem ConcurrentLinkedQueue wskazuje na większą wydajność (przynajmniej w tym zastosowaniu) tej pierwszej kolejki. Z doświadczeń wynika, że użycie LinkedBlockingQueue zwiększa szybkość działania programu około dwukrotnie.
+
+```java=
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class RookieMergeSortBlockingQueue {
+
+    public static void main(String[] args) {
+        sortAndPrintOut(RookieMergeSortUtils.generateArray());
+
+        long timeSum = 0;
+        for (int i = 0; i < 100; i++) {
+            timeSum += sortAndPrintOut(RookieMergeSortUtils.generateRandomArray(2500));
+        }
+
+        System.out.println("Average time: " + timeSum/100);
+    }
+
+    private static long sortAndPrintOut(int[] arrayToSort) {
+        long startTime = System.currentTimeMillis();
+
+        int size = arrayToSort.length;
+
+        BlockingQueue<MergeSortTask> taskQueue = new LinkedBlockingQueue<>();
+        Set<ArrayRange> sortedArrayRanges = ConcurrentHashMap.newKeySet();
+
+        taskQueue.offer(new MergeSortTask(MergeSortTask.MergeSortTaskType.SORT, new ArrayRange(0, size - 1)));
+
+        List<Thread> workers = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            workers.add(new Thread(new MergeSortBlockingQueueWorker(arrayToSort, taskQueue, sortedArrayRanges)));
+        }
+
+        workers.forEach(Thread::start);
+
+        try {
+            for (Thread worker : workers) {
+                worker.join();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < size; i++)
+            System.out.printf("%d ", arrayToSort[i]);
+        System.out.print("\n");
+
+        long endTime = System.currentTimeMillis();
+        System.out.printf("Sort time: %d\n", endTime - startTime);
+
+        return endTime - startTime;
+    }
+
+}
+
+class MergeSortBlockingQueueWorker implements Runnable {
+    protected int sortedArray[];
+    protected final BlockingQueue<MergeSortTask> taskQueue;
+    protected final Set<ArrayRange> sortedArrayRanges;
+
+    protected MergeSortBlockingQueueWorker(int sortedArray[], BlockingQueue<MergeSortTask> taskQueue, Set<ArrayRange> sortedArrayRanges) {
+        this.sortedArray = sortedArray;
+        this.taskQueue = taskQueue;
+        this.sortedArrayRanges = sortedArrayRanges;
+    }
+
+    private void merge(int leftSortingBound, int splitIndex, int rightSortingBound) {
+        int[] leftArray = getSubarray(leftSortingBound, splitIndex);
+        int[] rightArray = getSubarray(splitIndex + 1, rightSortingBound);
+
+        mergeSortedArrays(leftArray, rightArray, leftSortingBound);
+    }
+
+    private int[] getSubarray(int leftSortingBound, int rightSortingBound) {
+        int size = rightSortingBound - leftSortingBound + 1;
+        int[] subarray = new int[size];
+        copyArray(sortedArray, leftSortingBound, subarray, 0, size);
+        return subarray;
+    }
+
+    private static void copyArray(int sourceArray[], int sourceArrayFirstElementIndex, int targetArray[], int targetArrayFirstElementIndex, int size) {
+        for (int i = 0; i < size; i++) {
+            targetArray[targetArrayFirstElementIndex + i] = sourceArray[sourceArrayFirstElementIndex + i];
+        }
+    }
+
+    private void mergeSortedArrays(int[] leftArray, int[] rightArray, int leftSortingBound) {
+        int leftArraySize = leftArray.length;
+        int rightArraySize = rightArray.length;
+
+        int leftArrayCurrentMergingIndex = 0, rightArrayCurrentMergingIndex = 0;
+        int resultArrayCurrentMergingIndex = leftSortingBound;
+        while (leftArrayCurrentMergingIndex < leftArraySize && rightArrayCurrentMergingIndex < rightArraySize) {
+            if (leftArray[leftArrayCurrentMergingIndex] <= rightArray[rightArrayCurrentMergingIndex]) {
+                sortedArray[resultArrayCurrentMergingIndex] = leftArray[leftArrayCurrentMergingIndex];
+                leftArrayCurrentMergingIndex += 1;
+            } else {
+                sortedArray[resultArrayCurrentMergingIndex] = rightArray[rightArrayCurrentMergingIndex];
+                rightArrayCurrentMergingIndex += 1;
+            }
+            resultArrayCurrentMergingIndex += 1;
+        }
+        while (leftArrayCurrentMergingIndex < leftArraySize) {
+            sortedArray[resultArrayCurrentMergingIndex] = leftArray[leftArrayCurrentMergingIndex];
+            resultArrayCurrentMergingIndex += 1;
+            leftArrayCurrentMergingIndex += 1;
+        }
+        while (rightArrayCurrentMergingIndex < rightArraySize) {
+            sortedArray[resultArrayCurrentMergingIndex] = rightArray[rightArrayCurrentMergingIndex];
+            resultArrayCurrentMergingIndex += 1;
+            rightArrayCurrentMergingIndex += 1;
+        }
+    }
+
+    @Override
+    public void run() {
+        MergeSortTask task;
+        while (true) {
+            try {
+                task = taskQueue.take();
+                if (MergeSortTask.MergeSortTaskType.TERMINATE.equals(task.type)) {
+                    taskQueue.offer(MergeSortTask.termination());
+                    break;
+                } else {
+                    handleTask(task);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void handleTask(MergeSortTask task) {
+        switch (task.type) {
+            case SORT:
+                if (task.arrayRange.leftBound < task.arrayRange.rightBound) {
+                    taskQueue.offer(new MergeSortTask(MergeSortTask.MergeSortTaskType.SORT, task.arrayRange.getLeftHalf()));
+                    taskQueue.offer(new MergeSortTask(MergeSortTask.MergeSortTaskType.SORT, task.arrayRange.getRightHalf()));
+                    taskQueue.offer(new MergeSortTask(MergeSortTask.MergeSortTaskType.MERGE, task.arrayRange));
+                } else {
+                    sortedArrayRanges.add(task.arrayRange);
+                }
+                break;
+            case MERGE:
+                if (sortedArrayRanges.contains(task.arrayRange.getLeftHalf()) && sortedArrayRanges.contains(task.arrayRange.getRightHalf())) {
+                    merge(task.arrayRange.leftBound, ArrayRange.getMedianIndex(task.arrayRange), task.arrayRange.rightBound);
+                    sortedArrayRanges.add(task.arrayRange);
+                    if (task.arrayRange.leftBound == 0 && task.arrayRange.rightBound == sortedArray.length - 1) {
+                        taskQueue.offer(MergeSortTask.termination());
+                    }
+                } else {
+                    taskQueue.offer(task);
+                }
+                break;
+            case TERMINATE:
+                taskQueue.offer(MergeSortTask.termination());
+                break;
+        }
+    }
+
+}
+
+class MergeSortTask {
+
+    final MergeSortTaskType type;
+    final ArrayRange arrayRange;
+
+    MergeSortTask(MergeSortTaskType type, ArrayRange arrayRange) {
+        this.type = type;
+        this.arrayRange = arrayRange;
+    }
+
+    public static MergeSortTask termination() {
+        return new  MergeSortTask(MergeSortTaskType.TERMINATE, null);
+    }
+
+    enum MergeSortTaskType {
+        SORT, MERGE, TERMINATE
+    }
+
+    @Override
+    public String toString() {
+        if (MergeSortTaskType.TERMINATE.equals(type)) {
+            return "Task - TERMINATE";
+        } else {
+            return String.format("Task - %s array in range %s", type, this.arrayRange);
+        }
+
+    }
+
+}
+
+class ArrayRange {
+    final int leftBound;
+    final int rightBound;
+
+    ArrayRange(int leftBound, int rightBound) {
+        this.leftBound = leftBound;
+        this.rightBound = rightBound;
+    }
+
+    public ArrayRange getLeftHalf() {
+        int medianIndex = getMedianIndex(this);
+        return new ArrayRange(leftBound, medianIndex);
+    }
+
+    public ArrayRange getRightHalf() {
+        int medianIndex = getMedianIndex(this);
+        return new ArrayRange(medianIndex + 1, rightBound);
+    }
+
+    public static int getMedianIndex(ArrayRange arrayRange) {
+        return (arrayRange.leftBound + arrayRange.rightBound) / 2;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ArrayRange that = (ArrayRange) o;
+        return leftBound == that.leftBound &&
+                rightBound == that.rightBound;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(leftBound, rightBound);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[%d, %d]", this.leftBound, this.rightBound);
+    }
+
+}
+```
+
+## Zadanie 7
+:::success
+Autor: Maria Szlasa	
+:::
+
+![](https://i.imgur.com/dJZqDQF.png)
+### Niezakleszczenie
+Zakleszczenie może zajść, jeśli wszystkie wątki zostaną zatrzymane w którejś pętli.
+
+W pętki do-while w for spradzamy, czy jakiś wątek o numerze mniejszym ma podniesioną flagę. Jeśli ma to my opuszczamy swoją flagę i czekamy. Wtedy zawsze do dalszej części algorytmu przejdzie wątek o najniższym numerze, który chce wywołać lock.
+
+W pętli for sprawdzamy, czy jakieś wątki o większym numerze, które przeszły przez do-while chcą wejść do CS. Jeśli tak to czekamy aż one wykonają sekcje.
+Dlaczego tak jest?
+Jeśli nie ma żadnego wątku w do-while, to wyjdzie z tej pętli. Jeśli w do-while są jakieś wątki o większym numerze to opuszczą one swoją flagę czekając na mniejsze.
+
+
+## Zadanie 8
+:::success
+Autor: Magdalena Rzepka
+:::
+
+Załóżmy, że mamy wątki A, B i C oraz dwie lokacje L~A~ i L~B~.
+Każdy wątek przed wejściem do sekcji krytycznej musi zapisać dane przynajmniej w jednej współdzielonej lokacji.
+- gdyby wątek mógł wejść bez zapisania czegokolwiek, to inny wątek nie mógłby sprawdzić, że ktoś już jest w sekcji krytycznej i sam mógłby tam wejść - stan lokacji wskazywałby, że nikogo tam nie ma -> stan niespójności
+
+Będziemy rozważać sytuację, w której wątek B 3 razy będzie chciał wejść do sekcji krytyczej.
+Lokalizacje L~A~ i L~B~ są początkowo puste (wskazują, że nikogo nie ma i nikt nie chce wejść do sekcji krytycznej).
+Skoro przed wejściem do sekcji krytycznej wątek B musi zapisać dane przynajmniej w jednej lokalizacji, to musi przynajmniej dwa razy zapisać w pewnej lokalizacji jako pierwszej (nazwijmy ją L~B~).
+
+**Uruchamiamy wątek B i zatrzymujemy go w momencie, w którym chce zapisać dane do L~B~ jako pierwszej lokacji po raz pierwszy.**
+- lokalizacje L~A~ i L~B~ są puste, bo wątek B wychodząc z sekcji krytycznej robi jakiegoś rodzaju unlock() i czyści lokalizacje, których używa, a te nie używane nie są przez nic nadpisywane.
+
+Wątek A musi zapisać dane w lokalizacji L~A~ (może również zapisać w L~B~).
+- gdyby wątek A zapisał dane tylko w lokalizacji L~B~ i wszedł do sekcji krytycznej to wątek B po uruchomieniu nadpisałby dane w L~B~ i również wszedł do sekcji krytycznej, bo obecność A zostałaby zapomniana.
+
+**Uruchamiamy wątek A i zatrzymujemy go, przed zapisaniem danych w lokalizacji L~A~.**
+- lokaliacja L~A~ jest pusta, ale lokalizacja L~B~ może zawierać jakieś dane.
+
+**Uruchamiamy wątek B, który zapisuje dane do L~B~ (może też do L~A~).
+Wątek B wychodząc z sekcji krytycznej robi unlock() i czyści L~B~ (jeżeli nadpisał też L~A~ to czyści L~A~).**
+- lokacje L~A~ i L~B~ są puste.
+
+**Zatrzymujemy wątek B, kiedy chce zapisać do L~B~ jako pierwszej lokacji po raz drugi.**
+- lokacje L~A~ i L~B~ są puste, bo gdyby wątek B wchodził do sekcji krytycznej to by sprzątał za sobą a nic innego co nadpisuje nie byłoby uruchomione.
+
+**Uruchamiamy wątek C.
+Wątek C zapisuje dane w przynajmniej jednej lokacji, wchodzi do sekcji krytycznej i zostaje zatrzymany.**
+
+**Uruchamiamy wątek A i B.
+Wątek A nadpisuje lokacje L~A~ a wątek B lokacje L~B~.**
+
+W tym momencie nie został nam ślad do wątku C i żaden z wątków nie wie, że C znajduje się w sekcji krytycznej.
+Któryś z wątków w końcu będzie mógł wejść do sekcji krytycznej (bo rozważamy algorytm nie zakleszczający się) i w sekcji krytycznej będą 2 wątki.

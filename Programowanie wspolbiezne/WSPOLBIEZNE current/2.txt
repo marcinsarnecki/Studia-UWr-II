@@ -1,0 +1,709 @@
+# L2 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Mikołaj Depta	
+:::
+
+Poniższy algorytm ma w zamierzeniu implementować interfejs Lock dla dowolnej liczby n wątków. Czy ten algorytm spełnia warunek 1. wzajemnego wykluczania (ang. mutual exclusion), 2. niezagłodzenia (ang. starvation–freedom), 3. niezakleszczenia (ang. deadlock–freedom)? Zmiennymiwspółdzielonymi przez wątki są `turn` i `busy`.
+
+```java=
+class Foo implements Lock {
+    private int turn;
+    private boolean busy = false;
+    public void lock() {
+        int me = ThreadID.get(); /*get id of my thread*/
+        do {
+            do {
+                turn = me;
+            } while (busy);
+        busy = true;
+        } while (turn != me);
+    }
+    
+    public void unlock() {
+        busy = false;
+    }
+}
+```
+
+## 1. Wzajemne wykluczenie
+
+Założmy, nie wprost, że dwa wątki dostały się do sekcji krytycznej.
+
+Z kodu oznacza to, że zaszły następujące relacje między zdarzeniami:
+
+`Write_B(turn=B) → Read_B(busy==false) → Write_B(busy=true) → Read_B(turn==B)`
+`Write_A(turn=A) → Read_A(busy==false) → Write_A(busy=true) → Read_A(turn==A)`
+
+Oraz z fakty, że oba wątki są w sekcji krytycznej, wiemy że:
+
+`Read_B(turn==B) → Write_A(turn=A)`
+`Read_A(turn==A) → Write_B(turn=B)`
+
+Wówczas:
+
+`Read_B(turn==B) → Write_A(turn=A)`
+
+`Write_A(turn=A) → Read_A(busy==false) → Write_A(busy=true) → Read_A(turn==A)`
+
+`Read_A(turn==A) → Write_B(turn=B)`
+
+`Write_B(turn=B) → Read_B(busy==false) → Write_B(busy=true) → Read_B(turn==B)`
+
+Mamy cykl co jest sprzeczne z antyzwrotnością relacji `→`.
+
+## 2. niezagłodzenia
+
+Może dojść do zagłodzenia w następującym scenariuszu.
+```
+A: 
+    lock()
+        Write_A(turn=A)
+        idzie spać
+B:
+    lock()
+        Write_B(turn=B)
+        Read_B(busy==false)
+        Write_B(busy=true)
+        
+        // teraz A może zostać obudzony ale i tak będzie kręcił się w pętli
+        
+        Read_B(turn==B)
+        wykonuje sekcję krytyczną 
+    unlock()
+        Write_B(busy)
+    znowu wykonaj lock() do momentu Write_B(busy=true)
+```
+
+Nie ma żadnego mechanizmu gwarantującego, że wątek `B` w końcu ustąpi `A`.
+
+## 3. niezakleszczenia
+
+```
+A:
+    lock()
+        Write_A(turn=A) 
+        Read_A(busy==false)
+        Write_A(busy=true)
+        idzie spać
+B:
+    lock()
+        Write_B(turn=B) 
+        Read_B(busy==true)
+        zapętla się
+        idzie spać
+A:
+    kontunuacja lock()
+        Read_A(turn==B)
+        wraca do Write_A(turn=A)
+        Read_A(busy==true)
+        pętli się
+Mamy deadlock
+```
+
+Deadlock występuje tutaj ponieważ, wątek oznajmia, że sekcja krytyczna jest zajęta (`busy==true`) przy czym nie ma gwarancji, że faktycznie do niej wejdzie a co za tym idzie, potencjalnie z niej nie wyjdzie i nie wywoła `unlock()`.
+
+## Zadanie 2
+:::success
+Autor: Marcin Sarnecki	
+:::
+```java=
+public void lock() {
+    flag[i] = true; 
+    victim = i;
+    while (flag[j] && victim == i) {};
+}
+
+public void unlock() {
+  int i = ThreadID.get(); 
+  flag[i] = false;
+  int j = 1 - i;
+  while (flag[j] == true) {}
+}
+```
+**Zakleszczenie**
+Rozważmy możliwość zakleszczenia w miejscu dodanych linijek. Założmy, że doszło do zakleszczenia. Bez straty ogólności założmy, że wątek 0 jest w funkcji unlock. Wtedy flag[0] = false, zatem wątek 1 nie zakleszczy się w funkcji lock() w linijce 4. W przypadku, w którym oba wątki znajdą się w lock() nie dojdzie do zakleszczenia ze względu na zmienną victim. W przypadku, w którym oba wątki będą w unlock() również nie dojdzie do zakleszczenia ze względu na linijki 9 i 11.  
+
+**Głodzenie**
+Głodzenie występuje. Rozważmy przypadek w którym wątek 0 właśnie skończył sekcję krytyczną, ustawia flag[0]=false, zaczyna czekać w linijce 11 (wątek 1 czeka na wejście do sekcji krytycznej, więc flag[1]=true) i oddaje procesor wątkowi 1. Wątek 1 wchodzi do sekcji krytycznej, wykona ją i przechodzi do sekcji unlock. Przechodzi przez nią bez problemu, ponieważ flag[0]=false. Może więc wejść ponownie do funkcji *lock*, ustawić swoją flagę na true i wejść do sekcji krytycznej. Wątek 1 może teraz cały czas przechodzić przez unlock() i blokować wątek 0.
+
+## Zadanie 3
+:::success
+Autor: Wiktor Bukowski	
+:::
+
+**Właśność r-ograniczonego czekania** oznacza, że wątek, który wykonał sekcję wejściową będzie "wyprzedzony" co najwyżej r razy przez taki wątek, który wykonał tę sekcję po nim.
+**Sekcja wejściowa** to część, w której ustawiana jest flaga oraz victim.
+**Sekcja oczekiwania** to pętla ```while(flag[j] && victim == i) {};```
+
+Algorytm Petersona:
+```java=
+public void lock() {
+ flag[i] = true; 
+ victim = i;
+ while (flag[j] && victim == i) {};
+}
+public void unlock() {
+ flag[i] = false; 
+}
+```
+
+Oznaczmy jako A ten z wątków, który jako pierwszy wykonał sekcję wejściową. Drugi z nich oznaczmy jako B. Załóżmy, że B jako pierwszy wykonał sekcję krytyczną.
+$D_A \rightarrow D_B$
+$CS_B \rightarrow CS_A$
+$D_A \rightarrow W_A \rightarrow CS_A$
+$D_B \rightarrow W_B \rightarrow CS_B$
+Wtedy z przechodniości $\rightarrow$:
+$D_A \rightarrow D_B \rightarrow CS_B \rightarrow CS_A$
+
+Jeśli B jako drugi wykonał sekcję wejściową, to ustawił zmienną `victim` na samego siebie, przez co musiał potem czekać w sekcji oczekiwania do wykonania przez A sekcji krytycznej i zmiany jego flagi. W związku z tym B nie mógł wykonać sekcji krytycznej przed A.
+
+## Zadanie 4
+:::success
+Autor: Marcin Wróbel	
+:::
+
+![](https://i.imgur.com/X52gW04.png)
+**a) wzajemne wykluczanie**
+Dowód indukcyjny, teza:
+W danym wierzchołku co najwyżej jeden wątek zajął lock'a.
+
+n=liczba wątków
+
+Dla **n==2**
+Dla liści jest to prawdziwe, ze względu na to, że algorytm Petersona działa.
+
+Dla **n>2**
+Rozpatrzmy korzeń v.
+W dzieciach wierzchołka v co najwyżej jeden wątek dostał lock'a z założenia indukcyjnego. Więc co najwyżej 2 wątki mają dostęp do wierzchołka v. Stąd z działania algorytmu Petersona w wierzchołku też co najwyżej jeden wątek dostał lock'a wierzchołka v.
+**b) zakleszczenie**
+Dowód indukcyjny, teza:
+W danym wierzchołku jeżeli w jego poddrzewie jest wątek chcący uzyskać dostęp do sekcji krytycznej to zajmie lock'a w danym wierchołku.
+
+Dla **n==2**
+Dla liści jest to prawdziwe, ze względu na to, że algorytm Petersona działa.
+
+Dla **n>2**
+Rozpatrzmy korzeń v.
+W dzieciach wierzchołka v wiemy, że jakiś wątek uzyska lock'a z założenia indukcyjnego. Łącząc to z tym, że wiemy, że algorytm Petersena działa, jakiś wątek dostanie lock'a w wierzchołku v.
+
+Stąd jakiś wątek zajmie lock'a w korzeniu. Wiemy, więc, że ten wątek dostanie dostęp do sekcji krytycznej.
+
+**c) zagłodzenie**
+Wiedząc, że algorytm Petersona nie zagładza żadnego wątku, wiemy, że żadne poddrzewo wierzchołka nie zostanie zagłodzone. Stąd indukcyjnie
+
+Dla **n==2** nie nastąpi zagłodzenie, ze względu na to, że algorytm Petersona działa.
+
+Dla **n>2**
+Korzeń v ma dwoje dzieci, w których żaden wątek nie zostaje zagłodzony, z założenia indukcyjnego. Z tego, że algorytm Petersona działa żadne poddrzewo nie zostanie zagłodzone, więc żaden wątek z obu poddrzew nie zostanie zagłodzony.
+
+
+## Zadanie 5
+:::success
+Autor: Michał Hetnar	
+:::
+1.Czy istnieje taka liczba r, być może zależna od n, że
+algorytm tree-lock spełnia własność r-ograniczonego
+czekania (ang. r-Bounded Waiting)? Jako sekcję wejściową
+(ang. doorway section) algorytmu przyjmij fragment kodu
+przed pętlą while zamka w odpowiednim liściu.
+
+
+Jeżeli nie założymy że wątkom przydzielany czas jest równomiernie:
+
+możemy mieć sytułację że wątek który przejdzie doorway section w swoim liściu nie dostanie wiecej czasu procesora, nic nie powstrzyma procesów wyżej od przejścia przed nim nieskończoną liczbę razy.
+
+Możemy założyć że wątkom przydzielany czas jest równomiernie:
+![](https://i.imgur.com/XuvMKcq.jpg)
+w tym przypadku przed 8 wykonały się wszystkie wątki ale 8 i 7 (bo musiała być przed nią ) nie liczymy wiec
+R= N-2
+
+2.  Pokaż, być może modyfikując nieco oryginalny algorytm, że
+założenie o numerach wątków w poprzednim zadaniu może być
+łatwo usunięte.
+
+Każdy z zamków traktuje
+jeden z rywalizujących o niego wątków jako wątek o numerze 0 a
+drugi jako wątek 1.
+```java=
+public void lock() {
+ flag[i] = true;
+victim = i;
+while (flag[i] && victim == i) {};
+}
+public void unlock() {
+ flag[i] =
+ ```
+ ```java=
+int flags = 0;
+
+ public void lock() {
+ flags += 1;
+ victim = ThreadID.get();
+ while (flags==2 && victim == ThreadID.get()) {};
+}
+public void unlock() {
+ flags -=1;
+ ```
+
+## Zadanie 6
+:::success
+Autor: Wojciech Pokój	
+:::
+
+
+W dobrze zaprojektowanym programie wielowątkowym
+rywalizacja o zamki powinna być niewielka. Najbardziej
+praktyczną miarą wydajności algorytmu implementującego zamek
+jest więc liczba kroków potrzebna do zajęcia wolnego zamku,
+jeśli tylko jeden wątek się o to ubiega. Poniższy kod jest
+propozycją uniwersalnego wrappera, który ma przekształcić
+dowolny zamek na zamek wykonujący tylko stałą liczbę kroków w
+opisanym przypadku. Czy ten algorytm spełnia warunek a)
+wzajemnego wykluczania, b) niezagłodzenia, c)
+niezakleszczenia? Załóż, że oryginalny zamek spełnia te
+warunki.
+
+``` java=
+class FastPath implements Lock {
+    private Lock lock;
+    private int x, y = -1;
+    public void lock() {
+        int i = ThreadID.get();
+        x = i; // I’m here
+        while (y != -1) {} // is the lock free?
+        y = i; // me again?
+        if (x != i) // Am I still here?
+            lock.lock(); // slow path
+    }
+
+    public void unlock() {
+        y = -1;
+        lock.unlock();
+    }
+}
+```
+
+**Wzajemne wykluczenie**
+
+Własność nie jest spełniona
+
+Przykład dla dwóch wątków:
+
+Oba wątki dochodzą do linii 8 jednocześnie.
+w tym miejscu x ma już jakąś ustaloną wartość (wskazuje na jeden z wątków), więc jeden wątek zajmnie kłódkę (lock.lock), a drugi wyjdzie z zamka, w efekcie czego oba wątki uzyskają dostęp do sekcji krytycznej
+
+**Niezagłodzenie**
+
+Własność nie jest spełniona i jest już widoczna dla dwóch wątków:
+
+Wystarczy że powolny wątek utknie w linijce 7 w czasie gdy drugi wątek będzie bardzo szybko wchodzić i wychodzić do i z sekcji krytycznej
+
+**Niezakleszczenie**
+
+Własność jest spełniona
+
+Załóżmy nie wprost że któryś z wątków zablokował się na pętli w linii 7,
+tj. zmienna y ma wartość różną od -1 ale żaden wątek nie wykonuje sekcji krytycznej. Ale żeby tak było któryś z wątków musiał wcześniej wyjść z sekcji krytycznej więc ustawił y na wartość -1. Sprzeczność
+
+## Zadanie 7
+:::success
+Autor: Jan Dalecki	
+:::
+
+![](https://i.imgur.com/p9Q6t7h.png)
+
+$X$ - zbiór wszystkich wątków
+
+**a)**
+
+Załóżmy, że co najmniej 2 wątki otrzymały wartość STOP.
+
+Z kodu:
+$$
+read_A(last == A) \rightarrow return_A(STOP)
+$$
+$$
+write_A(last = A) \rightarrow read_A(goRight == false) \rightarrow write_A(goRight = true)
+$$
+$$
+write_B(last = B) \rightarrow read_B(goRight == false) \rightarrow write_B(goRight = true)
+$$
+
+Założenia:
+
+$$
+\forall C \in X\backslash A \ read_A(last == A) \rightarrow write_{C}(last = C)
+$$
+$$
+\forall C \in X\backslash B \ read_B(last == B) \rightarrow write_{C}(last = C)
+$$
+
+Z założeń wynika, że procesy nie mogą wykonać zapisau pod `last` dopóki dany proces nie odczyta wartości `last`. Dany proces zmieni wartość `goRight` na `true`.
+
+Zmienna `goRight` nie będzie miała wartości `false` dla drugiego procesu.
+
+**b)**
+
+Załóżmy, że wszystkie wątki otrzymały wartość DOWN.
+
+Z kodu
+$$
+read_X(last \not= X) \rightarrow return_X(DOWN)
+$$
+
+Założenia $\forall A \in X$, $\exists B \in X\backslash A$:
+$$
+write_A(last = A) \rightarrow write_{B}(last = B) \rightarrow read_A(last \not= A) 
+$$
+
+staje się jasne, że to nie może zajść dla procesu który jako ostatni wykona podstawienie pod `last`.
+
+c)
+
+Załóżmy, że wszystkie wątki otrzymały wartość RIGHT.
+
+Z kodu:
+$$
+read_X(goRight == true) \rightarrow return_X(RIGHT) 
+$$
+
+$$
+read_A(goRight == false) \rightarrow write_A(goRight = true) \rightarrow return_A(STOP)
+$$
+lub 
+$$
+read_A(goRight == false) \rightarrow write_A(goRight = true) \rightarrow return_A(DOWN)
+$$
+
+Założenia:
+$$
+\forall A \in X \ read_A(goRight == true) \rightarrow return_A(RIGHT)
+$$
+$$
+\exists B \in X \ read_B(goRight == false) \rightarrow write_B(goRight = true)
+$$
+Widzimy, że $B$ nie zwróci RIGHT.
+
+## Zadanie 8
+:::success
+Autor: Bartosz Głowacki	
+:::
+
+![](https://i.imgur.com/3pl8zDx.png)
+
+Wiemy że:
+1) w pierwszym wierzchołku na początku znajduje się N wątków
+2) w każdym wierzchołku co najwyżej k-1 (gdzie k to liczba wątków w tym wierzchiłku) wątków idzie na prawo to samo dotyczy lewa
+3) na każdym poziomie drzewa sumaryczna liczba wątków wynosi maksymalnie N (wynika to z fakty że w każdym kroku wątek schodzi dokładnie  poziom w drzewie niżej)
+4) gdy w wierzchołku znajduje się 1 wątek dostanie on STOP
+
+### Policzmy więc ile maksymalnie wątków może znaleźć się w każdym wierzchołku
+
+W wierzchołku $0$ znajduje się $N$ wątków
+#### Weźmy teraz wierzchołki $2, 5, 9, ...$ (wierzchołki wysunięte maksymalnie w lewo)
+Wątki w tych wierzchołkach mogą znaleźć się tam tylko idąc w lewo z wierzchołka wyżej a z **(2)** wiemy że maksymalna liczba wątków będzie w każdym kroku zmniejszać się o jeden mamy zatem
+maksymalnie $N-1$ wątków w wierzchołku $2$
+maksymalnie $N-2$ wątków  w wierzchołku $5$
+...
+
+#### Weźmy teraz wierzchołki $1, 3, 6, ...$ (wierzchołki wysunięte maksymalnie w prawo)
+Dla nich możemy przeprowadzić analogiczne co wyżej rozumowanie
+
+#### Weźmy teraz wierzchołek 4
+mogą do niego wejść wątki z wierzchołków $1$ i $2$
+załóżmy że w wierzchołku $1$ mamy $K_1$ wątków a w wierzchołku 2 $K_2$ wątków.
+
+wiemy że $K_1, K_2 \in [0, N-1]$
+z **(2)** wiemy że do wierzchołka 4 trafi co najwyżej $max(K_1-1, 0) + max(K_2-1,0)$ wątków
+z **(3)** wiemy że $K_1+K_2 \le N$
+w takim razie w wierzchołku $4$ znajduje się maksymalnie $N-2$ wątków
+
+#### Rozumowanie indukcyjne
+widzimy więc że na $0$ poziomie drzewa wierzchołki mają maksymalnie $N$ wątków
+na pierwszym $N-1$ wątków na drugim $N-2$ możemy więc wysnuć hipotezę że na wysokości $k$ drzewa w każdym wierzchołku może znaleźć się maksymalnie $N-k$ wierzchołków
+
+żałóżmy więc że na poziomie $k$ mamy $N-k$ maksymalnie wątków ma wierzchołek i pokażmy że na poziomie $k+1$ mamy maksymalnie $N-k-1$ wątków na wierzchołek
+
+zatem weźmy dowolny wierzchołek $c$ i wierzchołki $a$, $b$ z krótych można przejść do wierzchołka $c$.
+Wierzchołki $a$ i $b$ mają odpowiednio $K_a$, $K_b$ wątków
+
+mamy zatem:
+wiemy że $K_a, K_b \in [0, N-k]$
+z **(2)** wiemy że do wierzchołka $c$ trafi co najwyżej $max(K_a-1, 0) + max(K_b-1,0)$ wątków
+z **(3)** wiemy że $K_a+K_b \le N$
+w takim razie w wierzchołku $c$ znajduje się maksymalnie $N-k-1$ wątków co dowodzi tezy
+
+#### Konkluzja
+wiemy zatem że na poziomie $k$ drzewa wierzchołki mają co najwyżej $N-k$ wątków
+
+można zatem zauważyć że na poziomie $N-1$ drzewa mamy maksymalnie $1$ wątek a z **(4)** wiemy że w takim razie jeśli wątek tam dojdzie dostanie STOP
+
+1) w takim razie każdy wątek dostanie kiedyś STOP ponieważ prędzej czy później natrafi na wierzchołek w którym będzie jedyny lub dostanie STOP wcześniej
+2) zatem sumując odpowiednio liczbę wierzchołków z każdego poziomu liczbę wierzchołków można ograniczyć do $1 + 2 + \ldots + N=\frac{N+1}{2} \times N$
+
+![](https://i.imgur.com/t4pDt84.png)
+
+
+=======
+
+# L2 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Magdalena Rzepka	
+:::
+
+![](https://i.imgur.com/trJg57x.png =700x)
+
+**a)wzajemne wykluczanie - spełnia**
+
+Załóżmy, że mamy dwa wątki o id 1 i 2, które mogą przejść razem do sekcji krytycznej.
+
+**Wiemy, że:**
+W~1~(turn = 1) -> R~1~(busy == false) -> W~1~(busy == true) -> R~1~(turn == 1)
+(analogicznie dla wątku 2):
+
+**Z tego wynika, że:**
+R~1~(turn == 1) -> W~2~(turn = 2) -> R~2~(turn == 2) -> W~1~(turn = 1) -> R~1~(turn == 1)
+
+R~1~ -> R~1~ co jest sprzecznością.
+
+Poprawne sprawdzenie czy jest nasza kolej musi nastąpić zanim inny wątek nam go nadpisze.
+Nadpisanie wątka musi nastąpić przed sprawdzeniem czy ciągle jest nadpisany.
+Z kolei sprawdzenie czy ciągle jest nasza kolej musi nastąpić przed tym jak inny wątek nam go nadpisze.
+A to musi być przed sprawdzeniem czy to nasza kolej.
+
+Zrobiliśmy pętelkę i doszliśmy do sprzeczności.
+Musi zachodzić wzajemne wykluczanie.
+
+**b)niezagłodzenie - nie spełnia**
+
+Wystarczy pokazać na jednym przykładzie, że może dojść do zagłodzenia.
+
+W~1~(turn = 1)
+R~1~(busy != true)
+W~1~(busy = true)
+i wychodzi z pętli
+
+W~2~(turn = 2)
+R~2~(busy = true) - zawiesza się
+
+W~1~(busy = false) - robi unlock()
+Wątek 1 od razu wchodzi do funkcji lock(), ustawia turn = 1 i idze dalej zablokować busy = true.
+Wątek 2 jest wolniejszy i zanim się zorientował znowu został zamknięty w pętli.
+Wątek 2 jest wątkiem głodzonym.
+
+**c)niezakleszczenie - nie spełnia**
+
+Wątek 1 ustawia turn = 1 i busy = true.
+Wątek 2 ustawia turn = 2 i zapętla się bo busy = true.
+Wątek 1 sprawdza while ale turn != 1.
+Wraca więc i ustawia turn = 1.
+Wątek 1 również się zapętla bo busy = true.
+
+## Zadanie 2
+:::success
+Autor: Patryk Mazur	
+:::
+![](https://i.imgur.com/Shkvmk3.png)
+
+
+### Niezakleszczenie
+Wiemy, że `lock()` w algorytmie Petersona nie może powodować zakleszczenia, ponieważ w tej wersji `unlock()`  wątek, który wyszedł z sekcji krytycznej nadal obniża swoją flagę. Oba wątki, które przejdą do `unlock()`, opuszczają swoją flagę, przez co niemożliwe jest zakleszczenie w tym while'u
+
+### Niezagłodzenie
+ 
+W tej wersji algorytmu moze dojść do zagłodzenia
+
+Watek `A` może zablokować się w `unlock()` i przesypiać momenty gdy `flag[B]=false`. Wątek `B` będzie mógł wchodzić do sekcji krytycznej z tytułu `flag[A]=false`.
+
+## Zadanie 3
+:::success
+Autor: Wiktor Hamberger	
+:::
+:::info
+**Zadanie 3.** Przypomnij, co to znaczy że algorytm ma własność r-ograniczonego czekania (ang. r-Bounded Waiting). Czym są sekcja wejściowa (ang. doorway section) i sekcja oczekiwania (ang. waiting section) w algorytmie Petersena? Pokaż, że ten algorytm ma własność 0-ograniczonego czekania, tzn, że jest FCFS (First Come First Served).
+:::
+1. Przypomnij, co to znaczy że algorytm ma własność r-ograniczonego czekania (ang. r-Bounded Waiting).
+![](https://i.imgur.com/NA3sKKO.png)
+
+![](https://i.imgur.com/ICH3p6X.png)
+2. Czym są sekcja wejściowa (ang. doorway section) [zielony] i sekcja oczekiwania (ang. waiting section) [czerwony] w algorytmie Petersena?
+![](https://i.imgur.com/85PDYcL.png)
+3. Pokaż, że ten algorytm ma własność 0-ograniczonego czekania, tzn, że jest FCFS (First Come First Served).
+Należy udowodnić że:
+$$
+D^k_A \to D^j_B \Rightarrow CS^k_A \to CS^j_B
+$$
+rozpiszmy lewą stronę implikacji:
+$$
+write_A(flag[A]=true)\to write_A(victim=A) \to^{1.} write_B(flag[B]=true) \to^{2.} write_B(victim=B)^{3.} 
+$$
+Dla warunku w $W_A$ i $W_B$ istnieją 3 momenty w czasie, w takcie których wątek/wątki mogą się chcieć dostać do $CS$ oznaczone powyżej jako $1.$, $2.$ i $3.$. Rozpiszmy sobie możliwości stnanów sarunków w sekcjach wejściowych:
+1. $flag[B]==false \Rightarrow CS_A \to CS_B$
+2. $flag[B]==true, victim==A \Rightarrow nic\quad się\quad nie\quad dzieje$
+3. $flag[B]==true, flag[A]==true, victim==B \Rightarrow CS_A \to CS_B$
+
+C.b.d.U.
+
+## Zadanie 4
+:::success
+Autor: Daniel Boguszewski	
+:::
+![](https://i.imgur.com/WIdPDWM.png)
+![](https://i.imgur.com/JT5rk3K.jpg)
+![](https://i.imgur.com/OxWcxcT.png)
+
+Algorytm można zwizualizować jako pełne drzewo binarne o n/2 liściach, przy czym od każdego z liści wychodzą dodatkowe dwa 'węzły', będące wątkami, na których wykonuje się program (razem n wątków). Aby dany wątek przeszedł do sekcji krytycznej programu, musi przejść całą drogę od liścia do korzenia tego drzewa, przy czym każdy z węzłów jest zamkiem działającym w algorytmie Petersona. Można powiedzieć, że w każdym z węzłów znajduje się sekcja krytyczna, do której o dostęp spierają się jego dzieci. Faktyczna sekcja krytyczna programu znajduje się w korzeniu, reszta węzłów służy jako kolejka dla wątków, które próbują się dostać do sekcji krytycznej. Aby się do niej dostać, wątek musi zostać dopuszczony do każdego węzła na swojej ścieżce. Wątki traktowane są jako 0 lub 1, w zależności od tego, czy są lewym czy prawym dzieckiem danego węzła. Ma to następujące konsekwencje:
+
+Algorytm posiada własność wzajemnego wykluczania:
+Załóżmy, że Ai wykonuje SC, zatem zamek na każdym węźle ścieżki przez którą przechodził przepuścił Ai. Oznacza to, że flag[i] = true i żaden inny wątek nie przejdzie przez jego sekcje oczekiwania (flag[0] oraz flag[1] będą równe true). Tym samym sekcję krytyczną wykonuje maksymalnie jeden wątek.
+
+Algorytm posiada własność niezagłodzenia:
+Załóżmy, że Ai próbuje się dostać do SC, ale tę wykonuje aktualnie inny wątek (flag[i] = flag[j] = true, victim = i). Oznacza to, że na ścieżce do SC zostanie zatrzymany na jednym z węzłów. Ten węzeł zostanie wreszcie zwolniony, wówczas flag[j] = false. Jeśli wątek wznowi działanie, nim do sekcji dostępu dotrze inny wątek, zostanie przepuszczony węzeł wyżej. W innym wypadku pewien wątek Aj zastąpi wartości na flag[j] = true oraz victim = j. Ze względu na wartość zmiennej victim, nie zostanie dopuszczony dalej przed wątkiem Ai. Wobec tego wątek Ai będzie posuwać się po pewnym skończonym czasie coraz wyżej, aż wreszcie dotrze do SC.
+
+Algorytym posiada własność niezakleszczenia:
+W dowolnym z węzłów, jeśli 2 wątki domagają się przejścia do SC, uda się to tylko jednemu. Załóżmy, że wątek Ai oraz Aj próbują przejść przez zamek. Wówczas w czasie wykonywaniu sekcji dostępu oba z nich będą musiały nadać wartość zmiennej victim, ta jednak może posiadać tylko jedną wartość. Niedopuszczony zostanie wątek, który nie przydzielił victim swojej wartości, drugi wątek przejdzie dalej, a przepływ pozostanie niezaburzony. Ponieważ na drodze jest skończona liczba wątków, w końcu dotrze do sekcji krytycznej.
+
+## Zadanie 5
+:::success
+Autor: Daniel Wiczołek	
+:::
+![](https://i.imgur.com/1Jspl3L.png)
+
+1.
+![](https://i.imgur.com/yuM4Xya.png)
+![](https://i.imgur.com/nttVpUx.png)
+
+Nie ma ograniczenia bo unlock moze byc wolny i to główne prawe poddrzewo może być wielokrotnie 
+wykorzystane. (bez strat na ogólności patrzę na skrajnie lewe)
+![](https://i.imgur.com/MZJHjDh.png)
+L1 - wątek w lewym liściu
+L2 - drugi z lewego
+P1, P2 - analogicznie prawy
+
+L1: próbuje wejść do CS
+L2: robi unlock w root ale powoli
+P2: nie probuje wejsc do CS
+P1: wchodzi $n$ razy
+wniosek: P1 może wejść dowolną liczbę razy zanim L2 oblokuje liść z L1
+
+2. Do każdego dochodzą 2 więc wystarczy pamiętać, z którego poddrzewa przychodzimy
+
+## Zadanie 6
+:::success
+Autor: Mikołaj Jaszcza	
+:::
+
+W dobrze zaprojektowanym programie wielowątkowym rywalizacja o zamki powinna być niewielka. Najbardziej praktyczną miarą wydajności algorytmu implementującego zamek jest więc liczba kroków potrzebna do zajęcia wolnego zamku, jeśli tylko jeden wątek się o to ubiega. Poniższy kod jest propozycją uniwersalnego wrappera, który ma przekształcić dowolny zamek na zamek wykonujący tylko stałą liczbę kroków w opisanym przypadku. Czy ten algorytm spełnia warunek a) wzajemnego wykluczania, b) niezagłodzenia, c) niezakleszczenia? Załóż, że oryginalny zamek spełnia te warunki.
+
+![](https://i.imgur.com/C1ieRft.png)
+
+a) **wzajemne wykluczenie**
+**NIE**
+
+Rozważmy sytuację dla 2 wątków. Niech oba wejdą do linijki $$while (y != -1) {} $$ w tym samym momencie. Zauważmy, że wtedy zmienna x ma nadaną jakąś wartość inną niż -1 (bo oba wątki przeszły przez linijkę $$ x = i; $$, a jest to jedyna linijka zmieniająca początkową wartość zmiennej x (bo rozważamy aktualnie tylko lock, ponieważ interesuje nas nielegalne wejście do sekcji krytycznej)). Zatem (BSO) niech x = 0. Wtedy jeden wątek spełni warunek (x != i) i wejdzie do funkcji lock.lock(), a drugi wejdzie bezpośrednio do sekcji krytycznej. Zatem oba jednocześnie mogą znaleźć się w sekcji krytycznej.
+
+b) **niezagłodzenie**
+**NIE**
+
+Własność również nie jest spełniona. Niech jeden z dwóch wątków wejdzie do linijki $$ while (y != -1) {} $$ i będzie działał w sposób bardzo wolny. Wtedy drugi wątek może wchodzić i wychodzić nieprzerwanie do sekcji krytycznej. Tj mamy kolejność:
+
+-> wątek 1 wywołuje lock
+-> wątek 1 wchodzi do sekcji krytycznej
+-> wątek 2 wywołuje lock
+-> wątek 2 zatrzymuje się w linijce while (y != -1) {}
+-> wątkowi 2 odebrany zostaje procesor
+-> wątek 1 wychodzi z sekcji krytycznej i ustawia y := -1
+
+W dalszej części:
+-> wątek 1 wywołuje lock
+-> wątek 1 wchodzi do sekcji krytycznej 
+-> wątek 2 dostaje z powrotem procesor, ale nie może wejść do sekcji krytycznej
+-> wątek 2 czeka, i zostaje mu odebrany procesor
+-> wątek 1 wychodzi
+-> powyższe kroki można powtarzać nieskończenie wiele razy, więc wątek 2 może zostać zagłodzony
+
+
+c) **niezakleszczenie**
+**TAK**
+
+Nie wprost. Jeżeli zaszłoby zakleszczenie, to wątki musiałyby się zakleszczyć w 'lock' (oba wątku musiałyby być w 'lock', bo 'unlock' nie zależy od żadnej współdzielonej zmiennej). Zauważmy również, że zakleszczenie musiałoby nastąpić w linijce while (y != -1) {}, bo oprócz tego jedyne miejsce gdzie korzystamy ze współdzielonych zmiennych to 'lock.lock()', ale o tej funkcji wiemy, że nie może zostać zakleszczona, bo wszystkie współdzielone zmienne są dostępne tylko wewnątrz niej. Tzn - nie ingerujemy bezpośrednio w ciele FastPath.lock w ich wartości, czyli zależności między nimi zawsze są poprawne, bo wiemy, że klasyczny 'lock' działa. Jednak jeśli zakleszczenie nastąpiło w linijce while (y != -1) {} to wartość y (różna od -1) musiała zostać ustawiona przez pewien wątek który aktualnie jest w sekcji krytycznej w linijce y = i. Ale wtedy nie mielibyśmy do czynienia z zakleszczeniem, bo po jego wyjściu z sekcji krytycznej wartość y będzie równa -1, więc kolejny wątek (lub wątki) będą miały dostęp do sekcji krytycznej. CKD
+
+## Zadanie 7
+:::success
+Autor: Kamila Goszcz	
+:::
+
+![](https://i.imgur.com/rzzFazx.png)
+
+**a) Co najwyżej jeden wątek może zwrócić STOP**
+
+Załóżmy, że jakieś 2 lub więcej wątków się przebiło przez 
+```c=java
+if(goRight)
+    return RIGHT;
+```
+(Gdyby się przebił tylko jeden, to pozostałe zwróciłyby RIGHT, więc aby miały jakąkolwiek szansę coś innego zwrócić niż RIGHT musiały przejść przez tego ifa)
+i są na etapie:
+```c=java
+goRight = true;
+if(last == i) 
+    return STOP;
+```
+last jest wspólne i może mieć tylko jedną wartość, zatem tylko jeden wątek zwróci STOP
+
+**b) co najwyżej n-1 wątków otrzyma wartość DOWN**
+Spróbujmy to zepsuć.
+Niech n wątków się przebije przez ifa i będzie na tym etapie:
+```c=java
+goRight = true;
+if(last == i) 
+    return STOP;
+else 
+    return DOWN;
+```
+wiemy, że last wskazuje na któreś i, zatem przynajmniej jeden wątek wejdzie w `return STOP`
+
+**c) Co najwyżej n-1 wątków otrzyma wartość RIGHT**
+Aby jakis wątek wszedł w ifa
+```c=java
+if(goRight)
+    return RIGHT;
+goRight = true;
+```
+to pierwsze goRight musi być równe true.
+Jednak, aby ustawić goRight na true, przynajmniej jeden wątek musiał nie wejść w ifa.
+
+## Zadanie 8
+:::success
+Autor: Maria Szlasa	
+:::
+:::info
+![](https://i.imgur.com/lG09beJ.png)
+![](https://i.imgur.com/DQL4qlA.png)
+:::
+Zauważmy, że kiedy zostanie 1 wątek to dostanie on wartość STOP.
+
+Policzmy, ile maksymalnie wątków będzie w każdym wierzchołku. 
+* W wierzchołku 0 będzie N wątków. - początek algorytmu.
+* W wierzchołkach skrajnie lewych (2,5,9...) można się znaleźć idąc ciągle w lewo. Z zadania 7, wiemy, że w każdnym wywołaniu algorytmu w lewo może iść max n-1 wątków. Dlatego w wierzchołku 2 będzie ich N-1, w 5 N-2..., 
+* Analogicznie do poprzedniego podpunktu w skrajnie prawych wierzchołkach (1,3,6) ich ilość będzie się zmiejszała o 1.
+* Do wierzchołka 4, możemy dojść z wierzchołka 1 lub 2. Załóżmy, że w wierzchołku 1 mamy k1 wątków i w dół poszło k1-1, a w wierzchołku 2 było ich k2 i poszły one w prawo k2-1, więc na 4 mamy max(k1-1,0) + max(k2-1,0) wątków. Ponieważ k1+k2<=N, w 4 mamy N-2 wątki.
+
+Możemy zauważyć, że w każdej przekątnej maksymalna ilość wątków będzie o 1 mniejsza od ich ilości na poprzedniej przekątnej.
+
+Możemy zauważyć, że w każdej przekątnej maksymalna ilość wątków będzie o 1 mniejsza od ich ilości na poprzedniej przekątnej.
+Można to udowodnić przeprowadzając analogiczne rozwiązanie co w przypadku wierzchołka nr 4.
+
+***
+
+Ponieważ w każdej przekątnej zmniejsza się ich ilość o 1, to dojdziemy do momentu, aż na przekątnej będzie ich 0, zatem każdy wątek otrzyma numer (wynik STOP).
+
+Stąd można też wywnioskować, że kształt będzie wyglądał tak jak na obrazku, a liczbę wierzchołków możemy ograniczyć przez ilość przekątnych $1 + 2 + 3 + ... + N = \frac{(N+1)\cdot N}{2}$
+
+![](https://i.imgur.com/8195alU.jpg)
+![](https://i.imgur.com/vqKwoj6.jpg)

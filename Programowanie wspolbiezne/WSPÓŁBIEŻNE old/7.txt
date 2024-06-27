@@ -1,0 +1,306 @@
+https://hackmd.io/lG7mCE-fQwqILfjUD-7gDw?view#Zadanie-2
+
+# Ćwiczenia 7, grupa cz. 12-14, 2. grudnia 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |  X    | X?  |  X  |  X  | X?  |     | X?  |  X  |
+Michał Błaszczyk         |  X    |     |     |  X  |  X  |     |  X  |     |
+Dawid Dudek              |  X    |  X  |  X  |  X  |  X  |     |  X  |==X==|
+Mateusz Gil              |       |     |     |     |     |     |     |     |
+Wiktor Hamberger         |       |     |     |     |     |     |     |     |
+Krzysztof Juszczyk       |       |     |     |  X  |  X  |     |     |     |
+Kamil Kasprzak           |  X    |  X  |  X  |  X  |==X==|     |  X  |  X  |
+Kacper Kingsford         |       |     |     |     |     |     |     |     |
+Kacper Komenda           |       |     |  X  |==X==|  X  |     |     |  X  |
+Aleksandra Kosińska      |   X   |  X  |     |  X  |  X  |     |     |  X  |
+Łukasz Orawiec           |   X   |     | X   |  X  |  X  |     |     |  X  |
+Kamil Puchacz            |       |     |     |     |     |     |     |     |
+Paweł Sikora             |   X   |     |     |  X  |  X  |     |     |  X  |
+Michał Sobecki           |       |     |     |     |     |     |     |     |
+Cezary Stajszczyk        |   X   |  X  |     |  X  |  X  |     |     |  X  |
+Piotr Stokłosa           |       |     |     |     |     |     |     |     |
+Cezary Troska            |      X|    X|    |X    |    X| | |     X|
+Daniel Wiczołek          |       |     |     |     |     |     |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Paweł Sikora
+:::
+![](https://i.imgur.com/pv4ztAr.png)
+Załóżmy, że nieczekająca implementacja protokołu binarnego konsensusu istnieje dla $n>2$ wątków.
+Załóżmy również, że z $n$ wątków $n-2$ umarło (jest to możliwe gdyż implementacja jest nieczekająca). Wówczas pozostały nam wątki 1 z wartością a i 2 z wartością b. Wtedy wartością konsensusu jest a lub b.
+Analogicznie założmy, że 2 wątki z wartościami a i b wykonały się zanim inne wątki rozpoczęły wykonanie protokołu. Wtedy wartością konsensusu jest również a lub b.
+Jest to niemożliwe, ponieważ nie da się zaimplementować operacji konsensusu dla dwóch wątków z użyciem atomowej pamięci, co wiemy z wykładu.
+
+## Zadanie 2
+
+:::success
+Autor: Cezary Troska
+:::
+
+```java=
+class StickyConsensus <T > {
+int l = number of bits in value ;
+int t = number of threads ;
+BinaryConsensus [] s = new BinaryConsensus [ l ];
+MRSWRegister [] a_values = new MRSWRegister [ t ]; 
+MRSWRegister [] a_participating = new MRSWRegister [ t ]; 
+T decide ( T value ) {
+    T v = value ;
+    a_values [ threadID ] = value ;
+    a_participating [ threadID ] = 1;
+    for (int i = 0; i < l ; i ++) {
+        b = bit i of v ;
+        bit_value = s[i].decide(b)
+        if ( bit_value != b ) {
+            for (int j = 0; j < t ; j ++) {
+                if ( a_participating [ j ] == 1 && s [0 .. i ] match in a_values [ 0 ..i ] ) {
+                    v = a_values [ j ];
+                }
+            }
+        }
+        return booleanArrayToInt ( s ) ;
+    }
+}
+
+```
+
+Implementacja jest:
+* Consistant: Każde wywołanie zwraca tę samą wartość jako rezultat, booleanArrayToInt ( s ) gdzie s jest tablicą wspólną dla wszystkich obiektów, której komówki są niezmienne po ich pierwszym zapisaniu. 
+* Valid: Wartość zwracana będzie wartością zaproponowaną przez obiekt, który jako pierwszy zapisał swoją wartość na wszystkich bitach tablicy s.
+* Wait-free: Zapisywanie i odczytywanie z tablicy s jest wait-free, a wszystkie pętle są ograniczone, więc całe wykonanie jest wait-free
+
+Długość inicjalizowanej tablicy s możemy dostosować do maksymalnej wartości jaką będziemy chcieli przyjmować do funkcji decide, więc proponowana implementacja nie jest ograniczana przez zbiór z jakiego będzie pochodzić proponowana wartość. 
+
+Wszystkie wyżej wymienione rzeczy sprawiają, że jest to ogólny protokół konsensusu. 
+
+## Zadanie 3
+
+:::success
+Autor: Łukasz Orawiec
+:::
+
+![](https://i.imgur.com/Aj2GWPm.png)
+
+Załóżmy nie wprost, że istnieje nieczekająca implementacja protokołu binarnego konsensusu dla trzech wątków $A$, $B$, $C$, używająca tylko kolejek FIFO i rejestrów atomowych.
+
+Każda nieczekająca implementacja protokołu konsensusu ma stan krytyczny. Rozważmy taki stan i załóżmy BSO, że następny ruch wątku $A$ doprowadzi do stanu $0$-walentnego, a wątku $B$ do stanu $1$-walentnego. 
+
+Ruchy $A$ i $B$ muszą być operacjami na tym samym obiekcie. Inaczej można by było zamienić je kolejnością i otrzymać ten sam stan. Nie mogą to być operacje na rejestrze atomowym:
+
+- odczytanie przez $A$ wartości rejestru
+    
+    Niewidoczne dla $B$, więc nie może wpłynąć na jego decyzję.
+    
+- zapisanie przez $A$ i $B$ wartości do rejestru
+
+    Stan po zapisie przez $A$ i potem przez $B$ oraz stan po zapisie przez $B$ są nierozróżnialne dla $B$.
+    
+Następne ruchy $A$ i $B$ muszą więc być operacjami na jednej kolejce. 
+
+1. $A$ i $B$ wyciągają element z kolejki
+
+    ![](https://i.imgur.com/2vYKmVx.png)
+
+    Niezależnie od tego, który z tych wątków wykona ruch jako pierwszy, wykonanie przez nich ruchów doprowadzi do tego samego stanu z perspektywy $C$. W obu przypadkach będzie więc musiał podjąć tę samą decyzję, co daje sprzeczność.
+    
+2. $A$ i $B$ umieszczają element w kolejce
+
+    ![](https://i.imgur.com/r1UsMoJ.png)
+
+
+Lemat: "jeśli A wykonało enq to A musi wykonać deq."
+
+> [name=Piotr Witkowski] Musimy udowodnić ten lemat.
+
+Załóżmy, że następna operacja, jaka ma zostać wykonana przez wątek $A$, to $enq$ oraz że wątek $A$ nigdy już nie wykona operacji $deq$. Stan przed wykonaniem $enq$ przez $A$ jest stanem krytycznym, więc nie jest wtedy jeszcze określone, jaka wartość zostanie uzgodniona przez $A$. Natomiast po wykonaniu tej operacji wiadomo już, że zostanie uzgodniona wartość $0$. Jedynym sposobem na zaobserwowanie przez wątek $A$ różnicy między tymi dwoma stanami jest wyciągnięcie elementu z kolejki. Z założenia wiemy jednak, że wątek $A$ nigdy tego nie zrobi. Mamy więc dwa stany, które są nierozróżnialne z perspektywy wątku $A$ i w jednym z nich wątek może uzgodnić zarówno wartość $0$ jak i $1$, a w drugim z nich już tylko $0$. Oznacza to, że zachowanie wątku $A$ jest niedeterministyczne, co daje sprzeczność, ponieważ rozważamy deterministyczną implementację protokołu konsensusu. Zatem jeśli $A$ wykonało $enq$, to musi też wykonać $deq$.
+
+
+Rozważamy stan $s'$ otrzymany przez wykonanie:
+- $A$ umieścił element w kolejce
+- $B$ umieścił element w kolejce
+- $A$ działał do momentu wyjęcia elementu z kolejki i zatrzymał się
+- $B$ działał do momentu wyjęcia elementu z kolejki
+
+oraz stan $s''$ otrzymany przez wykonanie:
+- $B$ umieścił element w kolejce
+- $A$ umieścił element w kolejce
+- $A$ działał do momentu wyjęcia elementu z kolejki i zatrzymał się
+- $B$ działał do momentu wyjęcia elementu z kolejki
+
+Z perspektywy $C$ nie ma różnicy między stanami $s'$ i $s''$.
+
+3. $A$ umieszcza element w kolejce, $B$ wyciąga element z kolejki
+
+    Jeśli kolejka była niepusta, to otrzymamy ten sam stan niezależnie od kolejności tych ruchów.
+    
+    Jeśli kolejka była pusta, to dla $C$ nie będzie różnicy między stanem po wykonaniu ruchu przez $A$ oraz stanem po wykonaniu ruchu przez $B$ i potem $A$.
+[
+## Zadanie 4
+
+:::success
+Autor: Kacper Komenda
+:::
+
+Zadanie 4. Pokaż, że poniższy obiekt implementuje protokół
+binarnego konsensusu dla dwóch wątków (wartość zwracana przez
+decide() jest jedną z wartości zaproponowanych przez wątki
+oraz metoda ta zwraca tę samą wartość obydwu wątkom). Załóż,
+że wszystkie komórki pamięci są atomowymi rejestrami. Dlaczego
+ten wynik nie jest sprzeczny z faktem, że poziom konsensusu
+dla rejestrów atomowych wynosi 1?
+
+```java=
+public class ConsensusProposal {
+    Boolean proposed[] = new Boolean[2];
+    Integer[] speed = new Integer[2];
+    Integer[] position = new Integer[2]];
+    public ConsensusProposal(){
+        position[0] = 0;
+        position[1] = 0;
+        speed[0] = 3;
+        speed[1] = 1;
+    }
+```
+
+```java=
+public Boolean decide(Boolean value) {
+    int i = ThreadID.get(); //0 or 1
+    int j = 1 - i;
+    proposed[i] = value;
+    while (true) {
+        position[i] = position[i] + speed[i];
+        if (position[i] > position[j] + speed[j]) // I am far ahead of you
+            return proposed[i];
+        else if (position[i] < position[j]) // I am behind you
+            return proposed[j];
+        }
+    }
+}
+```
+
+* Wartość zwracana przez decide() jest jedną z wartości zaproponowanych przez wątki
+Załóżmy nie wprost, że decide() zwraca wartość, która nie została zaproponowana przez żaden z wątków. Wtedy pod proposed[0] lub proposed[1] zostałaby zwrócona wartość, która nie została zadana. Tak się jednak stać nie może, jedyne przypisania pod te zmienne, to właśnie zadana wartość, co więcej funkcja zawsze zwraca wartość, która została już przypisana (proposed[i] -> position[i] > postion[j] + speed[j], to samo z proposed[j] -> position[i] < position[j] musiało dojść do inkrementacji position[j], a wcześniej nastąpiło przypisanie) Mamy więc sprzeczność.
+* metoda zwraca tę samą wartość obu wątkom
+Załóżmy nie wprost, że funkcja zwróciła inną wartość, wtedy mamy następujące możliwości 
+1. w obu przypadkach spełniła się klauzula position[i] < position[j] 
+tak się jednak nie mogło stać, ponieważ position może się tylko zwiększać, więc gdy w pewnym momencie było już większe, to nie mogło się nagle zmniejszyć, aby i drugi wątek spełnił tego ifa
+2. w obu przypadkach spełniła się klauzula position[i] > position[j] + speed[j]
+tak się jednak nie mogło stać, bo gdy tylko klauzula ta jest spełniona, to drugi wątek od razu spełni zamiast niej klauzulę position[i] < position[j] (position[i] > position[j] -> position[i] < position[j]), bo ta pierwsza klauzula bierze poprawkę na to, że drugi wątek zwiększy swoje position przez dojściem do ifa, więc w tutaj się "zabezpiecza" przed zwiększeniem position
+* Dlaczego ten wynik nie jest sprzeczny z faktem, że poziom konsensusu dla rejestrów atomowych wynosi 1?
+Tam naszym wnioskiem była niemożliwość zbudowania takiego konsensusu, ale wtedy gdy decide() jest wait-free, tutaj mamy pętlę while(true), która nie zagwarantuje nam, że pętla się zakończy
+
+## Zadanie 5
+
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/915745056802086912/unknown.png)
+
+### 1
+Weźmy n wątków które zapisują jednocześnie do StickyBit.
+1) Jeśli wszystkie zapisywały A to StickyBit zwróci A.
+2) Jeśli część wątków zapisywała "1" a pozostałe "0" to zapisy wszystkich wątków poza pierwszym zostanie zignorowany i zostanie zwrócony zapis wywołany przez pierwszy wątek.
+
+### 2
+
+Mamy ${\log_2 m}$ obiektów typu StickyBit.
+
+Każdy wątek rozpoczyna zapis od najmniejszego indexu w tablicy. Po próbie zapisu sprawdza jego stan (zapisujemy kolejne bity z liczby którą chcemy zapisać).
+
+W przypadku jego powodzenia zapisuje kolejny bit z w kolejnej komórce i wykonuje porównanie.
+
+W przypadku niepowodzenia przeszukuje wszystkie wątki (próbujące zapisać) w poszukiwaniu liczby, która odpowiada obecnie zapisanym bitom. Zapisuje ją do własnego rejestru i kontynuuje od momentu, w którym się zatrzymał.
+
+1) Tworzy lokalną zmienną 'i=0', liczbę, którą chcemy zapisać nazwiemy NUMBER
+2) Jeśli 'i' >= $\log_2 M$ to kończymy działąnie
+3) Zapisujemy i-ty bit do tablicy o indexie 'i'
+4) Jeśli zdołał zapisać to inkrementujemy 'i' i przechodzimy do kroku 2
+5) W przeciwnym przypadku przeszukujemy NUMBER innych wątków w celu znalezienia wartości która zgadza się o obecnie zapisanymi bitami
+6) Nadpisujemy własny NUMBER i przechodzimy do kroku 2
+
+## Zadanie 6
+
+:::success
+Autor: do-deklarowane Kacper Komenda. Będziemy omawiać jako ostatnie na tych ćwiczeniach.
+:::
+
+> [name=Piotr Witkowski] Wskazówka: Poziom konsensusu dla problemu przybliżonej zgody wynosi 1. By to udowodnić należy zaprogramować impl. protokołu przybliżonej zgody używając wyłącznie rejestrów atomowych. Ponieważ poziom konsensusu rejestrów atomowych wynosi 1, to poziom konsensusu dowolnego protokołu używającego wyłącznie takich rejestrów również wynosi 1.
+
+![](https://i.imgur.com/ozpqJoC.png)
+
+
+Pokażemy, że jest możliwe utworzenie algorytmu wait-free dla problemu przybliżonej zgody za pomocą rejestrów atomowych. 
+
+```java=
+double decide(double xa){
+    int i = ThreadID.get(); //0 or 1
+    int j = 1 - i;
+    startValue[i] = xa
+    value[i] = xa
+    if (startValue[j] == -1) // gdy -1 drugi wątek jeszcze nic nie przepisał
+        return startValue[i]
+    while (value[i] - value[j] > epsilon){
+        value[i] = (value[i] + value[j]) / 2
+    }
+    return value[i]
+}
+```
+Gdy wartość nie była wcześniej przypisana, to decide() zwróci tę wartość (drugie decide i tak zmniejszy sobie odległość, aby dopasować się do epsilona), oczywiście ta wartość mieści się w przedziale.
+
+Za każdym obrotem pętli za $y_a$ przypisujemy podzieloną sumę obu liczb. W ten sposób odległość obu tych liczb zmniejsza się. Nie zmniejsza się z każdym obrotem, bo może zdarzyć się sytuacja taka, że wątek A zdąży najpierw sobie zapisać obecne value[i] oraz value[j], a potem wątek B go wyprzedzi (wykona się kilka razy) i mocniej zmniejszy odległość, wtedy wątek A jedynie tę odległość zwiększy, jednak to zwiększenie nadal nie będzie większe niż pierwotnie. To samo, gdy jeden wątek wykona się kilka razy z rzędu, też za każdym takim wykonaniem zmniejszy tę odległość o połowę (z tego wynika również, że jeśli na początku wartość była nullem [tu w implementacji klasy należałoby umieścić inicjalizację obydwóch startValue na -1], to drugi wątek za każdym razem będzie zmniejszał odległość, aż spełni warunek z pętli). Maksymalna liczba wykonań wspomnianych zmniejszeń jest skończona i można ją ograniczyć przez ${\lg((x_a - x_b)/epsilon)}^{2}$, z tego powodu będzie to implementacja wait-free
+
+## Zadanie 7
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![image alt](https://i.imgur.com/QXJnUfn.png)
+
+--------
+
+- Dzielimy problem na logarytmicznie wiele podproblemów.
+- W każdej "turze" wątki będą proponować kolejny bit swojego rozwiązania.
+- Mamy wtedy w każdej turze co najwyżej dwa zespoly (0 vs 1).
+- W momencie kiedy prefiks już ustalonego rozwiązania nie pasuje do mojej propozycji to przestaję brać udział w glosowaniu (tj. np. nawet jeśli moja 1/0 na k-tym miejscu by wygrała to i tak nie powstanie z tego liczba, której oczekuję) i czekam aż reszta podejmie decyzję
+- ~~Takie czekanie na decyzję to teoretycznie busy-waiting (lub sen) ale konsensus zostanie wyznaczony w skończonej liczbie kroków (O(32) dla 32-bitowej liczby itd.) jeżeli pominiemy działalność schedulera~~
+
+\* wniosek z poprzednich zadań - zamiast czekać, w momencie przegranej, można przyjąć cudzą propozycję (zgodną z prefiksem) i walczyć o nią
+
+## Zadanie 8
+
+:::success
+Autor: Dawid Dudek
+:::
+
+![](https://i.imgur.com/peLFX8E.png)
+
+
+```java=
+class FIFOconsensus<T> {
+    FIFO queue;
+    T[] propose;
+    T decide(T value) {
+        propose[threadID] = value;
+        queue.enq(threadID);
+        return propose[queue.peek()];
+    }
+}
+```

@@ -1,0 +1,685 @@
+# L1 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Andrzej Morawski	
+:::
+Moc zużywana przez pracujący procesor:
+$$
+P = CV^2*f\\
+\text{}
+C = c * n, \text{gdzie } c \text{ to stała, } n \text{ to liczba tranzystorów.}\\
+\text{}
+V = x * f, \text{gdzie } x \text{ to stała, } f \text{ to częstotliwość.}
+$$
+Mamy procesor, który składa się z dwóch rdzeni, chcemy aby zużywał on zdecydowanie mniej mocy niż pierwszy procesor ale przy tym wykonywał zadanie w takim samym czasie zatem:
+$$
+P_1 = c * n_1 * x^2 * f_1^3\\
+\text{oraz}\\
+P_2 = c * n_2 * x^2 * f_2^3\\
+$$
+Możemy zauważyć, że zwiększając ilość rdzeni (tranzystorów) oraz zmniejszając częstotliwość uzyskamy taką samą wydajność. Załóżmy więc że:
+$$
+n_2 = 2 * n_1\\
+\text{oraz} \\
+f_2 = \frac{1}{2}*f_1
+$$
+Mamy więc
+$$
+P_2 = c * n_2 * x^2 * f_2^3 = 2 * c * n_1 * x^2*(\frac{1}{2}*f_1)^3=\\
+2 * c *n_1*x^2*\frac{1}{8}*f_1^3 = \frac{1}{4}*c*n_1*x^2*f_1^3 = \frac{1}{4}P_1
+$$
+Zatem uzyskaliśmy procesor, który zużywa mniej mocy niż pierwotny.
+
+## Zadanie 2
+:::success
+Autor: Tomasz Wołczański	
+:::
+
+Problem sekcji krytycznej polega na zaprojektowaniu protokołu, który pozwoliłby wielu procesom na dostęp do tzw. sekcji krytycznej, nie dopuszczając sytuacji, w której w sekcji krytycznej znajdowałby się więcej niż jeden proces.
+
+Przykład problemu:
+Alicja i Bob mieszkają w zamkach nad jeziorem, do którego co jakiś czas wpuszczają swoje zwierzęta - smoki. Problem polega na wymyśleniu takiego sposobu komunikacji między Alicją i Bobem, aby w jeziorze nigdy nie znalazły się dwa smoki jednocześnie. Sekcją krytyczną jest tutaj jezioro, a procesami - Alicja i Bob. Rozwiązaniem tego problemu jest komunikacja za pomocą flag.
+
+:::info
+Sposób postępowania Alicji:
+1. Podnieś flagę.
+2. Poczekaj, aż flaga Boba będzie opuszczona.
+3. Wpuść smoka do jeziora.
+4. Gdy smok powróci, opuść flagę.
+
+Sposób postępowania Boba:
+1. Podnieś flagę.
+2. Dopóki flaga Alicji jest podniesiona:
+    1. Opuść flagę.
+    2. Poczekaj, aż flaga Alicji będzie opuszczona.
+    3. Podnieś flagę.
+3. Wpuść smoka do jeziora.
+4. Gdy smok powróci, opuść flagę.
+:::
+
+Protokół można poprawić w następujący sposób:
+
+:::info
+Sposób postępowania Alicji:
+1. Podnieś flagę.
+2. Dopóki flaga Boba jest podniesiona:
+    1. Jeżeli wskaźnik wskazuje na Boba:
+        1. Opuść flagę.
+        2. Poczekaj, aż flaga Boba zostanie opuszczona.
+        3. Podnieś flagę.
+    2. Wpp:
+        1. Poczekaj, aż flaga Boba zostanie opuszczona.
+3. Pociągnij za sznurek.
+4. Wpuść smoka do jeziora.
+5. Gdy smok powróci, opuść flagę.
+
+Sposób postępowania Boba:
+1. Podnieś flagę.
+2. Dopóki flaga Alicji jest podniesiona:
+    1. Jeżeli wskaźnik wskazuje na Alicję:
+        1. Opuść flagę.
+        2. Poczekaj, aż flaga Alicji zostanie opuszczona.
+        3. Podnieś flagę.
+    2. Wpp:
+        1. Poczekaj, aż flaga Alicji zostanie opuszczona.
+3. Pociągnij za sznurek.
+4. Wpuść smoka do jeziora.
+5. Gdy smok powróci, opuść flagę.
+:::
+
+Spełnia on warunki wzajemnego wykluczania, niezakleszczenia i niezagłodzenia.
+
+* niezakleszczenie
+Rozważmy dwa przypadki:
+    * jedna z osób chce wpuścić smoka, a druga nie
+    Wtedy pierwsza przechodzi do kroków 3-5 (czyli wpuści swojego smoka), bo warunek kroku 2. nie jest spełniony.
+    * Alicja i Bob jednocześnie zechcą wpuścić smoki do jeziora (czyli w miarę jednocześnie podniosą flagi)
+    Wtedy w kroku 2. jedno z nich przejdzie do kroku 2.1., a drugie do kroku 2.2. (gdy wskaźnik wskazuje na Boba, to Alicja przejdzie do kroku 2.1., a Bob do kroku 2.2., i symetrycznie w przypadku, kiedy wskaźnik wskazuje na Alicję). Osoba, która trafi do kroku 2.1. opuści flagę i "uwolni" drugą osobę, która następnie przejdzie do kroków 3-5 (czyli wpuści swojego smoka).
+* wzajemne wykluczanie
+Załóżmy nie wprost, że w jeziorze znalazły się dwa smoki. Przypuśćmy, że smok Alicji został wpuszczony do jeziora jako ostatni. Przed wpuszczeniem smoka przez Alicję mamy dwa przypadki:
+    * Alicja podniosła flagę i zobaczyła, że flaga Boba jest opuszczona
+Wtedy smok Boba nie znajdował się w jeziorze w momencie wpuszczania smoka przez Alicję, więc mamy sprzeczność z założeniem.
+    * Alicja podniosła flagę i zobaczyła, że flaga Boba jest podniesiona
+Wtedy, ponieważ smok Boba znajduje się w jeziorze, to Bob wykonał już 4. krok swojego protokołu, ale nie wykonał jeszcze 5. kroku. Zauważmy, że w takiej sytuacji, niezależnie od stanu wskaźnika, Alicja czeka (w kroku 2.1.2. lub 2.2.1.), aż Bob opuści swoją flagę, więc wpuści swojego smoka tylko wtedy, gdy Bob przejdzie do kroku 5., czyli gdy smok Boba powróci z jeziora. Mamy sprzeczność, bo to oznacza, że po wpuszczeniu smoka przez Alicję w jeziorze będzie znajdował się tylko smok Alicji.
+* niezagłodzenie
+Żaden smok nie zostanie zagłodzony, ponieważ w sytuacji, gdy obie osoby zechcą jednocześnie wpuścić swoje smoki do jeziora, osoba której smok znajdował się w jeziorze jako ostatni będzie musiała ustąpić drugiej osobie (wskazywanej przez wskaźnik).
+
+## Zadanie 3
+:::success
+Autor: Kamil Galik	
+:::
+
+**Problem producenta-konsumenta:** Mamy 2 wątki, które korzystają z pewnego bufora. Jeden z nich jest producentem i dokłada dane do bufora, a drugi jest konsumentem i wyciąga dane z bufora. Oba procesy nie mogą jednocześnie korzyustać z bufora, producent nie będzie dokładał elementów do bufora gdy ten jest niepusty, a konsument nie będzie brał elementów z bufora gdy ten jest pusty.
+
+
+Przykład: 
+Bob i Alicja się pokłócili, Alice wzięła smoki, ale Bob zadeklarował się dawać im jedzenie. Smoki reagują agresją na obecność Boba oraz nie może się on spotkać z Alicją. Smoki potrzebują wychodzić do jeziora, bo tam Bob zostawia im jedzenie.
+
+Producentem będzie Bob, który zostawia jedzenie w jeziorze. Nie będzie on  dokładał jedzenia póki poprzednia partia nie zostanie zjedzona.
+
+Konsumentem jest Alica, która wypuszcza smoki, by zjadły dostarczone jedzenie, po czym one wracają. Alicja nie zamierza wypuszczać smoków, gdy w jeziorze nie ma jedzenia.
+
+Rozwiązanie na przerwaniach bez podglądania stanu:
+
+Oboje teraz mają puszki na swoich oknach i sznurki poprowadzone do odpowiednich domów (sznurek od puszki Boba do domu Alicji i vice versa). 
+
+Algorytm Alicji:
+1. Czeka aż puszka zniknie z parapetu.
+2. Wypuszcza smoki.
+3. Stawia swoją puszkę.
+4. Gdy zwierzęta wrócą:
+    1. Jeżeli zjedzą wszystko, to Alicja pociąga za sznurek i strąca puszkę Boba, wpp nie pociąga za sznurek.
+    
+Algorytm Boba:
+1. Czeka aż puszka zniknie z parapetu.
+2. Idzie do jeziora podrzucić jedzenie.
+3. Stawia swoją puszkę.
+4. Pociąga za sznurek i strąca puszkę Alicji.
+
+Zauważmy, że Bob i smoki nie pojawią się jednocześnie w jeziorze. Gdyby tak się stało to oznacza, że Alicja strąciła puszkę Boba, czyli jej smoki wróciły po zjedzeniu całego jedzenia z jeziora zanim Bob się tam wybrał. Sprzeczność.
+
+Bob jest cały czas gotowy dostarczać jedzenie gdy jezioro jest puste, a Alicja wypuszcza smoki gdy wie, że coś jest w jeziorze, więc mamy warunek producenta-konsumenta.
+
+Bob nie musi widzieć co się dzieje u Alicji ani odwrotnie, bo system z 2 puszkami (przerwania) daje wystarczającą informację kiedy wyjść z jedzeniem/kiedy wypuścić smoki.
+
+
+## Zadanie 4
+:::success
+Autor: Julia Matuszewska	
+:::
+
+![](https://i.imgur.com/Ddw1qmV.png)
+**Brak żywotności**:
+- globalne - zakleszczenie
+- pojedyńczego procesu - zagłodzenie
+
+**Brak bezpieczeństwa**:
+np. brak wzajemnego wykluczenia
+
+---
+
+1. **bezpieczeństwa** (niepożądane: obsłużenie niezgodne z kolejnością, kilka klientów na raz)
+2. **bezpieczeństwa** (niepożądane: ciągłe poruszanie się obiektu w górę)
+3. **żywotności** (pożądane: wejście do sekcji krytycznej)
+4. **żywotności** (pożądane: komunikat)
+5. **żywotności** jw / **bezpieczeństwa** (niepożądane: przerwanie bez komunikatu)
+6. **bezpieczeństwa** (niepożądane: spadek kosztu życia)
+7. **żywotności** (pożądane: śmierć)
+
+## Zadanie 5
+:::success
+Autor: Marcin Wróbel	
+:::
+
+Każdy z więźniów otrzymuje jedną z dwóch ról:
+- lider (dokładnie jeden więzień dostaje tą rolę)
+- zwykły więzień
+
+**Strategia lidera**:
+Podczas narady zapamiętuje liczbę N=ilość więźniów
+Na początku tworzy w głowie licznik ustawiony na zero
+Jeżeli wartość licznika wynosi N-1, to ogłasza “każdy z nas przynajmniej raz był w przełączalni“
+Gdy po wejściu do przełączalni zobaczy, że przełącznik jest **włączony**:
+- wyłącza przełacznik i zwiększa swój licznik o jeden
+
+Gdy po wejściu do przełączalni zobaczy, że przełącznik jest **wyłączony**:
+- nic nie robi
+
+**Strategia zwykłego więźnia**:
+Gdy po wejściu do przełączalni zobaczy, że przełącznik jest **włączony**:
+- nic nie robi
+
+Gdy po wejściu do przełączalni zobaczy, że przełącznik jest **wyłączony**:
+- włącza przełącznik, jeżeli nigdy wcześniej go nie włączył
+
+Jeżeli licznik wskazuje N-1, to oznacza, że N-1 razy ktoś włączył przełacznik,
+każdy zwykły więzień może zrobić to tylko raz, zwykłych więźniów jest N-1. Stąd lider ma pewność, że każdy był już w przełączalni.
+
+
+
+## Zadanie 6
+:::success
+Autor: Mikołaj Depta	
+:::
+
+<details>
+<summary>Moja strategia dla zadania 5</summary>
+
+
+Zakładam, że nadzorca będzie wpuszczać więźniów więcej niż N razy (jego obietnica będzie prawdziwa jeśli wpuści ich dokładnie N raz ale wówczas nie istnieje wygrywająca strategia).
+
+Stategia:
+1. specjalny więcej to arbiter, którego zadaniem będzie wyłączanie przełącznika i zapamiętywanie ile razy już to zrobił.
+2. Pozostali więźniowie wchodza do pokoju i włączają przełącznik jeśli już nie jest włączony.
+
+Niech `N` będzie liczbą więźniów bez arbitra.
+
+Przełącznik w stanie włączonym oznacza, że jakiś więzień wszedł do pomieszczenia conajmniej raz.
+
+Wówczas arbiter musi czekać, aż doliczy do `N` i oznajmia, że wszyscy już byli.
+</details>
+
+
+Problem z wcześniejszą strategią: 
+liczyć do 10? - nie wszyscy mogli wejść jesli przełącznik był początkowo zapalony.
+liczyć do 11? - jeśli przałącznik nie był zapalony to nigdy nie doliczymy.
+
+Tutaj zmodyfikujemy nieco strategię, arbiter dalej gasi włączony przełącznik ale teraz liczy do `2 * N`. A pozostali więźniowie mogą zapalić przełącznik co najwyżej dwa razy.
+
+Rozważmy dwa scenariusze:
+1. Przełącznik był początkowo włączony:
+Najbardziej niekorzystny scenariusz zliczenia do `2N - 1`
+```
+Dodatkowo + z początkowego ustawienia przełącznika.
+
+1.     ++
+2.     ++
+3.     ++
+...    ++
+N - 1. ++
+N.     __
+```
+
+Zauważmy, że liczba `2N - 1` jest największą liczbą do jakiej może doliczyć arbiter gdy jeszcze jakiś więzień mógł nie być w pokoju. Przy `2N` każdy musiał być co najmniej raz. Na pewno doliczymy i na pewno będziemy mieć dobry wynik
+
+2. Przełącznik był początkowo wyłączony:
+
+```
+1.     ++
+2.     ++
+3.     ++
+...    ++
+N - 1. ++
+N.     ++
+
+Łącznie 2N
+```
+
+W tym przypadku ponownie liczenie do `2N` gwarantuje nam, że każdy więzień był w pokoju oraz mamy gwarancję, że na pewno do niej doliczymy.
+
+
+## Zadanie 7
+:::success
+Autor: Marcin Sarnecki	
+:::
+1. Przyspieszenie: $\frac{1}{(0.4 + 0.6/n)} \rightarrow 2.5$ przy n dażącym do nieskończoności
+
+2. k - przyspieszenie
+ $(\frac{0.3}{k} + \frac{0.7}{n}) * 2 = 0.3 + \frac{0.7}{n}$
+ $\frac{0.6}{k} + \frac{0.7}{n} = 0.3$
+ $\frac{0.6}{k} = 0.3 - \frac{0.7}{n}$
+ $k = \frac{0.6}{0.3 - \frac{0.7}{n}}$
+
+
+3. $m + \frac{1-m}{n} = 2(\frac{m}{3} + \frac{1 - \frac{m}{3}}{n})$
+   $\frac{m}{2} + \frac{1-m}{2n} =   \frac{m}{3} + \frac{1 - \frac{m}{3}}{n}$
+   $\frac{m}{6} + \frac{1-m}{2n} = \frac{2 - \frac{2m}{3}}{2n}$
+   $\frac{m}{6} = \frac{1 + \frac{m}{3}}{2n}$
+   $\frac{m}{3} = \frac{1 + m/3}{n}$
+   $\frac{nm}{3} = 1 + \frac{m}{3}$
+   $\frac{nm}{3} - \frac{m}{3} = 1$
+   $m(\frac{n}{3} - \frac{1}{3}) = 1$
+   $m = \frac{1}{\frac{n-1}{3}}$
+   $m = \frac{3}{n-1}$
+
+---
+#### 2.
+
+$p'$ - frakcja wykonanywana równolegle w P'
+$p''$ - frakcja wykonywana równolegle w P''
+
+$$
+\text{2 x Przyspieszenie P' = Przyspieszenie P''}
+$$
+
+$$
+2\cdot\frac{1}{1-p'+\frac{p'}{n}} = \frac{1}{1-p''+\frac{p''}{n}}
+$$
+$$
+\frac{2}{0.3+\frac{0.7}{n}} = \frac{1}{1-p'' + \frac{p''}{n}}
+$$
+$$
+2n-2p''n + 2p''= 0.3n + 0.7
+$$
+$$
+-2p''n + 2p''= -1.7n + 0.7
+$$
+$$
+p''= \frac{0.7 - 1.7n}{2-2n} \implies \lim_{n \rightarrow \infty} \frac{0.7-1.7n}{2-2n} = 0.85
+$$
+
+Dwukrotne przyspieszenie możemy uzyskać dopiero od $n=5, \ p''=0.975$.
+
+Stąd wniosek, że M musi zajmować od 2.5% do 15% czasu programu P''. Zatem powinniśmy przyspieszyć M od 12x do 2x w zależności od liczby rdzeni.
+
+#### 3.
+
+
+$1-p' \not= 3(1-p'')$ -- nie możemy założyć, że frakcja czasu wykonywania M zmniejszy się 3 krotnie z 3 krotnym przyspieszeniem M - zmieni się również całkowity czas wykonania programu.
+
+Przykład dla procesora z jednym rdzeniem:
+
+Całkowity czas wykonywania programu P to 1000ms. Powiedzmy, że M wykonuje się 750ms - reszta 250ms. Przyspieszamy M 3 krotnie więc będzie się wykonywać 250ms. Nowy całkowity czas wykonania programu to 500ms. Frakcja nowego 3 krotnie szybszego M to 0.5. Zatem $0.75 \not= 3\cdot0.5$
+
+
+$C$ - całkowity czas programu P
+$M$ - całkowity czas wykonania metody M
+$R$ - całkowity czas wykonania reszty
+
+$C'$ - całkowity czas programu P'
+$C''$ - całkowity czas programu P''
+$M'$ - całkowity czas wykonania 3x szybszego M
+
+Założenia: $M = 3M', C' = 2C''$ 
+
+$C = M + R$
+
+$C' = M + \frac{R}{n}$
+
+
+$C'' = M' + \frac{R}{n}$, 
+
+$$
+C' = 2C''
+$$
+
+$$
+0.5(M + \frac{R}{n}) = M' + \frac{R}{n}
+$$
+$$
+M - 2M' = \frac{R}{n}
+$$
+$$
+\frac{1}{3}Mn = R
+$$
+
+Chcemy frakcję M w programie C : $\frac{M}{C} = \frac{C-R}{C} = \frac{C-\frac{1}{3}Mn}{C} = 1 - \frac{Mn}{3C} \implies \frac{M}{C}(1 + \frac{n}{3}) = 1 \implies \frac{M}{C} = \frac{3}{3+n}$
+
+![](https://i.imgur.com/TKytEUW.png)
+
+
+
+## Zadanie 8
+:::success
+Autor: Mateusz Kisiel	
+:::
+![](https://i.imgur.com/AJDABAC.png)
+
+Mamy stół przy którym siedzi N filozofów. Pomiędzy każdym z filozofów znajduje się jeden widelec, jak na rysunku powyżej. W losowych momentach filozofowie głodnieją i chcą chwycić za widelce po obu stronach stołu i zacząć jeść. Nie mogą jednak chwycić za ten sam widelec.
+
+
+![](https://i.imgur.com/Eabh7DI.png)
+
+![](https://i.imgur.com/3qE72ES.png)
+![](https://i.imgur.com/HpRPp8x.png)
+
+Obecnie każdy czeka aż lewy widelec się zwolni, a gdy się zwolni czeka na prawy widelec. Jak oba się zwolnią zaczyna jeść i potem je odkłada.
+
+Problem jest gdy przy stole jest tylko 2 filozofów i jeden chywci za wielec po lewej, drugi zrobi to samo i obaj będą czekać na widelec prawy. (Deadlock)
+To samo może nastąpić przy dowolnej liczbie filozofów, jednak szansa na to jest wtedy mniejsza.
+    
+
+
+<details>
+  <summary>Rozwiązanie</summary>
+    Przedstawie rozwiązanie w kodzie udostepniając ekran. 
+    
+    Możemy wybrać losowo filozofa i kazać mu brać widelce w odwrotnej kolejności. Wtedy nie będzie cyklu.
+</details>
+
+==========
+
+# L1 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Mikołaj Jaszcza	
+:::
+![](https://i.imgur.com/BBCEV2m.png)
+
+Rozważamy układ dwóch procesorów o jak najmniejszej (łącznej) mocy takich, aby wykonały dane zadanie w łącznym czasie równym pewnemu danemu mocniejszemu procesorowi. 
+
+Skoro algorytm da się zrównoleglić uzyskując dwukrotne przyspieszenie - nasz problem redukuje się do znalezienia takich parametrów procesora, aby działał 2 razy wolniej niż procesor "wzorcowy", a jednocześnie jego konstrukcja zużywała jak najmniej mocy.
+
+Mamy więc moc procesora "wzorcowego":
+$$ P = CV^2 * f_1 $$, czyli - za treścią zadania - możemy to przedstawić jako:
+$$ P = cn_1 * \alpha^2 * f_1^2 * f_1 $$
+
+gdzie $$n$$ jest liczbą tranzystorów, a $$ V $$ możemy oznaczyć jako $$\alpha* f$$
+Oznaczmy czas, potrzebny mu na wykonanie zadania jako $$t_1$$ zgodnie z treścią zadania.
+
+Upraszaczjąc:
+$$ P = cn_1 * \alpha^2 * f_1^3 $$
+
+Rozważmy procesor, który ma 2 razy więcej tranzystorów (tj. ma 2 rdzenie), tj: $$n_2 = n_1 * 2$$. Zmniejszmy jednak częstotliwość procesora w taki sposób, że 
+$$f_2 = f_1 * \frac{1}{2}$$. Zauważmy, że łącznie, mamy teraz 2 jednostki o 2 razy mniejszej częstotliwości niż bazowa - a skoro algorytm można było "zrównoleglić" - to czas działania wynosi $$t_2 = 2*t_1 * \frac{1}{2}$$. Zauważmy jednak, że uzyskaliśmy procesor zużywający mniej mocy, poniewać:
+$$P_2 = cn_2 * \alpha^2  * f_2^3 $$, a korzystając z zależności opisanych wyżej mamy:
+$$P_2 = c(2*n_1) * \alpha^2  * (\frac{1}{2} * f_1)^3 = 2 *\frac{1}{8} * cn_1 * \alpha^2 * f_1^3 = \frac{1}{4} * P_1  $$.
+
+Zatem mając do dyspozycji 2 rdzenie o 2 razy mniejszej częstotliwości możemy uzyskać taki sam czas wykonania programu, jednocześnie pobierając 4 razy mniej mocy.
+
+## Zadanie 2
+:::success
+Autor: Rafał Starypan	
+:::
+![](https://i.imgur.com/SaUP8Uf.png)
+![](https://i.imgur.com/my4frvL.png)
+
+
+
+Problem sekcji krytycznej - dwa wątki korzystają z jakiegoś wspólnego zasobu, np. z jeziora, podczas gdy w danym momencie tylko jeden proces może z niego korzystać.
+
+Rozwiązanie z głodzeniem Boba:
+
+Alicja:
+1. Podnieś flagę
+2. Poczekaj aż flaga Boba będzie obniżona
+3. Wypuść smoka
+4. Poczekaj aż smok wróci i opuść flagę
+
+Bob:
+1. Podnieś flagę
+2. Dopóki flaga alicji jest w górze
+2.1 Obniż flagę
+2.2 Poczekaj aż jej flaga opadnie
+2.3 Podnieś flagę 
+3. Wypuść smoka
+4. Poczekaj aż smok wróci i opuść flagę
+
+Ulepszone rozwiązanie:
+Alicja:
+1. Podnieś flagę
+2. Dopóki flaga Boba jest w górze
+2.1. Jeśli napis wskazuje Bob:
+    2.1.1 Obniż flagę
+    2.1.2 Czekaj aż napis wskaże Alicja
+    2.1.3 Podnieś flagę
+3. Wypuść smoka
+4. Poczekaj aż smok wróci
+5. Ustaw napis na Bob
+6. Obniż flagę
+
+Bob:
+1. Podnieś flagę
+2. Dopóki flaga Alicji jest w górze:
+2.1 Jeśli napis wskazuje Alicja:
+    2.1.1 Obniż flagę
+    2.1.2 Poczekaj aż napis wskaże Bob
+    2.1.3 Podnieś flagę
+3. Wypuść smoka
+4. Poczekaj aż smok wróci
+5. Ustaw napis na alicja
+6. Opuść flagę
+
+Zagłodzenie
+
+Załóżmy nie wprost, że doszło do zagłodzenia, czyli jeden ze smoków nigdy nie wejdzie do jeziora (niech będzie to smok Boba). Skoro Bob chce wpuścić smoka, a nie może, to znaczy, że ma obniżoną flagę i czeka aż napis wskaże jego imię. Smok Alicji wracając ustawi napis na "Bob", co prowadzi do sprzeczności.
+
+Wzajemne wykluczanie
+
+Załóżmy nie wprost, że w jeziorze znalazły się 2 smoki jednocześnie. Wtedy Alicja i Bob mają podniesione flagi. Bob wpuszcza smoka. Jeśli Alicja również wpuściła smoka, to odeszła od algorytmu, gdyż napis nie wskazywał jej imienia.
+
+Zakleszczenie
+
+Załóżmy nie wprost, że doszło do zakleszczenia, czyli zarówno Alicja jak i Bob chcą wpuścić smoka do jeziora, ale żadne z nich nie może tego zrobić. Napis wskazuje jedną z tych osób wpuszcza smoka do jeziora, a druga musi poczekać.
+
+
+
+## Zadanie 3
+:::success
+Autor: Joanna Stachowicz	
+:::
+![](https://i.imgur.com/qGrhNAB.png)
+![](https://i.imgur.com/lXT8XCB.jpg)
+![](https://i.imgur.com/x9OjWkX.png)
+![](https://i.imgur.com/pQdMmJ4.png)
+
+
+
+
+
+## Zadanie 4
+:::success
+Autor: Maria Szlasa	
+:::
+
+![](https://i.imgur.com/gTPd9yJ.png)
+
+****
+
+**własność żywotniści** - kiedyś stanie się coś pożądanego
+brak żywotności to znaczy, że nastąpi np zakleszczenie
+
+**własność bezpieczeństwa** - nigdy nic złego się nie stanie
+brak bezpieczeństwa to znaczy, że dwie rzeczy będą w sekcji krytycznej
+
+****
+
+1. Klienci są obsługiwani zgodnie z kolejnością przybycia.
+**własność bezpieczeństwa:** każdy z klientów zostanie osobno obsłużony i równo potraktowany
+2. Co idzie do góry, musi zejść na dół.
+**własność bezpieczeństwa:** to co weszło na górę, zejdzie na dół
+3. Jeśli co najmniej dwa wątki oczekują na wejście do sekcji krytycznej, to przynajmniej jednemu to się udaje.
+**własność żywotności:** chcemy, aby jednemu z wątków udało się wejść do sekcji krytycznej
+4. Jeśli nastąpi przerwanie, to w ciągu sekundy drukowany jest komunikat.
+**własność żywotności:** chcemy po sekundzie otrzymać komunikat
+5. Jeśli nastąpi przerwanie, to drukowany jest komunikat.
+**własność żywotności:** chcemy otrzymać wydrukowany komunikat
+6. Koszt życia nigdy nie spada.
+**własność bezpieczeństwa:** nie zdarzy się, że koszt życia spadnie
+7. Dwie rzeczy są pewne: śmierć i podatki.
+**własność żywotności:** śmierć
+**własność bezpieczeństwa:** podatki
+## Zadanie 5
+:::success
+Autor: Patryk Mazur	
+:::
+:::spoiler Zadanie 5.
+![](https://i.imgur.com/16EflBc.png)
+:::
+
+**Strategia uwolnienia się (Gdy przełącznik jest poczatkowo wyłączony):**
+
+Jeden z więźniów będzie licznikiem, on będzie odpowiedzialny za zliczanie więźniów oraz za oświadczenie, że każdy więzień był w pokoju przynajmniej raz.
+
+Zakładamy, że licznik pamięta, ilu więźniów jest ogółem. 
+
+Strategia polega na tym, że każdy więzień, który wchodzi po raz pierwszy do pokoju ze zgaszonym przełącznikiem, zapala go i zapamiętuje to. 
+Jeżeli więzień wchodzi do pokoju z zapalonym przełącznikiem, nic nie robi. A jeżeli więzień, który już kiedyś zapalił przełącznik, wejdzie do pokoju ze zgaszonym to też nic nie robi.
+
+Gdy licznik wchodzi do pokoju z zapalonym przełącznikiem, dodaje w głowie 1, oraz gasi przełącznik.
+
+Przez to, że każdy pamięta o swoim "zapaleniu", mamy pewność, że nikt nie zapali przełącznika więcej niż raz.
+
+Niech n będzie liczbą więźniów (bez licznika).
+Jeżeli licznik doliczy do n to ma pewność, że każdy był w pokoju przynajmniej raz.
+
+
+## Zadanie 6
+:::success
+Autor: Magdalena Rzepka	
+:::
+
+**Jest n więźniów i my.**
+My jesteśmy licznikiem (zaczynamy liczyć od 0).
+
+Nasza strategia(licznika):
+-**przycisk jest włączony - dodaj 1 do licznika i wyłącz przycisk.**
+-przycisk jest wyłączony - nic nie rób.
+-**gdy doliczymy do 2n to możemy wyjść z więzienia.**
+
+Strategia więźniów:
+-przycisk jest włączony - nic nie rób.
+-**przycisk jest wyłączony - włącz, ale tylko 2 razy możesz to zrobić.**
+
+Gdy licznik wynosi 2n to:
+-przycisk był początkowo wyłączony i każdy więzień włączył go 2 razy.
+-przycisk był początkowo włączony i każdy więzień włączył go 2 razy oprócz jednego, który włączył go tylko jeden raz.
+
+Gdyby jedna osoba nigdy nie weszła to byłoby maksymalnie (n-1) * 2 + 1 = 2n - 2 + 1 = 2n - 1 < 2n
+Więc mamy pewność, że każdy więzień był przynajmniej raz.
+
+## Zadanie 7
+:::success
+Autor: Hubert Obrzut	
+:::
+
+![](https://i.imgur.com/X7uhI3W.png)
+![](https://i.imgur.com/Auq075W.jpg)
+![](https://i.imgur.com/AGIYLfc.jpg)
+
+
+## Zadanie 8
+:::success
+Autor: Kamila Goszcz	
+:::
+
+Żeby doszło do deadlocka każdy z filozofów musi mieć dokładnie po 1 widelcu. 
+
+Wystarczy, że jeden z filozofów będzie brał jako pierwszy prawy widelec wtedy (załóżmy, że to będzie 1):
+
+| 1 | 2 |
+
+Wtedy jeżeli 2 weźmie jeden widelec to 1 nie będzie mógł wziąć żadnego a zatem nigdy ie będzie sytuacji, że każdy z filozofów będzie miał dokładnie jeden widelec.
+
+```=
+public class Main {
+    static final int N = 5;
+    public static void main(String[] args) throws InterruptedException {
+        System.out.println("Starting...");
+        Fork forks[] = new Fork[N];
+        Philosopher philos[] = new Philosopher[N];
+        for (int i = 0; i < N; i++)
+            forks[i] = new Fork(i);
+        Philosopher p;
+        for (int i = 0; i < N; i++) {
+            p = new Philosopher(i,
+                    forks[i],
+                    forks[(i + 1) % N]);
+            philos[i] = p;
+            p.start();
+        }
+        for (int i = 0; i < N; i++) {
+            System.out.printf("Waiting for philosopher %d to finish\n", i);
+            philos[i].join();
+        }
+    }
+}
+```
+```=
+class Fork {
+    boolean taken;
+    int id ;
+    public Fork(int myID) {
+        id = myID;
+    }
+    public synchronized void get() throws InterruptedException {
+        while (taken) {
+            wait ();
+        }
+        taken = true;
+    }
+    public synchronized void put() {
+        taken = false;
+        notify ();
+    }
+}
+```
+```=
+import java.util.Random;
+
+class Philosopher extends Thread {
+    int id;
+    Fork left;
+    Fork right;
+    public Philosopher(int myID, Fork myLeft, Fork myRight) {
+        id = myID;
+        left = myLeft;
+        right = myRight;
+    }
+    public void run() {
+        Random random = new Random();
+        while (true) {
+            try {
+                sleep(random.nextInt(1000));
+                sleep(100);
+                System.out.println("Philosopher " + id + " is hungry");
+                if (id == 0){
+                    left.get();
+                    right.get();
+                } else {
+                    right.get();
+                    left.get();
+                }
+                left.put();
+                right.put();
+            } catch (InterruptedException ex) {
+                return;
+            }
+        }
+    }
+}
+```
+

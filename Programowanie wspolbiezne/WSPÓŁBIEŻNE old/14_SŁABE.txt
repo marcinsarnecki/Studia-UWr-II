@@ -1,0 +1,142 @@
+# Ćwiczenia 14, grupa cz. 10-12, 3. lutego 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::success
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8  |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |--- |
+Przemysław Hoszowski     |       |     |     |     |     |     |     |    |
+Dominik Komła            |       |     |     |     |     |     |     |    |
+Tomasz Mróz              |       |     |     |     |     |     |     |    |
+Mateusz Opala            |       |     |     |     |     |     |     |    |
+Łukasz Pluta             |       |     |     |     |     |     |     |    |
+Antoni Pokusiński        |       |     |     |     |     |     |     |    |
+Szymon Rysz              |       |     |     |     |     |     |     |    |
+Dominik Samorek          |       |     |     |     |     |     |     |    |
+Mateusz Sidło            |       |     |     |     |     |     |     |    |
+Jan Wańkowicz            |       |     |     |     |     |     |     |    |
+Michał Zieliński         |       |     |     |     |     |     |     |    |
+:::
+
+
+Tutaj można do-deklarować zadania 5, 6, 7 z listy 13:
+
+|   Imię i nazwisko      | 5   | 6   | 7   |
+| ----------------------:| --- | --- | --- |
+|    ...                 |     |     |     |
+|    ...                 |     |     |     |
+|    ...                 |     |     |     |
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::danger
+Autor:
+:::
+
+## Zadanie 2
+
+:::danger
+Autor:
+:::
+
+## Zadanie 3
+
+:::danger
+Autor:
+:::
+
+Idea:
+
+```clike=
+// lock-free przestawienie stanu balancera na przeciwny
+AtomicBoolean flag;
+
+while(true) {
+    
+    current_flag = flag.get();
+    if (flag.compareAndSet(current_flag, !current_flag))
+        return current_flag; // ~~
+   
+}
+
+
+```
+
+
+
+
+## Zadanie 4
+
+:::danger
+Autor:
+:::
+
+Idea: 
+```clike=
+// wait-free przestawienie stanu balancera na przeciwny
+
+
+/*
+volatile int value = -1; // value jest współdzielona między wątkami!
+
+
+//value++; inaczej:
+local_value = value;
+local_value = local_value +1;
+value = local_value;
+// ^ źle!!
+*/
+
+AtomicInteger value = new AtomicInteger(0);
+
+int local_value = value.getAndIncrement();
+
+return (local_value % 2); // 0 - token na górne wyjście, 1 - na dolne
+
+// #0 na wyjściu = #1 na wyjściu + 1 
+
+```
+
+> [name=Piotr Witkowski] A co zrobić z przekroczeniem zakresu przez value? (mało ważne, ale jest ładne rozwązanie)
+
+Pomysł: widzisz |value| parzystą -> inkrementuj, nieparzystą -> dekrementuj. Wtedy wartości value będą z przedziału (-n, n), gdzie n jest liczbą wątków.
+
+
+
+
+## Zadanie 5
+
+:::danger
+Autor:
+:::
+
+## Zadanie 6
+
+:::danger
+Autor:
+:::
+
+## Zadanie 7
+
+:::danger
+Autor:
+:::
+
+## Zadanie 8
+
+:::danger
+Autor:
+:::

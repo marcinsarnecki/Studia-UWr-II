@@ -1,0 +1,635 @@
+# L12 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Mikołaj Depta	
+:::
+![](https://i.imgur.com/x0Jf7bA.png)
+
+
+```
+!--*--*--*--A'--(A)--*--!
+!--D'--(D)--*--*--!
+!--*--*--B'--(B)--*--*!
+!--*--C'--(C)--*--!
+
+------(D)---(C)--(B)-(A)----------
+------(D')---(C')--(B')-(A')----------
+
+```
+
+```java=
+public void enq(T value) 
+{ 
+    Node node = new Node(value);
+    while (true) 
+    {
+        Node last = tail.get();
+        Node next = last.next.get(); 
+        if (last == tail.get()) 
+        {
+            if (next == null) 
+            {
+                if (last.next.compareAndSet(next, node)) 
+                {
+                    tail.compareAndSet(last,node);
+                    return; 
+                }
+
+            } 
+            else 
+            {
+                tail.compareAndSet(last, next);
+            } 
+        }
+}
+```
+```java=
+public T deq() throws EmptyException 
+{ 
+    while (true) 
+    {
+        Node first = head.get();
+        Node last = tail.get();
+        Node next = first.next.get(); 
+        if (first == head.get()) 
+        {
+            if (first == last) 
+            { 
+                if (next == null) 
+                {
+                    throw new EmptyException(); 
+                }
+                tail.compareAndSet(last, next); 
+            } 
+            else 
+            {
+                T value = next.value;
+                if (head.compareAndSet(first, next))
+                    return value; 
+            }
+        }
+    }
+}
+```
+
+![](https://i.imgur.com/EzPEAfw.png)
+
+Tak można, skoro metoda kończy się sukcesem to znaczy, że operacja CAS na head się uda.
+
+```java
+T value = next.value;
+if (head.compareAndSet(first, next))
+    return value; 
+```
+
+Skoro operacja ta się powiedzie to znaczy, że wcześniej zapisana wartość była poprawna. 
+Późniejsze wątki na pewno zobaczą zmianę wprowadzoną przez CAS.
+
+![](https://i.imgur.com/Acuvpdv.png)
+
+Tak, ponieważ metoda `enq` odbywa się w dwóch korkach: 
+1. dodanie logiczne - przepięcie wskaźnika `last.next` 
+2. dodanie fizyczne - zaktualizowanie wskaźnika `tail`.
+
+Od momentu wstawienia logicznego, nawet jeśli wstawienie fizyczne się nie uda to wszystkie przyszłe operacje najpierw naprawią listę a dopiero potem wykonają swoją operację. Każde przyszłe wykonanie zobaczy wprowadzone zmiany (nawet jeśli samo będzie musiało dokończyć część operacji). Wiemy, że na pewno zanim wykonana zostanie następna operacja wykonane zostanie też dodawanie logiczne. Tym samym możemy bezpiecznie umiejscowić tam punkt linearyzacji.
+
+
+
+## Zadanie 2
+:::success
+Autor:  Julia Matuszewska	
+:::
+
+![](https://i.imgur.com/zIP6z72.png)
+
+
+**Problem ABA** – rodzaj błędu w synchronizacji procesów wielowątkowych, polegający na tym, że w przypadku dwukrotnego odczytu lokacji pamięci, gdy odczytana wartość jest taka sama w obu odczytach, to „taka sama wartość” jest interpretowana jako „nic się nie zmieniło”. Jednak inny wątek mógł, między odczytami w pierwszym wątku, zmienić wartość tej lokacji, wykonać jakieś zadania, a następnie ponownie zmienić wartość lokacji do wartości równej pierwotnej, niejako oszukując pierwszy wątek, że „nic się nie zmieniło”, mimo że drugi wątek wykonał pracę, która narusza to założenie.
+
+1. proces P1 czyta wartość A z pamięci dzielonej
+2. proces P1 jest wywłaszczony, a uruchamiany jest proces P2
+3. proces P2 zmienia wartość w pamięci dzielonej z A na B, a następnie z powrotem na A przed wywłaszczeniem
+4. proces P1 jest ponownie uruchamiany i widząc, że wartość w pamięci dzielonej się nie zmieniła, kontynuuje pracę
+
+Mimo że P1 może kontynuować działanie, jest także możliwe, że takie zachowanie nie będzie prawidłowe z powodu „ukrytych” zmian w pamięci dzielonej.
+
+![](https://i.imgur.com/SSPG1gT.png)
+
+**Jak to naprawić**
+Do naprawy tego błędu można użyć `AtomicStampedReference<T>`.
+Klasa ta przechowuje referencję do następnego obiektu i stamp, który służy do zidentyfikowania czy nastąpił problem opisany wyżej.
+CAS jednocześnie sprawdza referencję i stamp, a gdy używamy CAS, zwiększamy stamp.
+
+**Przykład użycia**
+![](https://i.imgur.com/UsmKLXP.png)
+
+![](https://i.imgur.com/fPlPk12.png)
+
+
+## Zadanie 3
+:::success
+Autor: Tomasz Wołczański	
+:::
+![](https://i.imgur.com/t3MpfN4.png)
+
+W synchronicznych strukturach danych producenci "spotykają się" z konsumentami: po włożeniu elementu do struktury producent zostaje uśpiony do momentu, gdy element zostanie pobrany przez konsumenta.
+
+![](https://i.imgur.com/qqIJ7dL.png)
+
+## Zadanie 4
+:::success
+Autor: Michał Hetnar	
+:::
+**dualnych**: oznacza że producent i konsument zachowywóją się w ten sam sposób,
+wiec kolejkujemy albo produkcje albo zamówienia.
+
+
+```java
+private enum NodeType {ITEM, RESERVATION};
+private class Node {
+    volatile NodeType type;
+    volatile AtomicReference<T> item;
+    volatile AtomicReference<Node> next;
+    Node(T myItem, NodeType myType) {
+        item = new AtomicReference<T>(myItem);
+        next = new AtomicReference<Node>(null);
+        type = myType;
+    }
+}
+public SynchronousDualQueue() {
+        Node sentinel = new Node(null, NodeType.ITEM);
+        head = new AtomicReference<Node>(sentinel);
+        tail = new AtomicReference<Node>(sentinel);
+    }
+    public void enq(T e) {
+        Node offer = new Node(e, NodeType.ITEM);
+        while (true) {
+            Node t = tail.get(), h = head.get();
+            if (h == t || t.type == NodeType.ITEM) { //czy pusta lub czy zawiera pozycje oczekujace na usuniecie
+                Node n = t.next.get();
+                if (t == tail.get()) { // sprawdzamy czy sa zgodne
+                    if (n != null) { // jesli nie ostatni to pomóz przepiac ogon i koniec
+                    tail.compareAndSet(t, n); //25
+                    } else if (t.next.compareAndSet(n, offer)) { //26 //dołaczamy nowy wezeł jak sie uda..
+                        tail.compareAndSet(t, offer); //27 // przepinamy ogon
+                        while (offer.item.get() == e); // czekamy az ktoś usunie nasz element
+                        h = head.get(); 
+                        if (offer == h.next.get()) //jezeli nasz element nadal jest pierwszy to ustawiamy go na head (wyreczamy tego kto usunął)
+                        head.compareAndSet(h, offer); //31
+                        return;
+                    }
+                }
+            } else {
+                Node n = h.next.get();// bierzemy z za head'a element
+                if (t != tail.get() || h != head.get() || n == null) { // sprawdzamy czy spójne
+                    continue;
+                } // jak tak..
+                boolean success = n.item.compareAndSet(null, e); //40  //zabieramy wartosc, ustawiamy stara na null
+                head.compareAndSet(h, n);    //41 // przesuwamy głowe
+                if (success) // zwracamy succes
+                return;
+            }
+        }
+}
+```
+**25  tail.compareAndSet(t, n); TEN**
+sprawdzamy czy ktoś nie przepiął już ogona jak nie to to robimy.  (25,27)
+jeśli ktoś to zrobił nie ma powodu reagować
+
+**26 t.next.compareAndSet(n, offer)**
+ktoś mógł przypisać szybciej inny offer, bylismy drudzy.(26)
+
+**27  tail.compareAndSet(t, offer); TEN**
+sprawdzamy czy ktoś nie przepiął już ogona jak nie to to robimy.  (25)
+jeśli ktoś to zrobił nie ma powodu reagować
+
+**31  head.compareAndSet(h, offer); TEN**
+mógł to zrobić korzystający z produkcji (lub symetrycznie zamówienia) w (41)
+nie trzeba tego sprawdzac bo jak się nie powiodło to nie ma powodu reagować bo jest już przepięte
+
+**40 n.item.compareAndSet(null, e);**
+ktoś już to zabrał jesteśmy drudzy
+
+**41 head.compareAndSet(h, n); TEN**
+mógł to zrobić tworzący produkcje (lub symetrycznie zamówienie) w (31) lub w (41) ten który był drugi
+nie trzeba tego sprawdzac bo jak się nie powiodło to nie ma powodu reagować bo jest już przepięte
+
+## Zadanie 5
+:::success
+Autor: Wiktor Bukowski	
+:::
+
+![](https://i.imgur.com/pinjzeI.png)
+![](https://i.imgur.com/rvPRoAP.png)
+
+
+![](https://i.imgur.com/hFDxhzN.png)
+
+Rozważmy następujący scenariusz na pustym stosie:
+- wątek A wykonuje metodę `push(a)`
+- wątek B wykonuje metodę `push(b)`
+- wątek C wykonuje metodę `pop()`
+
+Załóżmy, że opearcje na liczniku `top` wykonują się w kolejności A -> C -> B
+
+Wtedy wątek A będzie wstawiać element na pozycję 0, C będzie odczytywać wartość z pozycji 0, a następnie B znów będzie zapisywać na pozycję 0. Jeśli A najpierw zapisze swoją wartość, a B ją nadpisze, to C zdejmie ze stosu wartość B, po czym pozostawi stos pustym.
+
+Na pierwszy rzut oka, rozwiązaniem może być dodanie pętli analogicznej do tej z funkcji `pop()`, która będzie oczekiwać na ustawienie flagi `full` na false. Nie rozwiąże to jednak problemu. Prawidłową metodą poradzenie sobie z problemem jest używanie instrukcji `compareAndSet()` na konkretnych polach tablicy.  
+
+## Zadanie 6
+:::success
+Autor: Marcin Wróbel	
+:::
+![](https://i.imgur.com/aX5qpLh.png)
+**Fig. 11.11**
+```java=
+public interface Rooms {
+    public interface Handler {
+        void onEmpty();
+    }
+    void enter(int i);
+    boolean exit();
+    public void setExitHandler(int i, Rooms.Handler h);
+}
+```
+**Fig. 11.12**
+```java=
+public class Stack<T> {
+    private AtomicInteger top;
+    private T[] items;
+    public Stack(int capacity) {
+        top = new AtomicInteger();
+        items = (T[]) new Object[capacity];
+    }
+    public void push(T x) throws FullException {
+        int i = top.getAndIncrement();
+        if (i >= items.length) { // stack is full
+            top.getAndDecrement(); // restore state
+            throw new FullException();
+        }
+        items[i] = x;
+    }
+    public T pop() throws EmptyException {
+        int i = top.getAndDecrement() - 1;
+        if (i < 0) {
+            // stack is empty
+            top.getAndIncrement(); // restore state
+            throw new EmptyException();
+        }
+        return items[i];
+    }
+}
+```
+1. Problem:
+nie ma gwarancji, że element zostanie zapisany do tablicy items przed ściągnięciem.
+Przykład:
+Mamy początkowo pustą tablicę `items`.
+`Wątek A`, po wykonaniu pierwszej instrukcji w `push()` (`top.getAndIncrement()`) zmienia `top` na `-1`.
+`Wątek B` wykona całe `pop()` i odczyta niepoprawną wartosć z `items[0]`, ponieważ `wątek A` nie zdążył umieścić elementu w tablicy `items`.
+2. Rozwiązanie:
+```java=
+public class Stack<T> {
+    private Rooms rooms;
+    private AtomicInteger top;
+    private T[] items;
+    public Stack(int capacity) {
+        top = new AtomicInteger();
+        items = (T[]) new Object[capacity];
+        rooms = new Rooms();
+    }
+    public void push(T x) throws FullException {
+        rooms.enter(0);
+        int i = top.getAndIncrement();
+        if (i >= items.length) { // stack is full
+            top.getAndDecrement(); // restore state
+            rooms.exit();
+            throw new FullException();
+        }
+        items[i] = x;
+        rooms.exit();
+    }
+    public T pop() throws EmptyException {
+        rooms.enter(1);
+        int i = top.getAndDecrement() - 1;
+        if (i < 0) {
+            // stack is empty
+            top.getAndIncrement(); // restore state
+            rooms.exit();
+            throw new EmptyException();
+        }
+        T item = items[i];
+        rooms.exit();
+        return item;
+    }
+}
+```
+## Zadanie 7
+:::success
+Autor: Marcin Wróbel	
+:::
+![](https://i.imgur.com/ddUls7c.png)
+![](https://i.imgur.com/z92BGoF.png)
+
+Rozwiązanie:
+```java=
+public class Stack<T> {
+    private Rooms rooms;
+    private AtomicInteger top;
+    private boolean isFull = false;
+    private T[] items;
+    
+    private onEmpty() {
+        if (!isFull) return;
+        items = doubleArraySize(items);
+        isFull = false;
+    }
+    
+    public Stack(int capacity) {
+        top = new AtomicInteger();
+        items = (T[]) new Object[capacity];
+        rooms = new Rooms();
+    }
+    public void push(T x) throws FullException {
+        while (true) {
+            while (isFull);
+            rooms.enter(0);
+            int i = top.getAndIncrement();
+            if (i >= items.length) { // stack is full
+                top.getAndDecrement(); // restore state
+                isFull = true;
+                rooms.exit();
+                continue;
+            }
+        }
+        items[i] = x;
+        rooms.exit();
+    }
+    public T pop() throws EmptyException {
+        rooms.enter(1);
+        int i = top.getAndDecrement() - 1;
+        if (i < 0) {
+            // stack is empty
+            top.getAndIncrement(); // restore state
+            rooms.exit();
+            throw new EmptyException();
+        }
+        T item = items[i];
+        rooms.exit();
+        return item;
+    }
+}
+```
+
+====
+
+# L12 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Wiktor Hamberger	
+:::
+![](https://i.imgur.com/cKMh2vI.png)
+
+![](https://i.imgur.com/y2UsD2f.png)
+
+Jeżeli patrzymy tylko na wykonanie z sukcesem, to oznacza, że CAS w linii 48 zwrócił true, więc wtedy dany węzeł istniał i był z przodu kolejki, co oznacza, że w linii 47 ten węzeł też istniał i był z przodu kolejki.
+
+![](https://i.imgur.com/6NShzUx.png)
+
+Tak, ale tylko dlatego, że deq() najpierw usuwa luźny koniec, a inne enq() w przypadku konflikówsame zamykają te luźne końce, dopiero później ściąga.
+
+
+## Zadanie 2
+:::success
+Autor: Mikołaj Jaszcza	 
+:::
+![](https://i.imgur.com/OCcECoB.png)
+
+Problem "ABA" to rodzaj błędu synchronizacji. Dotyczy zwyczajowo operacji CAS (compare-and-set). Bazuje on na (błędnym) założeniu w niektórych miejscach programu, że jeżeli wartość jest taka sama jak wcześniej to nie nastąpiła dla niej żadna zmiana. Tj. może zajść że mimo braku zmiany wartości pojedynczej referencji system zmienił jej znaczenie.
+
+W szczególności przykład opowiedziany na wykładzie dotyczył programu, który  dla współbieżnej kolejki używa "node'ów", które nie są usuwane przy operacji deque (tylko umieszczane we wspólnej puli pustych wierzchołków). Może więc zajść jak poniżej:
+
+![](https://i.imgur.com/5lZs2Pa.png)
+
+Tj. wątek A chce przez operację CAS zmienić head'a listy z wierzchołka a na wierzchołek b (w trakcie deque, gdy a jest pierwszym elementem po strażniku). Załóżmy jednak, że w trakcie nastąpi poniższe:
+- inny wątek/inne wątki usuwają (deque) element b z kolejki oraz jego następnik (element a). Powoduje to umieszczenie node'ów a i b w puli "wolnych" obiektów
+- może teraz nastąpić deque elementów, potem enque d, c, a (tak jak oznaczono na rysynku powyżej)
+- i w końcu uprzednio wywłaszczony wątek A kończy swoje działanie - przez operację CAS powoduje że head listy zamiast wskazywać na a będzie wskazywał na b, ale element b nie należy już do listy
+
+Można uogólnić powyższą sekwencję do kroków typu:
+- wątek A odczytuje pewną wartość a 
+- wątkowi A zostanie odebrany procesor przez systemowego planistę
+- inne wątki modyfikują wartość a -> ... (np. do wartości b), oraz z powrotem ... -> a. Stąd nazwa ABA.
+- wątek A dostaje powrotnie dostęp do procesora
+- działa dalej bez świadomości, że wartość dla obiektu 'a' została zmieniona, co nie jest dla niego rozróżnialne od sytuacji, że żadna zmiana nie miała miejsca
+
+Rozwiązanie:
+![](https://i.imgur.com/IhbG635.png)
+
+"AtomicStampedReference< T >" to klasa która oprócz samego wskaźnika na obiekt zawiera w sobie też dane, które pozwalają identyfikować czy sytuacja opisana powyżej miała miejsce - zawiera informacje pozwalające zidentyfikować czy miała miejsce jakakolwiek modyfikacja na wskaźniku. Zatem jeśli operacja CAS modyfikuje wskaźnik - zostanie to też zawarte w 'stampie' wewnątrz AtomicStampedReference.
+
+
+## Zadanie 3
+:::success
+Autor: Zuzanna Kania	
+:::
+![](https://i.imgur.com/yIjrCwD.png)
+
+**Synchroniczna struktura danych** to taka, która paruje ze sobą operacje producenta i konsumenta (np. enq i deq, push i pop)
+
+**Spotkanie** - moment, kiedy na kolejce synchronicznej działa zarówno enq jak i deq. Wtedy enq przekazuje swój element do deq.
+
+![](https://i.imgur.com/lBwHWAv.png)
+
+## Zadanie 4
+:::success
+Autor: Daniel Boguszewski	
+:::
+![](https://i.imgur.com/pdWJnp7.png)
+
+Uzasadnieniem jest ograniczenie kosztów synchronizacji. Podstawowa kolejka może posiadać wiele enquerów (producentów), którzy próbują dodać element do kolejki oraz wiele konsumentów (dequerów) oczekujących na element, ale tylko jeden (albo dequer, albo enquer) jest w stanie aktualnie działać na kolejce. Mimo to przy każdej wymianie (dequer - enquer) budzą się wszystkie oczekujące wątki, powodując kwadratowo nadmiarową liczbę pobudek (n enquerów, n dequerów, n-1 enquerów, n-1 enquerów, ...).
+Dualna wersja kolejki rozwiązuje wyżej opisany problem.
+
+Intuicyjny model działania:
+Kolejka może być pusta, posiadać jedynie rezerwacje dequerów, albo same elementy enquerów.
+Jeśli kolejka jest pusta, kolejne dequery będą wypełniały ją rezerwacjami, a enquery FIFO je uzupełniać (opróżniając w efekcie kolejkę), natomiast jeśli to producent pierwszy zacznie wypełniać kolejkę, będzie odwrotnie.
+
+Pusta kolejka posiada dwóch strażników, głowę i ogon, które jeśli wskazują na siebie, oznaczają, że kolejka pozostaje pusta. Rozważmy metodę enq().
+![](https://i.imgur.com/oRev45p.png)
+
+Sprawdzamy, czy kolejka jest pusta lub wypełniona elementami enquerów, a jeśli nie, próbujemy znaleźć w kolejce rezerwację do wypełnienia, będzie to pierwszy element od głowy (wiersze 36 - 43). Jeśli wartości ogona, głowy i dodanego elementu posiadają poprawne wartości, enq() próbuje wypełnić rezerwację pierwszego elementu. Niezależnie od tego, czy się to uda, czy nie, głowa jest przestawiana na kolejny element. Dopiero teraz, jeśli rezerwacja się powiodła, enquer kończy działanie. Porażka oznaczałaby, że rezerwacja została wcześniej wypełniona, więc ponawia się działanie.
+
+Jeśli kolejka była pusta lub wypełniona elementami enquerów, początek przypomina działanie bezzamkowej kolejki. Różnica w tym, że gdy ten element zostanie wreszcie wyciągnięty przez dequera, wirujący na swoim elemencie enquer próbuje zamienić swój element na strażnika głowy (wyciągane elementy są z przodu kolejki) i kończy działanie. Ta część odpowiada zaznaczonemu niżej blokowi kodu z LockFreeQeueue (pogrubione linie zastępują dodatkowe instrukcje SynchronousDualQueue):
+![](https://i.imgur.com/lpz07WM.png)
+
+Dodatek:
+Przypadek dodawania elementów do kolejki wypełnionej elementami enquerów (lub pustej):
+Enquer 1 otrzymuje zadanie dodania elementu do kolejki:
+![](https://i.imgur.com/JShtufM.png)
+
+Enquer 1 stwierdza, że ostatni element wskazuje na null, a ogon wskazuje na strażnika.
+W tym samym czasie Enquer 2 otrzymuje zadanie dołożenia kolejnego elementu do kolejki:
+![](https://i.imgur.com/pNFAGsh.png)
+
+Enquer 2 wykonuje tę samą czynność, ale wyprzedza Enquera 1 i dokłada element na koniec kolejki:
+![](https://i.imgur.com/M5kKtUr.png)
+
+Enquer 1 próbuje dołożyć siebie za strażnika, jednak compareAndSet tym razem zawodzi (strażnik nie wskazuje na null). Wobec tego do kolejki wydano polecenie dodania więcej niż jednego elementu i Enquer 1 spróbuje dołożyć swój element jeszcze raz.
+![](https://i.imgur.com/VtCoUEy.png)
+
+W tym przypadku Enquer 2 nie zdążył jeszcze przestawić strażnika, Enquer 1 go w tym wyręczy i spróbuje jeszcze raz dołożyć się na koniec.
+![](https://i.imgur.com/NCYvnjM.png)
+
+Enquer 2 wreszcie wraca do działania i metodą compareAndSet() próbuje przestawić ogon na siebie, ale nie zależy mu na wyniku. Jeśli zamiana się nie powiodła, znaczy że ktoś go w tym wyprzedził. Enquer 1, gdy się obudzi, ustawi ogon na siebie.
+![](https://i.imgur.com/igkNELc.png)
+
+Oba enquery czekają, aż ktoś odbierze ich element (nastąpi deq() na ich elemencie):
+![](https://i.imgur.com/tDjYCgs.png)
+
+Pojawia się Dequer i zabiera element z początku kolejki:
+![](https://i.imgur.com/9gWGj9S.png)
+
+Gdy Enquer 2 to zauważy, spróbuje przestawić głowę dalej i usunąć się z obiegu, jeśli to mu się nie uda, oznacza to, że ktoś go w tym wyprzedził (zrobił to Dequer, sytuacja analogiczna niżej).
+
+Problem jest prostszy, gdy enq() próbuje wywołać się na kolejce wypełnionej rezerwacjami. Na początek enq() upewnia się, że może bezpiecznie pracować na kolejce:
+![](https://i.imgur.com/HO56fCP.png)
+
+Następnie próbuje wypełnić pierwszą rezerwację swoim elementem poprzez compareAndSet() oraz zapisuje, czy mu się to powiodło:
+![](https://i.imgur.com/9PRwz4l.png)
+
+Teraz enquer próbuje przestawić głowę dalej. To służy jedynie zwiększeniu wydajności, w poprzednim przypadku zapewniono, że głowa zostanie przeniesiona. Wobec tego nawet jeśli się nie uda, enquer nie przejmuje się, bo oznacza to, że ktoś go w tym uprzedził:
+![](https://i.imgur.com/8zQo0jM.png)
+
+Jeśli wypełnianie rezerwacji nie powiodło się, oznacza to, że poprzednim elementem nie było null, zatem rezerwację zdążono już wcześniej wypełnić (inny enquer otrzymał polecenie działania), w tym wypadku należy ponowić enq() i wypełnić inną rezerwację. Natomiast jeśli się powiodło, kończymy działanie.
+
+
+## Zadanie 5
+:::success
+Autor: Adam Jarząbek	
+:::
+W tym zadaniu mamy wyjaśnić co jest nie tak z podaną implementacją stosu i zaproponować rozwiązanie.
+
+![](https://i.imgur.com/eKXXopc.png)
+
+
+W tej implementacji dzielimy metody push() i pop() na dwa etapy - rezerwacji i wypełniania. W fazie rezerwacji metody push() wykonujmy getAndIncrement() lub getAndDecrement() na górnym indeksie stosu, żeby zarezerwować miejsce. Następnie w fazie wypełniania wstawiamy element w zarezerowawane miejsce i oznaczamy je jako wypełnione.
+Podobnie pop() najpierw próbuje wykonać getAndDecrement() na górnym indeksie stosu, a następnie pętli się dopóki flaga wypełnienia elementu nie zostanie podniesiona i zwraca ten element.
+
+## Zadanie 6
+:::success
+Autor: Rafał Starypan	
+:::
+![](https://i.imgur.com/vPfTVsT.png)
+![](https://i.imgur.com/WAJQtwR.png)
+![](https://i.imgur.com/tpgBvFN.png)
+
+1. Element dodawany przez metodę push() może nie zostać zapisany w tablicy przed wykonaniem metody pop().
+
+Rozważmy następującą sytuację: Wątek A wykonuje push(x) na pustym stosie. Po wykonaniu instrukcji w linii 9 zmienna top została ustawiona na 1, po czym wątek A został wywłaszczony. Teraz wątek B próbuje wykonać pop(). Do zmiennej i trafi wartość 0 (top - 1 = 1 - 1 = 0). W tablicy items w komórce o indeksie 0 nie ma żadnej wartości, więc pop() nie będzie mógł zwrócić poprawnego wyniku.
+
+2.
+
+```java=
+public class Stack<T> {
+    private AtomicInteger top;
+    private T[] items;
+
+    private Rooms rooms;
+
+    public Stack(int capacity) {
+        top = new AtomicInteger();
+        items = (T[]) new Object[capacity];
+        rooms = new Rooms();
+    }
+
+    public void push(T x) throws FullException {
+        rooms.enter(0);
+
+        int i = top.getAndIncrement();
+        if (i >= items.length) {
+            top.getAndDecrement();
+            rooms.exit();
+            throw new FullException();
+        }
+
+        items[i] = x;
+        rooms.exit();
+    }
+    public T pop() throws EmptyException {
+        rooms.enter(1);
+
+        int i = top.getAndDecrement() - 1;
+        if (i < 0) {
+            top.getAndIncrement();
+            rooms.exit();
+            throw new EmptyException();
+        }
+
+        T item = items[i];
+        rooms.exit();
+        return item;
+    }
+}
+```
+
+## Zadanie 7
+:::success
+Autor: Magdalena Rzepka	
+:::
+
+![](https://i.imgur.com/BKsqmLm.png)
+
+
+Jeżeli kolejka już jest pełna to nie wątek nie wejdzie dalej tylko się zawiesi między while a if isFull.
+Jeżeli kolejka stanie się pełna po rooms.enter(0) to wycofujemy się z wykonanych akcji i zgłaszamy, że nastąpiło zapełnienie isFull i wracamy do początku while aby się zapętlić.
+
+Ostatni wątek wychodzący z push() czyli z rooms(0) uruchomi funkcję onEmpty.
+Po zwiększeniu kolejki wątki czekające będą mogły wejść do pokoju 0 i zostawić swoją wartość.
+
+Do klasy Stack dodajemy zmienną boolean isFull = false;
+```java=
+public void old_push(T x) throws FullException {
+        rooms.enter(0);
+
+        int i = top.getAndIncrement();
+        if (i >= items.length) {
+            top.getAndDecrement();
+            rooms.exit();
+            throw new FullException();
+        }
+
+        items[i] = x;
+        rooms.exit();
+    }
+```
+```java=
+public void push(T x){
+while(true){
+    if(isFull) continue;
+    rooms.enter(0);
+    int i = top.getAndIncrement();
+    if( i>= items.length) {
+       top.getAndDecrement();
+       isFull = true;
+       rooms.exit(0);
+       continue;
+}
+items[i] = x;
+rooms.exit(0);
+return;
+}
+}
+
+void onEmpty(){
+if(isFull == false) return;
+T[] newArray = new T[items.length * 2];
+for(int i = 0; i<items.length; i++)
+{
+    newArray[i] = items[i];
+}
+items = newArray;
+isFull = false;
+return
+}
+```

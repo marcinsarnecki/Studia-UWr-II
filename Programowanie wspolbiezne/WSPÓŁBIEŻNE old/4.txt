@@ -1,0 +1,399 @@
+# Ćwiczenia 4, grupa cz. 12-14, 4. listopada 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Błaszczyk         |       |     |     |     |     |     |     |
+Dawid Dudek              | ==X== |  X  |  X  |  X  |     |  X  |  X  |
+Mateusz Gil              |       |     |     |     |     |     |     |
+Wiktor Hamberger         |       |     |     |     |     |     |     |
+Krzysztof Juszczyk       |   X   |  X  |==X==|  X  |     |  X  |  X  |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Kacper Kingsford         |       |     |     |     |     |     |     |
+Kacper Komenda           |       |     |     |     |     |     |     |
+Aleksandra Kosińska      |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Łukasz Orawiec           |   X   | X   | X   |     |     |  X  |  X  |
+Kamil Puchacz            |       |     |     |     |     |     |     |
+Paweł Sikora             |   X   |  X  |  X  |  X  |     |  X  |     |
+Michał Sobecki           |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Cezary Stajszczyk        |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Cezary Troska            |   X   |  X  |  X  |   X |     |  X  |  X  |
+Daniel Wiczołek          |       |     |     |     |     |     |     |
+:::
+
+
+Tu proszę wpisać nazwiska osób deklarujących zad. 9 z listy 3:
+:::success
+
+Bizub
+
+:::
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+
+:::success
+Autor: Dawid Dudek
+:::
+![](https://i.imgur.com/16bhlFH.png)
+
+![](https://i.imgur.com/HVyakrm.png)
+
+Właściwości poziomów:
+- Co najmniej jeden wątek próbbujący wejść na poziom x odnosi sukces
+- Jeśli więcej niż jeden wątek próbuje wejść na poziom x, wówczas przynajmniej jeden z nich zostaje zablokowany (czyli zostaje na swoim poziomie)
+
+Ten algorytm to uogólniona koncepcja Petersona - zamiast dwuelementowej tablicy flag używamy n-elementowej tablicy level. Każdy poziom ma swojego victima którego odsieje (nie da mu przejść na następny poziom)
+
+Dla wątku A -> level[A] oznacza najwyższy poziom na który próbuje wejść wątek A.
+
+
+Lemat: Na poziomie i znajduje się maksymalnie n-i wątków
+
+Podstawa dla i=0 -> widzimy, że działa z 1 pętli for wszystkie n wątków jest na poziomie 0
+
+Załóżmy że działa dla j-1. Czyli na poziomie j-1 jest conajwyżej n-j+1 wątków. Pokażemy, że conajmniej jeden wątek nie może przejść na poziom j. Zrobimy to przeprowadzając dowód nie wprost.
+
+Załózmy, że na poziomie j jest n-j+1 wątków. Powiedzmy, że ostatni wątek na poziomie j który zapisał coś w polu victim[j] było A. 
+
+Czyli dowolny inny wątek B na poziomie j musiał wpisać victim[j]=B wcześniej. Mamy zatem:
+
+$Write_B(victim[j] = B) -> Write_A(victim[j] = A)$
+
+Dodatkowo widzimy, że  level[B] jest zapisywane przed victim czyli mamy
+
+$Write_B(level[B] = j) -> Write_B(victim[j] = B) -> Write_A(victim[j] = A)$
+
+Teraz wróćmy do wątku A. Widzimy, że w pętli while czyta on level[B] po tym jak ustawił victim[j] = A. Czyli:
+
+
+$Write_B(level[B] = j) -> Write_B(victim[j] = B) -> Write_A(victim[j] = A) -> Read_A(level[B])$
+
+Widzimy zatem problem - B znajduje się na poziome j więc każde odczytanie level[V] da wartość większą lub równą j. Przez to A nie będzie mogła skończyć swojego while więc będzie oczekiwać. Co daje sprzeczność z założeniem, że A weszło na poziom j. 
+
+Widzimy zatem, że algorytm zapewnia wzajemne wykluczenie. Czemu? Ponieważ wejście do sekcji krytycznej jest równoważne z wejściem na poziom n-1. Ile na tym poziomie jest wątków? Zgodnie z twierdzeniem które odowodniliśmy jest to n-n+1 czyli 1 co kończy dowód
+
+
+## Zadanie 2
+
+:::success
+Autor: Michał Sobecki
+:::
+
+Niech $i$ będzie najniższym poziomem, na którym doszło do zagłodzenia wątku, nazwijmy go $A$. 
+Muszą dla tego zjawiska zajść następujące warunki:
+
+1. Dowolny wątek $B$ nie może wejść na poziom $i$ po wątku $A$.
+2. Na poziomie $j$, takim, że $j>=i$ znajduje się jakiś wątek $C$.
+
+Czy jest możliwa sytuacja, że na którymś poziomie czekają 2 wątki?
+Nie, ponieważ victim na danym poziomie wskazuje tylko na 1 wątek. 
+Gdy nowy wątek $B$ wejdzie na poziom $i$, to $victim = B$, a zatem $A$ może przejść wyżej.
+Jeśli wątek $A$ jest sam na danym poziomie, to musi poczekać, aż wątki na wyższych poziomach wyjdą z sekcji krytycznej. 
+
+Czy wątki na wyższych poziomach mogą się zagłodzić? Nie, ponieważ zawsze wątek na najwyższym poziomie przejdzie dalej, ponieważ nie będzie już innych wątków na poziomach wyżej.
+
+Tak więc wątki na wyższych poziomach będą ciągle wchodziły na wyższe poziomy lub przekażą pierwszeństwo innym wątkom, które będą robiły to samo, aż wejdą na poziom $n-1$.
+
+Po wyjściu z sekcji krytycznej ustawiają swój poziom na 0. Wtedy gdy wszystkie wątki z poziomów wyżej to zrobią, czekający wątek może wejść dalej.
+
+Z tego warunku wywnioskować można również, że nie zachodzi zakleszczenie.
+
+![](https://i.imgur.com/4BcUPn5.png)
+
+
+## Zadanie 3
+
+:::success
+Autor: Kamil Kasprzak
+:::
+```
+Zadanie 3. Przypomnij, co to znaczy że algorytm ma własność
+r-ograniczonego czekania (ang. r-Bounded Waiting). Pokaż, że
+algorytm Petersena ma własność 0-ograniczonego czekania, tzn,
+że jest FCFS (First Come First Served).
+```
+
+r-Bounded Waiting <- to górne ograniczenie na ilość wątków, które mogą uzyskać dostęp do CS przed wątkiem A mimo że same zgłosiły chęć uzyskania dostępu później.
+
+```
+public void lock() {
+    flag[i] = true;
+    victim = i;
+    while (flag[j] && victim == i) {};
+}
+public void unlock() {
+    flag[i] = false;
+}
+```
+
+Przyjmijmy że A zgłasza chęć uzyskania dostępu do CS wcześniej lecz B go wyprzedza.
+W takim razie zachodzi (skoro A wykonuje sekcje wejściową)
+${write_A(flag[A]=true) \rightarrow write_A(victim = A)}$
+
+Po czym B zgłasza chęć dostępu CS (również musi wykonać sekcje wejściową), zachodzi sytuacja symetryczna.
+${write_B(flag[B]=true) \rightarrow write_B(victim = B)}$
+
+W tym momencie wątek B zablokuje się podczas ${read_B(flag\ \&\&\ victim)}$
+ponieważ A zgłosił cheć dostępu (wciąż go nie uzyskał) i ofiarą jest B.
+Wątek A nie jest ograniczony przez żadną kolejną instrukcje dlatego też przy wykonaniu kolejnej instrukcji  ${ read_A(flag\ \&\&\ victim) }$ uzyska dostęp do CS.
+
+Zatem mamy sprzeczność. B nie jest w stanie uzyskać dostępu do CS przed A.
+
+## Zadanie 4
+
+:::success
+Autor: Cezary Troska
+:::
+
+```java=
+class Filter implements Lock {
+    int[] level;
+    int[] victim;
+    public Filter(int n) {
+        level = new int[n];
+        victim = new int[n]; // use 1..n-1
+        for (int i = 0; i < n; i++) {
+            level[i] = 0;
+        }
+    }
+    public void lock() {
+        int me = ThreadID.get(); // returns 0..n-1
+        for (int i = 1; i < n; i++) { // attempt to enter level i
+            level[me] = i;
+            victim[i] = me;
+            // spin while conflicts exist
+            while (( ∃ k != me) (level[k] >= i && victim[i] == me)) {};
+        }
+    }
+    public void unlock() {
+        int me = ThreadID.get();
+        level[me] = 0;
+    }
+}
+
+```
+
+Przyjmijmy, że mamy 3 wątki biorące udział w tym algorytmie. 
+1. Wątek 1 zaczyna wykonywać funkcję lock i dochodzi do momentu ustawienia $level[me] = 1$ oraz $victim[1] = me$. Tym samym wykonał DS. Wątek 1 zostaje wywłaszczony.
+2. Wątek 2 zaczyna  wykonywać funkcję lock i dochodzi do momentu ustawienia $level[me] = 1$ oraz $victim[1] = me$. Tym samym wykonał DS. Jest ustawiony jako victim i wątek 1 również posiada level[me]=1, więc wątek 2 czeka aż do wywłaszczenia
+3. Wątek 3 zaczyna wykonywać funkcję lock i dochodzi do momentu ustawienia $level[me] = 1$ oraz $victim[1] = me$. Tym samym wykonał DS. Jest ustawiony jako victim i wątek 1 (oraz wątek 2) również posiada level[me]=1, więc wątek 3 czeka aż do wywłaszczenia
+4. Procesor zostaje przekazany wątkowi 2. Nie jest on już jako victim, więc może wejść na wyższy poziom. Przechodzi przez wszyskie wyższe poziomy, bo warunek czekania nie będzie spełniony ($- ( ∃ k != me) (level[k]>=i)$) i wchodzi do CS. Po wykonaniu CS zaczyna znów wykonywać funkcję lock. Jest ustawiony jako victim i wątek 1 również posiada level[me]=1, więc wątek 2 czeka aż do wywłaszczenia.
+5. Procesor zostaje przekazany wątkowi 3. Nie jest on już jako victim, więc może wejść na wyższy poziom. Przechodzi przez wszyskie wyższe poziomy, bo warunek czekania nie będzie spełniony ($- ( ∃ k != me) (level[k]>=i)$) i wchodzi do CS. Po wykonaniu CS zaczyna znów wykonywać funkcję lock. Jest ustawiony jako victim i wątek 1 również posiada level[me]=1, więc wątek 3 czeka aż do wywłaszczenia.
+
+Kroki 4 i 5 mogą powtarzać się dowolną liczbę razy. Z każdym ich wykonaniem liczba wykonań sekcji krytycznej dla wątków  2 i 3 rośnie. Oznacza to, że różnica w liczbie wykonań sekcji krytycznej dla wątku 1 i któregokolwiek z wątków 2 i 3 może być dowolnie duża. 
+
+## Zadanie 5
+
+:::danger
+Autor: do do-deklaracji i zrobienia następnym razem 
+:::
+
+## Zadanie 6
+
+:::success
+Autor: Krzysztof Juszczyk
+:::
+
+Formalną definicję linearyzacji można streścić w dwóch punktach:
+1. Ciąg wywołania metod w programie współbieżnym powinien mieć taki efekt, jak gdyby te metody zostały wykonane w pewnym sekwencyjnym porządku, jedna po drugiej.
+2. Efekt każdej metody w programie współbieżnym powinien wystąpić w pewnym punkcie czasu pomiędzy jej wywołaniem a powrotem (punkt linearyzacji).
+
+Formalna definicja: 
+Historia $H$ jest linearyzowalna jeśli może być zmodyfikowana do historii $G$ przez:
+* dodanie 0 lub więcej powrotów do oczekujących wywołań
+* usuwanie oczekujących wywołań
+
+I historia $G$ jest równoważna względem legalnej/poprawnej sekwencyjnie historii $S$ takiej, że $\rightarrow_G {\subset} \rightarrow_S$
+
+
+### a)
+#### Nieformalnie:
+![](https://i.imgur.com/XfxH5K1.png)
+
+#### Formalnie:
+Mamy historie $H$: 
+```
+B r.write(1)
+A r.read()
+C r.write(2)
+A r: 1
+B r: void
+C r: void
+B r.read()
+B r: 2
+```
+
+Która jest równoważna poprawnej sekwencyjnie historii $S$:
+```
+B r.write(1)
+B r: void
+A r.read()
+A r: 1
+C r.write(2)
+C r: void
+B r.read()
+B r: 2
+```
+
+oraz ${\rightarrow}_H \subset \rightarrow_S$
+* $\rightarrow_H = \{B.write(1) \rightarrow B.read(), A.read() \rightarrow B.read(), C.write(2) \rightarrow B.read()\}$
+* $\rightarrow_S = \{B.write(1) \rightarrow A.read() \rightarrow C.write(2) \rightarrow B.read()\}$
+
+### b) 
+#### Nieformalnie:
+![](https://i.imgur.com/QqsBYZp.png)
+
+#### Formalnie:
+Mamy historie $H$: 
+```
+B r.write(1)
+A r.read()
+C r.write(2)
+A r: 1
+B r: void
+C r: void
+B r.read()
+B r: 1
+```
+
+Która jest równoważna poprawnej sekwencyjnie historii $S$:
+```
+C r.write(2)
+C r: void
+B r.write(1)
+B r: void
+A r.read()
+A r: 1
+B r.read()
+B r: 1
+```
+
+oraz ${\rightarrow}_H \subset \rightarrow_S$
+* $\rightarrow_H = \{C.write(2) \rightarrow B.read(), B.write(1) \rightarrow B.read(), A.read() \rightarrow B.read()\}$
+* $\rightarrow_S = \{C.write(2) \rightarrow B.write(1) \rightarrow A.read() \rightarrow B.read()\}$
+
+### c) 
+#### Nieformalnie:
+![](https://i.imgur.com/rResT6Q.png)
+Ta historia nie jest linearyzowalna, aby tak było na przedziale czerwonego pola brakuje `p.deq(x)`.
+ 
+#### Formalnie:
+Mamy historie $H$: 
+```
+A p.enq(x)
+A p: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+```
+
+Która nie może zostać rozszerzona do równoważnej poprawnej sekwencyjnie historii $S$, w której następuje wyciągnięcie elementu $x$ z $p$.
+
+### d)
+#### Nieformalnie:
+![](https://i.imgur.com/HkPHJUc.png)
+
+Ta historia nie jest linearyzowalna:
+1. Brakuje pobrania elementu $x$ z $p$ na tym przedziale
+2. Brakuje pobrania elementu $y$ z $q$ na tym przedziale
+
+#### Formalnie:
+Mamy historie $H$: 
+```
+A p.enq(x)
+A p: void
+B q.enq(y)
+B q: void
+A q.enq(x)
+A q: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+B q.deq()
+B q: x
+```
+
+Która nie może zostać rozszerzona do równoważnej poprawnej sekwencyjnie historii $S$, w której następuje:
+- wyciągnięcie elementu $x$ przed $y$ z $p$
+- wyciągnięcie elementu $y$ przed $x$ z $q$
+
+## Zadanie 7
+
+:::warning
+Autor: Aleksandra Kosińska
+:::
+
+
+![](https://i.imgur.com/vNUZEg2.png =500x)
+
+![](https://i.imgur.com/Qllzkx4.png =500x)
+
+**diagram 1 i 2:**
+Jeżeli historia jest linearyzowalna to jest sekwencyjnie spójna.
+
+**diagram 3:**
+
+```
+G:                        S:
+
+A p.enq(x)                B p.enq(y)
+A p: void                 B p: void
+B p.enq(y)                A p.enq(x)
+B p: void                 A p: void
+A p.deq()                 A p.deq()
+a p: y                    A p: y
+
+```
+*G jest ekwiwalentne do S*
+mamy:
+$B\ p.enq(y) \to A\ p.enq(x) \to A\ p.deq(y)$
+
+
+
+**diagram 4:**
+```
+G:                       
+
+A p.enq(x)  
+A p: void 
+B q.enq(y) 
+B p: void 
+A q.enq(x)
+A q: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+B q.deq()
+B q: x
+```
+
+Aby zachować własność $FIFO$ w `S` musimy mieć:
+1. dla queue `p` :  $B\ p.enq(y) \to A\ p.enq(x)$
+2. dla queue `q` : $A\ q.enq(x) \to B\ q.enq(y)$
+
+Ale aby była zachowana ekwiwalentność musimy mieć:
+1. $A\ p.enq(x) \to A\ q.enq(x)$
+2. $B\ q.enq(y) \to B\ p.enq(y)$

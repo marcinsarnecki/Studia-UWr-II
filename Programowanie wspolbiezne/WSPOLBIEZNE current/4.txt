@@ -1,0 +1,571 @@
+# L4 GRUPA 1
+
+## Zadanie 1
+:::success
+Autor:	Kamil Galik	
+:::
+```java=
+class Filter implements Lock {
+    int[] level;
+    int[] victim;
+    public Filter(int n) {
+        level = new int[n];
+        victim = new int[n]; // use 1..n-1
+        for (int i = 0; i < n; i++) {
+            level[i] = 0;
+        }
+    }
+    
+    public void lock() {
+        int me = ThreadID.get(); // returns 0..n-1
+        for (int i = 1; i < n; i++) { // attempt to enter level i
+            level[me] = i;
+            victim[i] = me;
+            // spin while conflicts exist
+            while (( ∃ k != me) (level[k] >= i && victim[i] == me)) {};
+        }
+    }
+    
+    public void unlock() {
+        int me = ThreadID.get();
+        level[me] = 0;
+    }
+}
+```
+*Fakt:* każdy wątek wykonujący metodę lock() znajduje się na jednym z $n-1$ poziomów, z których ostatni oznacza zajęcie zamka. Na poziomie $n - i$ znajduje się jednocześnie co najwyżej $i$ wątków.
+
+*Uzasadnienie*: 
+Zrobimy indukcję po poziomach. Na poziomie 0 trywialnie znajduje się n wątków. Załóżmy indukcyjnie, że na poziomie $j - 1$ (dla $j > 0$) znajduje się co najwyżej $n - j + 1$ wątków. Pokażemy, że na poziom $j$ nie przejdzie przynajmniej 1 wątek.
+
+Załóżmy nie wprost, że na poziomie $j$ znajduje się $n - j + 1$ wątków.
+Niech $A$ będzie ostatnim wątkiem, który zapisał zmienną victim na poziomie $j$.
+Wtedy dla dowolnego wątku $B$ na poziomie $j$: $Write_B(victim[j] = B)\rightarrow Write_A(victim[j] = A)$
+Z kodu widzimy, że: $Write_B(level[B] = j)\rightarrow Write_B(victim[j] = B)\rightarrow Write_A(victim[j] = A)\rightarrow Read_A(level[B])$
+Wątek $A$ staje się w takim razie ofiarą i nie mógł wejść na poziom $j$, ponieważ dla każdego wątku $B$: $level[B] >= j$ co jest sprzeczne z tym, że A weszło na poziom $j$.
+
+**Wzajemne wykluczanie:** Wątek wchodzi w sekcję krytyczną, gdy znajduje się na (n-1)-szym poziomie. Niech i = 1. Z faktu przytoczonego powyżej wiemy, że na poziomie n-1 znajduje się co najwyżej 1 wątek, czyli zachodzi własność wzajemnego wykluczania.
+## Zadanie 2
+:::success
+Autor:	Wojciech Pokój	
+:::
+
+![](https://i.imgur.com/TAvTyZS.png)
+
+D-d przez odwróconą indukcję po poziomach
+
+Podstawa indukcji: 
+Poziom n - 1 posiada tę własność ponieważ jak pokazaliśmy, może tam dotrzeć conajwyżej 1 wątek, więc zagłodzenie na tym poziomie nie występuje
+
+Krok:
+Załóżmy nie wprost że A utknął na poziomie i. Z założenie indukcyjnego, po jakimś czasie na wyższych poziomach nie będzie żadnych wątków. Po tym jak A ustawi level[A] = i, wtedy wszystkie wątki oczekujące na niższych poziomach nigdy nie wejdą na poziom i-ty, ponieważ będą zblokowane przez tę wartość.
+
+Ponieważ A będzie jedynym wątkiem który będzie konkurować na poziomie i oraz wyższych więc dostanie w końcu dostęp na poziom wyżej.
+
+Zblokowanie nie nastąpi też gdy 2 wątki A i B utkną na jednym poziomie. Jeden wątek na pewno przejdzie wyżej, ponieważ victim nie może jednocześnie wskazywać na 2 wartości.
+
+Na mocy indukcji algorytm nie posiada własnoci zagłodzenia
+
+Można stąd też wywnioskować że algorytm się nigdy nie zablokuje, ponieważ w końcu zwolnią się poziomy wyżej więc kolejka może zawsze być kontynuowana
+
+## Zadanie 3
+:::success
+Autor:	Julia Matuszewska	
+:::
+![](https://i.imgur.com/7ED96PO.png)
+```java=
+class Filter implements Lock  {
+    //informacje o poziomie każdego wątku
+    int[] level;
+    //informacje o wątku który jako ostatni zgłosił chęć zdobycia poziomu
+    int[] victim;
+    public Filter(int n) {
+        level = new int[n];
+        victim = new int[n]; // use 1..n-1
+        for (int i = 0; i < n; i++) {
+            level[i] = 0;
+        }
+    }
+    public void lock() {
+        int me = ThreadID.get(); // returns 0..n-1
+        for (int i = 1; i < n; i++) { // attempt to enter level i
+            level[me] = i;
+            victim[i] = me;
+            // spin while conflicts exist
+            // inny wątek jest na wyższym lub równym poziomie
+            // i nasz wątek jako ostatni zgłosił chęć zdobycia poziomu
+            while (( ∃ k != me) (level[k] >= i && victim[i] == me)) {};
+        }
+    }
+    public void unlock() {
+        int me = ThreadID.get();
+        level[me] = 0; //zerujemy poziom wątku
+    }
+}
+```
+:::info
+![](https://i.imgur.com/A2j2Pzl.png)
+:::
+
+SW - sekcja wejściowa (instrukcje przypisania `level[me]` i `victim[i]`)
+Załóżmy, że uruchamiamy algorytm z użyciem 3 wątków
+
+me = ThreadID.get();
+
+---
+
+1. Wątek 1 wchodzi do `lock` i wykonuje SW (`level[me] = 1`, `victim[1] = me`) i zostaje wywłaszczony
+2. W wątku 2 to samo co w kroku 1., jest ustawiony jako `victim`, zostaje wywłaszczony
+3. W wątku 3 to samo co w kroku 2., jest ustawiony jako `victim`, zostaje wywłaszczony
+4. Wątek 2 zostaje kontynuowany, wchodzi na wyższy poziom (`victim[1] = 3`). Warunek czekania w pętli `while` (linijka 21) nie jest spełniony, więc może przejść przez wszystkie następne poziomy, co też mu się udaje i wchodzi do CS. Po wykonaniu znów wykonuje `lock()`. Jest ustawiony jako `victim` i zostaje wywłaszczony.
+5. W wątku 3 to samo co w kroku 4.
+
+Może wystąpić sytuacja taka, że kroki 4 i 5 będą powtarzały się dowolną liczbę razy, zwiększając liczbę udanych wejść na wyższy poziom dla wątków 2 i 3, i nie zmieniając dla wątku 1, zatem ta różnica dla wątku 1 i któregoś z wątków 2 i 3 może być dowolnie duża, nie istnieje taka stała $r$, że operacja przejścia na kolejny poziom ma własność $r$-ograniczonego czekania
+
+Niech $LU$ oznacza osiągnięcie nowego poziomu
+
+$D_0^0 \rightarrow D_1^0 \rightarrow D_2^0 \rightarrow LU_1^0 \rightarrow D_1^1 \rightarrow LU_2^0 \rightarrow D_2^1 \rightarrow \dots \rightarrow  D_1^r \rightarrow D_2^r \rightarrow LU_1^r \rightarrow LU_0^0$
+
+z czego mamy
+
+$D_0^0 \rightarrow D_1^0$
+$LU_1^r \rightarrow LU_0^0$
+
+## Zadanie 4
+:::success
+Autor: Wiktor Bukowski		
+:::
+### 1. 
+```java=
+public void lock() {
+ flag[i] = true; 
+ victim = i;
+ while (flag[j] && victim == i) {};
+}
+public void unlock() {
+ flag[i] = false; 
+}
+```
+
+Oznaczmy jako A ten z wątków, który jako pierwszy wykonał sekcję wejściową. Drugi z nich oznaczmy jako B. Załóżmy, że B jako pierwszy wykonał sekcję krytyczną.
+$D_A \rightarrow D_B$
+$CS_B \rightarrow CS_A$
+$D_A \rightarrow W_A \rightarrow CS_A$
+$D_B \rightarrow W_B \rightarrow CS_B$
+Wtedy z przechodniości $\rightarrow$:
+$D_A \rightarrow D_B \rightarrow CS_B \rightarrow CS_A$
+
+Jeśli B jako drugi wykonał sekcję wejściową, to ustawił zmienną `victim` na samego siebie, przez co musiał potem czekać w sekcji oczekiwania do wykonania przez A sekcji krytycznej i zmiany jego flagi. W związku z tym B nie mógł wykonać sekcji krytycznej przed A.
+
+### 2. 
+Ustalmy, że wątek A jako pierwszy wykonał ustawienie flagi. Natomiast niech wątek B jako pierwszy wykona ustawienie zmiennej `victim`. Następnie wątek A nadpisze tę zmienną, dzięki czemu B będzie mógł wejść do sekcji krytycznej.
+
+### 3.
+
+#### a) 
+Oba wątki odczytają to samo niezależnie od kolejności, a więc nie ma możliwości rozróżnienia, który tak naprawdę wykonał tę instrukcję szybciej.
+
+### b)
+Jeśli oba zapisy nastąpią jeden po drugim, a dopiero potem oba wątki przejdą do kolejnych instrukcji, to nie do rozróżnienia będzie, który wątek jako pierwszy zapisał do swojej komórki.
+
+### c)
+Gdy drugi wątek nadpisze wspólną komórkę, stan zamka będzie nierozróżnialny ze stanem, w którym pierwszy wątek w ogóle nie próbował zdobyć blokady. W związku z tym wątek drugi może cały czas wykonywać instrukcje i dostać się do sekcji krytycznej.
+
+
+## Zadanie 5
+:::success
+Autor:	Mateusz Kisiel	
+:::
+![](https://i.imgur.com/j0fXBmE.png)
+
+![](https://i.imgur.com/ZORA9NN.png)
+
+Sekwencyjny porządek:
+```
+r.write(1)
+r.read(1)
+r.write(2)
+r.read(2)
+```
+![](https://i.imgur.com/OhDvX9e.png)
+Sekwencyjny porządek:
+```
+r.write(2)
+r.write(1)
+r.read(1)
+r.read(1)
+```
+![](https://i.imgur.com/4VN6gqu.png)
+Po wykonaniu jako pierwsze `p.enq(x)` nie może zostać zwrócone y z `p.deq()`
+
+![](https://i.imgur.com/afcnVu8.png)
+
+
+## Zadanie 6
+:::success
+Autor:	Marcin Wróbel	
+:::
+![](https://i.imgur.com/HMRxnFI.png)
+
+![](https://i.imgur.com/CgZZTyf.png)
+
+
+### Diagram 1
+![](https://i.imgur.com/7eKm97d.png)
+Historia H
+```
+B r.write(1) 
+A r.read()
+C r.write(2)
+A r: 1
+C r: void
+B r: void
+B r.read()
+B r: 2
+```
+
+Legalna sekwencyjna historia S
+```
+B r.write(1)
+B r: void
+A r.read()
+A r: 1
+C r.write(2)
+C r: void
+B r.read()
+B r: 2
+```
+
+$\rightarrow_H=$
+$\{r.read(1) \rightarrow r.read(2)$
+$r.write(1) \rightarrow r.read(2)$
+$r.write(2) \rightarrow r.read(2)\}$
+
+$\rightarrow_S=$
+$\{r.write(1) \rightarrow r.read(1)$
+$r.read(1) \rightarrow r.write(2)$
+$r.write(2) \rightarrow r.read(2)\}$
+
+### Diagram 2
+![](https://i.imgur.com/OKRPxxM.png)
+Historia H
+```
+B r.write(1)
+A r.read()
+C r.write(2)
+A r: 1
+C r: void
+B r: void
+B r.read()
+B r: 1
+```
+
+Legalna sekwencyjna historia S
+```
+C r.write(2)
+C r: void
+B r.write(1)
+B r: void
+A r.read()
+A r: 1
+B r.read()
+B r: 1
+```
+
+$\rightarrow_H=$
+$\{p.read(1) \rightarrow r.read(1)$
+$p.write(1) \rightarrow r.read(1)$
+$p.write(2) \rightarrow r.read(1)\}$
+
+
+$\rightarrow_S=$
+$\{r.write(2) \rightarrow r.write(1)$
+$r.write(1) \rightarrow r.read(1)$
+$r.read(1) \rightarrow r.read(1)\}$
+
+### Diagram 3
+![](https://i.imgur.com/TlK9Adc.png)
+
+
+Historia H
+```
+A p.enq(x)
+A p: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+```
+
+Historia H nie odpowiada żadnej legalnej sekwencyjnej historii S, ponieważ 
+mamy $p.enq(x) \rightarrow p.enq(y) \rightarrow p.deq(y)$
+Po wykonaniu $p.enq(y)$ kolejka będzie zawierać x jako pierwszy element, więc p.deq() zwróci x, a nie y.
+
+$\rightarrow_H=$
+$\{p.enq(x) \rightarrow p.enq(y)$
+$p.enq(y) \rightarrow p.deq(y)\}$
+### Diagram 4
+![](https://i.imgur.com/pOFDmcY.png)
+
+Historia H
+```
+A p.enq(x)
+A p: void
+B q.enq(y)
+B q: void
+A q.enq(x)
+A q: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+B q.deq()
+B q: x
+```
+
+Historia H nie odpowiada żadnej legalnej sekwencyjnej historii S, ponieważ 
+mamy $p.enq(x) \rightarrow p.enq(y) \rightarrow p.deq(y)$
+Po wykonaniu $p.enq(y)$ kolejka będzie zawierać x jako pierwszy element, więc p.deq() zwróci x, a nie y.
+
+$\rightarrow_H=$
+$\{p.enq(x) \rightarrow q.enq(y)$
+$q.enq(y) \rightarrow q.enq(x)$
+$q.enq(x) \rightarrow p.enq(y)$
+$p.enq(y) \rightarrow p.deq(y)$
+$p.deq(y) \rightarrow q.deq(x)\}$
+
+========
+
+# L4 GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor:	Patryk Mazur	
+:::
+![](https://i.imgur.com/nZXYHuN.png)
+![](https://i.imgur.com/Ze1Cswc.png)
+
+Lemat:
+Dla $i$ (od $0$ do $n-1$) jest co najwyżej $n-i$ wątków na poziomie $i$.
+
+Dowód indukcyjny po poziomach:
+
+Przypadek bazowy:
+
+Na poziomie $0$ jest $n-0$ wątków
+
+Krok Indukcyjny
+
+Z założenia indukcyjnego
+Na poziomie $i-1$ jest co najwyżej $n-i+1$ wątków
+
+Załóżmy nie wprost, że na poziomie $i$ jest $n-i+1$ wątków
+
+Niech $A$ będzie ostatnim wątkiem na poziomie $i$, który ustawił $victim[i]$
+Zatem dla każdego $B$ na poziomie $i$ następuje:
+
+$$write_B(victim[i]) \rightarrow write_A(victim[i])$$
+
+Z kodu:
+
+$$write_b(level[B] = i) \rightarrow write_B(victim[i]) \rightarrow write_A(victim[i])$$
+
+$$write_b(level[B] = i) \rightarrow write_B(victim[i]) \rightarrow write_A(victim[i]) \rightarrow read_A(level[B])$$
+
+Za każdym razem, gdy $A$ odczytuje $level[B]$ widzi wartość większą lub równą $i$ (Ponieważ $B$ jest na poziomie $i$)
+Zatem $A$ nie mogłoby opuścić pętli, co przeczy z naszym założeniem.
+
+Skoro na poziomie $n - i$ znajduje się jednocześnie co najwyżej $i$ wątków, a sekcja krytyczna jest poziomem $n-1$. To znaczy że algorytm spełnia warunek wzajemnego wykluczenia. 
+($n-(n-1)=1$)
+
+
+## Zadanie 2
+:::success
+Autor:	Daniel Boguszewski	
+:::
+![](https://i.imgur.com/V89b8eW.png)
+
+Niezagłodzenie: Jeśli wątek próbuje wejść do SK, zrobi to w skończonym czasie
+Załóżmy, że wątek $k$ zamierza wejść do SK. Z definicji metody $lock$, znajdzie się na jednym z poziomów $1..n-1$.
+Jeśli na wyższych poziomach nie znajduje się żaden wątek, wtedy $k$ przechodzi wyżej (wątki będące wyżej mają swego rodzaju pierwszeństwo). W innym wypadku czeka, aż przestanie być ofiarą (inny wątek wejdzie na dany poziom), w zależności od tego, co się stanie szybciej.
+Po pewnym czasie wątek $k$ będzie musiał przejść poziom wyżej.
+Ponieważ liczba poziomów jest ograniczona, wątek $k$ w końcu dotrze na poziom $n-1$, a tam będzie się znajdował nie więcej niż 1 inny wątek, to $k$ na wejście do SK z tego poziomu będzie czekał nie dłużej, niż czas przebywania aktualnego wątku w SK. Mógłby wejść od razu, gdyby SK była wolna. QED.
+
+Niezakleszczenie: Do SK, jeśli jest wolna, zawsze wejdzie pewien wątek. 
+Do poziomu $n-1$ zawsze dociera przynajmniej jeden wątek, a maksymalnie 2.
+Jeden z nich zostaje dopuszczony do SK. QED.
+
+## Zadanie 3
+:::success
+Autor:	Kamila Goszcz	
+:::
+
+![](https://i.imgur.com/RymV9Of.png)
+
+**r-Bounded Waiting**  to górne ograniczenie na ilość wątków, które mogą uzyskać dostęp do CS przed wątkiem A mimo że same zgłosiły chęć uzyskania dostępu później.
+
+![](https://i.imgur.com/1GVRGKh.png)
+
+Wątki 1, 2, 3 chcą wejść do CS, `victim[1] = 3`, jeden z pozostałych wątków (bez straty ogólności załóżmy, że to wątek 1) dostaje się do CS, wychodzi z niej i ponownie chce wejść do CS (`victim[1] = 1`), teraz wątek 2 może wejść do CS, wyjść i ustawić (`victim[1] = 2`). Zauważmy, że uwolniliśmy teraz wątek 1 z victim. Zatem dopóki wątek 3 nie otrzyma czasu procesora to będzie przepuszczał na zmianę wątki 1 i 2.
+
+Zagłodzenie jest wtedy, gdy to inne wątki blokują dostęp do sekcji krytycznej. W tym wypadku jeżeli któryś z pozostałych wątków ustawi na siebie zmienną victim oraz wątek 3 otrzyma czas procesora to napewno zmieni poziom. 
+
+## Zadanie 4
+:::success
+Autor:	Daniel Wiczołek	
+:::
+
+![](https://i.imgur.com/6S5peBs.png)
+![](https://i.imgur.com/xNuT1Yx.png)
+
+1. przypomnienie
+Załóżmy $D_{A}^k → D_{B}^j$
+Przypomnienie: $→$ zachodzi tylko gdy nienachodzą na siebie.
+następnie 
+a) 
+$readA(flag) → writeB(flag)$ więc wykonuje się $readA(flag)$ czyli $CS_{A}^k → CS_{B}^j$
+b) 
+$writeB(flag) → readA(flag)$ ale to oznacza, że nastąpi $writeB(victim)$, więc $readA(victim) \neq A$, więc $CS_{A}^k → CS_{B}^j$
+
+2. nie, bo może być tak, że:
+
+- A: ustawia flagę, (czyli $D_{A}^k → D_{B}^j$) 
+- B obie linijki,
+- A victim 
+- B wchodzi
+
+
+3. Załóżmy nie wprost, że istnieje.
+- **odczyt tej samej komórki pamięci lub różnych komórek, w zależności od wątku**
+    - **a) odczyt tej samej**
+        - A odczytał pierwszy wiec wszedl 1szy -- tylko 1 chcial wejsc
+        - B odczytał A odczytał, stan sie nie zmienił w por. z powyzszym więc A wszedl pierwszy, 
+        - sprzecznosc z **FCFS**
+    - **b) roznych**
+        - A odczytał swoją i wszedl -- tylko 1 chcial wejsc
+        - B swoją A odczytal swoją stan sie nie zmienil od powyzszego przypadku wiec A wszedl, 
+        - sprzecznosc z **FCFS**
+
+- **zapis do różnych komórek**
+    - B zapis A zapis B pierwszy wiec wszedl (bo FCFS)
+    - A zapis B zapis A wchodzi bo FCFS
+    - stan ten sam w obu przypadkach po zapisach, bo rozne komorki wiec oba musza wejsc, 
+    - sprzecznosc z **mutex**
+
+- **zapis do tej samej komórki**
+    - A zapis, B zapis A wchodzi
+    - B zapis B wchodzi
+    - oba ten sam stan wiec w 1. B powinien wejsc 
+    - sprzeczne z **mutex**.
+
+4. Nie istnieje algorytm FCFS z tą definicją sekcji wejściowej. W porównaniu do oryginalnej definicji skróciliśmy ją o stałą liczbę instr.
+
+## Zadanie 5
+:::success
+Autor:	Joanna Stachowicz	
+:::
+![](https://i.imgur.com/RANEzka.png)
+
+![](https://i.imgur.com/QlhhkGT.png)
+
+![](https://i.imgur.com/r3rfIGs.png)
+
+![](https://i.imgur.com/ZXIZRrs.jpg)
+
+
+
+## Zadanie 6
+:::success
+Autor:	Maria Szlasa	
+:::
+
+:::info
+Powtórz zadanie 5, tym razem używając formalnej definicji linearyzacji (slajd 132). Dla każdego diagramu zdefiniuj odpowiadającą mu historię 𝐻. Jeśli to możliwe, zdefiniuj historię 𝐺 oraz legalną sekwencyjną historię 𝑆 spełniające warunki z definicji.
+:::
+
+![](https://i.imgur.com/OTieVQj.png)
+![](https://i.imgur.com/kSM9uyN.png)
+
+
+**Linearyzacja** formalna definicja 
+* Historia $H$ jest linearyzowalna jeśli może być zmodyfikowana do historii $G$ przez:
+    * dodanie 0 lub więcej powrotów do oczekujących wywołań
+    * usuwanie oczekujących wywołań
+
+* Zatem historia $G$ jest równoważna względem legalnej/poprawnej sekwencyjnie historii $S$ takiej, że $\rightarrow_G {\subset} \rightarrow_S$
+
+***
+W naszych przykładach nie ma niedokończonych wywołań funkcji, daltego nie będziemy rozszerzać H do G.
+
+***
+![](https://i.imgur.com/O3vLTth.png)
+**Formalnie**
+Mamy historie $H$ i równoważną poprawnej sekwencyjnie historii $S$:
+```
+Historia H      Historia S
+B r.write(1)    B r.write(1)
+A r.read(1)     B r: void
+C r.write(2)    A r.read()
+A r: 1          A r: 1
+B r: void       C r.write(2)
+C r: void       C r: void
+B r.read(2)     B r.read()
+B r: 2          B r: 2
+```
+
+oraz ${\rightarrow}_H \subset \rightarrow_S$
+* $\rightarrow_H = \{B.write(1) \rightarrow B.read(2), A.read(1) \rightarrow B.read(2), C.write(2) \rightarrow B.read(2)\}$
+* $\rightarrow_S = \{B.write(1) \rightarrow A.read(1) \rightarrow C.write(2) \rightarrow B.read(2)\}$
+***
+
+![](https://i.imgur.com/KL5vYth.png)
+**Formalnie**
+Mamy historie $H$ i równoważną poprawnej sekwencyjnie historii $S$: 
+```
+Historia H      Historia S
+B r.write(1)    C r.write(2)
+A r.read(1)     C r: void
+C r.write(2)    B r.write(1)
+A r: 1          B r: void
+C r: void       A r.read()
+B r: void       A r: 1
+B r.read(1)     B r.read()
+B r: 1          B r: 1
+```
+
+oraz ${\rightarrow}_H \subset \rightarrow_S$
+* $\rightarrow_H = \{C.write(2) \rightarrow B.read(1), B.write(1) \rightarrow B.read(1), A.read(1) \rightarrow B.read(1)\}$
+* $\rightarrow_S = \{C.write(2) \rightarrow B.write(1) \rightarrow A.read(1) \rightarrow B.read(1)\}$
+***
+
+![](https://i.imgur.com/g1CYP7D.png)
+**Formalnie**
+Mamy historie $H$, którą nie możemy rozszerzyć do równoważnej poprawnej sekwencyjnie historii $S$, w której wcześniej wyciągamy element $x$ z $p$. 
+```
+A p.enq(x)
+A p: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+```
+
+***
+
+![](https://i.imgur.com/6gHGZ1i.png)
+**Formalnie**
+Mamy historie $H$, którą nie możemy rozszerzyć do równoważnej poprawnej sekwencyjnie historii $S$, w której instrukcje wykonają się poprawnie.
+```
+A p.enq(x)
+A p: void
+B q.enq(y)
+B q: void
+A q.enq(x)
+A q: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+B q.deq()
+B q: x
+```

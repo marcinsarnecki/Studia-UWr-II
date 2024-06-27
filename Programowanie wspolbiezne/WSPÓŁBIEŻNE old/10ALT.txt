@@ -1,0 +1,455 @@
+# Ćwiczenia 10, grupa cz. 12-14, 5. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |     |     |     |     |
+Michał Błaszczyk         |   X   |  X  |  X  |  X  |  X  |     |     |
+Dawid Dudek              |   X   |  X  |  X  |==X==|  X  |  X? |  X  |
+Krzysztof Juszczyk       |       |  X  |  X  |  X  |  X  |     |     |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |     |  X  |
+Kacper Komenda           |       |     |  X  |  X  |     |     |     |
+Aleksandra Kosińska      |       |     |  X  |  X  |  X  |     |     |
+Łukasz Orawiec           |   X   |  X  |     |  X  |  X  |     |     |
+Kamil Puchacz            |       |     |     |     |     |     |     |
+Paweł Sikora             |   X   |  X  |==X==|  X  |  X  |     |     |
+Michał Sobecki           |   X   |  X  |  X  |  X  |  X  |     |     |
+Cezary Stajszczyk        |       |     |  X  |  X  |  X  |     |     |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |  X  |     |     |
+Cezary Troska            |   X   |     |  X  |  X  |  X  |     |     |
+:::
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+
+:::success
+Autor: Łukasz Orawiec
+:::
+
+```java=
+public class CoarseList<T> {
+    private Node head;
+    private Lock lock = new ReentrantLock();
+    public CoarseList() {
+        head = new Node(Integer.MIN_VALUE);
+        head.next = new Node(Integer.MAX_VALUE);
+    }
+    
+    public boolean add(T item) {
+        Node pred, curr;
+        int key = item.hashCode();
+        lock.lock();
+        try {
+            pred = head;
+            curr = pred.next;
+            while (curr.key < key) {
+                pred = curr;
+                curr = curr.next;
+            }
+            if (key == curr.key) {
+                return false;
+            } else {
+                Node node = new Node(item);
+                node.next = curr;
+                pred.next = node;
+                return true;
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    public boolean remove(T item) {
+        Node pred, curr;
+        int key = item.hashCode();
+        lock.lock();
+        try {
+            pred = head;
+            curr = pred.next;
+            while (curr.key < key) {
+                pred = curr;
+                curr = curr.next;
+            }
+            if (key == curr.key) {
+                pred.next = curr.next;
+                return true;
+            } else {
+                return false;
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    public boolean contains(T item) {
+        Node pred, curr;
+        int key = item.hashCode();
+        lock.lock();
+        try {
+            pred = head;
+            curr = pred.next;
+            while (curr.key < key) {
+                pred = curr;
+                curr = curr.next;
+            }
+            if (key == curr.key) {
+                return true;
+            } else {
+                return false;
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    
+```
+
+1. Punkty linearyzacji gwarantujące zachowanie mapy abstrakcji "element należy do zbioru $\Leftrightarrow$ węzeł na liście, w którym znajduje się element jest osiągalny z węzła **head**":
+
+    - **add($x$)**
+        - $x$ nie występował w zbiorze: `pred.next = node` (linia 25)
+        - $x$ występował w zbiorze: zajęcie zamka,
+    - **remove($x$)**
+        - $x$ występował w zbiorze: `pred.next = curr.next` (linia 45),
+        - $x$ nie występował w zbiorze: zajęcie zamka
+    - **contains(x)**
+        - zajęcie zamka
+
+2. Mapa abstrakcji: element należy do zbioru $\Leftrightarrow$ węzeł na liście, w którym znajduje się element jest osiągalny z węzła head
+
+    Przyjmijmy, że **add()** jest linearyzowalna w momencie zajęcia zamka.
+
+    Wtedy w momencie linearyzacji wywołania **add(x)** na pustej liście, reprezentacja listy wygląda następująco:
+    
+    ```
+    head -> tail
+    ```
+    
+    czyli węzeł na liście, w którym znajduje się **x** nie jest osiągalny z węzła **head**, co jest sprzeczne z tym, że **x** należy już do zbioru.
+    
+    
+3. Element **x** należy do zbioru wtedy i tylko wtedy gdy:
+    - węzeł na liście, w którym znajduje się element jest osiągalny z węzła **head** i zamek nie jest zajęty przez wątek wykonujący **remove(x)**, lub 
+    - zamek jest zajęty przez wątek wykonujący **add(x)**
+
+## Zadanie 2
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                return false;
+            }
+            Node newNode = new Node(item);
+            newNode.next = curr;
+            pred.next = newNode;
+            return true;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+
+1. Sukces - linia 21
+2. Porażka:
+    - linia 8 lub 14 zależnie czy wchodzimy do `while` czy nie.
+    - linia 16
+
+```java=
+public boolean remove(T item) {
+    Node pred = null, curr = null;
+    int key = item.hashCode();
+    head.lock();
+    try {
+        pred = head;
+        curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                pred.next = curr.next;
+                return true;
+            }
+            return false;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+
+1. Sukces - linia 17
+2. Porażka:
+    - linia 8 lub 14 zależnie czy wchodzimy do `while` czy nie.
+    - linia 16
+
+## Zadanie 3
+
+:::success
+Autor: Paweł Sikora
+:::
+![](https://i.imgur.com/ZIFm6eJ.png)
+```java=
+public boolean contains(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+             if (curr.key == key)
+                 return true;
+             else
+                 return false;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+Implementacja ta jest poprawna, ponieważ szuka ona takiej pary <pred, curr>, że $pred.next == curr$ oraz $pred.key < key$ i $curr.key \geq key$. Na oba węzły zakładane są zamki, co gwarantuje, że przed linijką 15 oba węzły nie zmienią się i $curr.key == key$ zwróci poprawny wynik. Jeśli otrzymamy true, to wtedy element jest na liście, wpp. jeśli otrzymamy false, to wiemy, że $pred.key < key$ i $curr.key > key$, czyli elementu nie ma na liście, ponieważ jest ona posortowana.
+
+## Zadanie 4
+
+:::success
+Autor: Dawid Dudek
+:::
+
+## Zadanie 4
+![](https://i.imgur.com/soe5TR3.png)
+
+![](https://i.imgur.com/GHAsFWr.png)
+
+Widzimy, że musi to wynikać z wywołania validate(pred, curr)
+
+spójrzmy na tą metodę 
+
+![](https://i.imgur.com/uNhqAzr.png)
+
+Powiedzmy, że lista wygląda tak:
+
+-inf -> a -> b -> c -> d
+
+chcemy zrobić remove(b)
+
+Zauważmy, że jak znajdziemy miejsce gdzie wartość ta może wystąpić to będziemy w 38 linijce
+
+Wtedy prev = a
+curr = b
+
+Z drugiej strony wątek B chce dodać a' (a < a' < b)
+
+zauważmy, że może on zająć zamek prev + curr przed tym wątkiem
+
+jak wtedy wygląda lista:
+
+-inf -> a -> a' -> b -> c -> d
+
+Teraz wątek A wywołuje validate(pred, curr) == validate(a,b)
+
+widzimy, że teraz warunek pred.next == curr jest nieprawdziwy bo a wskazuje na a' zamisat na b
+
+Teraz metoda A: remove(b) leci od nowa. Znowu dochodzi do tego miejsca co wcześniej więc ma 
+
+prev = a'
+curr = b
+
+Jednak ponownie zamiast wątek A zajmie zamki to wątek B je zajmie poprzez wywołanie metody remove(a')
+
+Widzimy, że mu się uda czyli lista będzie wyglądać tak:
+
+-inf -> a -> b -> c -> d
+
+Teraz wątek A odpala validate i widzimy, że ponownie dostajemy false ponieważ prev =a' nie istnieje w liście więc cały while przeleci i zwróci false
+
+Widzimy, że doszliśmy do stanu początkowego więc możemy w nieskończoność powtarzać i dostanać infinite loop
+
+
+## Zadanie 5
+
+:::success
+Autor: Cezary Stajszczyk
+:::
+**Add:**
+```java=
+public boolean add(T item) {
+  int key = item.hashCode();
+  while (true) {
+    value = Counter.get(); // <===
+    Node pred = head;
+    Node curr = pred.next;
+    while (curr.key < key) {
+      pred = curr; curr = curr.next;
+    }
+    pred.lock();
+    try {
+      curr.lock();
+      try {
+        //if (validate(pred, curr)) {
+        if (value == Counter.get()) {
+          if (curr.key == key) {
+            return false;
+          } else {
+            Node node = new Node(item);
+            Counter.increment(); // <===
+            node.next = curr;
+            pred.next = node;
+            return true;
+          }
+        }
+      } finally {
+        curr.unlock();
+      }
+    } finally {
+      pred.unlock();
+    }
+  }
+}
+```
+**Remove:**
+```java=
+public boolean remove(T item) {
+  int key = item.hashCode();
+  while (true) {
+    value = Counter.get(); // <===
+    Node pred = head;
+    Node curr = pred.next;
+    while (curr.key < key) {
+      pred = curr; curr = curr.next;
+    }
+    pred.lock();
+    try {
+      curr.lock();
+      try {
+        //if (validate(pred, curr)) {
+        if (value == Counter.get()) {
+          if (curr.key == key) {
+            Counter.increment(); // <===
+            pred.next = curr.next;
+            return true;
+          } else {
+            return false;
+          }
+        }
+      } finally {
+        curr.unlock();
+      }
+    } finally {
+      pred.unlock();
+    }
+  }
+}
+```
+
+> [] Zamiast Counter: https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/atomic/AtomicInteger.html
+
+## Zadanie 6
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![tresc](https://i.imgur.com/pgkSE89.png)
+
+-----------------
+
+Ad. 1:
+
+Komentarz: można by też odpuścić sobie `validate`.
+
+To działa. Dlaczego? Punkt linearyzacji metod add/remove znajduje się już po fizycznym odłączenie/dołączeniu węzła.
+
+Jeżeli `contains` znalazło na liście szukany element to znaczy, że on w pewnym momencie znajdował się na tejże. A zawsze przecież można powiedzieć, że contains wykonało się przed `remove` (jeżeli ich przedziały wykonania się nakładają).
+
+Jeżeli czas początkowy wywołania `contains` będzie "ostro" późniejszy niż fizyczne zmiany w liście to siłą rzeczy `contains` to zauważy. 
+
+Jeżeli `contains` nie znajdzie elementu na liście no to analogicznie, zawsze możemy powiedzieć że `contains` wykonało się przed `add`.
+
+![](https://i.imgur.com/GmJSpg3.png)
+
+-----------------
+
+Ad. 2:
+
+Tutaj sytuacja jest troszkę inna ponieważ punkt linearyzacji `remove` jest w momencie "logicznego usunięcia" czyli zapalenia bitu marked.
+Założmy, że scheduler wywłaszcza proces usuwający zaraz po zapaleniu tego bitu (na długi czas). Metody add/remove (następujące po logicznym usunięciu węzła) będą świadome usunięcia węzła ale wywołania `contains` będą bezkrytycznie zwracać `true` co będzie niespójne.
+
+-----------------
+
+## Zadanie 7
+
+:::success
+Autor: Kacper Komenda
+:::
+
+Zobaczmy co stanie się w przypadku usunięcia $pred.lock()$:
+pred i curr próbują być jednocześnie usuwane: 
+wątek A najpierw usuwa pred() i nieszczęśliwym zbiegiem okoliczności wątek B przechodzi przez validate oraz usuwa swój curr() zaraz po usunięciu pred()
+pred.pred.next() = pred.next() == curr() -- pred usunięte -- pred.pred.next() wskazuje na curr() wątku A
+pred.next() = curr.next() == next() -- usuwamy curr() wątku A, pred zmienił swój next(), ale w międzyczasie został usunięty i tu nastąpi błąd 
+
+
+
+
+Zobaczmy co stanie się w przypadku usunięcia $curr.lock()$:
+
+-w przypadku gdy wątek B najpierw usunie pred wątku A, 
+pred.pred.next() = pred.next() == curr() -- pred usunięte -- pred.pred.next() wskazuje na curr() wątku A
+pred.next() = curr.next() == next() -- usuwamy curr() wątku A, pred zmienił swój next(), ale w międzyczasie został usunięty i tu nastąpi błąd 
+
+Wtedy cały czas mamy zablokowany poprzedni node, gdy $pred.lock()$ jest zablokowany, to add oczywiście nie ma dostępu do niego i się nie zepsuje, bo $curr.lock()$ metody $add()$ zablokuje się dokładnie w tym samym miejscu co bez usunięcia $curr.lock()$ z metody $remove()$. 
+W przypadku metody remove: 
+-gdy remove próbuje usunąć ten sam node co poprzednik nic się nie stanie, bo $pred.lock()$ nadal jest zablokowane. 
+-gdy remove próbuje usunąć node przed nodem usuwanym w drugim wątku B (zablokowany lockiem przez poprzedni wątek): tym razem nie blokuje go za pomocą $curr.lock()$, więc wątek próbujący usunąć ten zablokowany przez drugi wątek node to robi. W przypadku gdy przejdzie validate, a następnie wątek A usunie swój curr (ustawi pred next na curr.next()), to wątek B usuwając pred (z wątku A) ustawi pred (wątku B) na curr.next() (wątku A), czyli oba nody zostaną poprawnie usunięte? 

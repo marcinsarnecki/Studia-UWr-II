@@ -1,0 +1,936 @@
+# L10 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Mateusz Kisiel	
+:::
+
+![](https://i.imgur.com/AtvutV7.png)
+
+Mamy wielopoziomową hierarchię pamięci podzieloną na clustery zwierające w sobie procesory. Np. dwupoziomową i do pierwszego poziomu odwołujemy się szybko, a operacje na drugim poziomie są bardziej kosztowne. W takim przypadku warto zastąpić BOLock(Back-off Lock) poprzez HBOLock.  
+
+HBOLock to rozszrzenie idei Back-off Lock ktora polegała na tym, aby wątek robił coraz dłuższego sleepa w pętli w funkcji lock. Dzięki temu wątki oczekujące na dany zasób nie będą spamować zpytaniami o stan zmiennej i zmniejszy się użycie procesora.
+
+Rozszerzenie w HBOLock polega na uwzględnieniu tego, że odpytanie o stan zmiennej niesie za sobą różny koszt czasowy w zalezności od tego na którym poziomie hierarchi była ta zmienna. Chcemy, aby kosztownych zapytań było jak najmniej. HBOLock z tego powodu będzie zwiększać czas sleepa w wątkach z innego clusteru bardziej niż w wątkach w obrębie tego samego clusteru.
+```java=
+public class HBOLock implements Lock {
+    private static final int LOCAL_MIN_DELAY = ...;
+    private static final int LOCAL_MAX_DELAY = ...;
+    private static final int REMOTE_MIN_DELAY = ...;
+    private static final int REMOTE_MAX_DELAY = ...;
+    private static final int FREE = -1;
+    AtomicInteger state;
+    public HBOLock() {
+        state = new AtomicInteger(FREE);
+    }
+    public void lock() {
+        int myCluster = ThreadID.getCluster();
+        Backoff localBackoff =
+            new Backoff(LOCAL_MIN_DELAY, LOCAL_MAX_DELAY);
+        Backoff remoteBackoff =
+            new Backoff(REMOTE_MIN_DELAY, REMOTE_MAX_DELAY);
+        while (true) {
+            if (state.compareAndSet(FREE, myCluster)) {
+                return;
+            }
+            int lockState = state.get();
+            if (lockState == myCluster) {
+                localBackoff.backoff();
+            } else {
+                remoteBackoff.backoff();
+            }
+        }
+    }
+    public void unlock() {
+        state.set(FREE);
+    }
+}
+```
+
+## Zadanie 2
+:::success
+Autor: Marcin Sarnecki	
+:::
+![](https://i.imgur.com/r6eO4GW.png)
+
+Pomysł polega na uzyciu wielu zamków na różnych poziomach hierarchii pamięci. Każda kohorta wątków ma swój własny zamek oraz kohorty mają wspólny, globalny zamek. 
+
+Wątek utrzymuje lock() jeśli utrzymuje zarówno lokalny, jak i globalny zamek
+
+Wątek najpierw próbuje zablokować lokalny zamek, a następnie upewnia się, że kohorta, do której należy, zablokowała globalny zamek.
+
+Przy odblokowaniu wątek najpierw sprawdza, czy inny wątek z jego kohorty nie próbuję zablokować zamka. Jeśli tak, to przepuszcza go, nie zwalniając globalnego zamka (występuje limit na liczbę takich sytuacji). Jeśli kohorta była pusta, to zwalnia oba zamki.
+
+Metoda `alone()` zwraca fałsz, jeśli $na \space pewno$ inny wątek z tej samej kohorty próbuje dostać się do zamka. Nie działa to w drugą stronę - jeśli zwróci prawdę, to może istnieć wątek próbujący dostać się do zamka, jednak takie przypadki są rzadkie.![](https://i.imgur.com/oDGu0Dk.png)
+
+`TurnArbiter` służy niezagłodzeniu innych kohort
+
+![](https://i.imgur.com/3FetSDA.png)
+
+## Zadanie 3
+:::success
+Autor: Wojciech Pokój	
+:::
+
+
+![](https://i.imgur.com/lXQRjB3.png)
+![](https://i.imgur.com/wgQzBSc.png)
+
+```java=
+public boolean contains(T item) {
+    Node pred, curr;
+    int key = item.hashCode();
+    lock.lock();
+    try {
+        pred = head;
+        curr = pred.next;
+        while (curr.key < key) {
+            pred = curr;
+            curr = curr.next;
+        }
+        if (key == curr.key) {
+            return true;
+        } else {
+            return false;
+        }
+    } finally {
+        lock.unlock();
+    }
+}
+```
+
+:::info
+Na przykładzie zbioru zaimplementowanego przy pomocy
+CoarseList wyjaśnij, czym są niezmiennik reprezentacji
+(ang. representation invariant) oraz mapa abstrakcji
+(ang. abstraction map).
+:::
+
+![](https://i.imgur.com/7L446vg.png)
+
+W skrócie:
+- niezmiennik reprezentacji to pewien warunek który musi istnieć przed wywołaniem metody i musi zostać przywrócony wraz z wyjściem z metody
+- mapa abstrackji - zbiór który jest otrzymywalny z zadanej listy - w przypadku CoarseList jest że element jest w zbiorze <=> gdy jest odnajdywalny z głowy listy
+
+
+:::info
+Przypomnij, jakie punkty linearyzacji należy wybrać w
+metodach add(), remove() i contains() by następująca mapa
+abstrakcji była poprawna: “element należy do zbioru ⇔
+węzeł na liście, w którym znajduje się ten element jest
+osiągalny z węzła head”.
+:::
+
+add(x) - linia 24 - przepięcie wskaźnika poprzednika 
+remove(x) - linia 43 - j.w.
+contains(x) - zajęcie zamka
+
+:::info
+Pokaż, że mapa abstrakcji z poprzedniego punktu nie jest
+poprawna, jeśli metody będą linearyzowane w momencie
+zajęcia zamka.
+:::
+
+Chcemy żeby punkt linearyzacji wyznaczał nam moment kiedy żadany efekt operacji miał swój efekt i żeby mapa abstracji uwzględniała zmianę
+
+W przypadku add i remove nie może to być moment zajęcia zamka, ponieważ w tym momencie żadna zmiana nie miała miejsca i dopiero nastąpi w przyszłości
+
+
+:::info
+Zmodyfikuj powyższą mapę abstrakcji tak, by dla metod
+linearyzowanych w momencie zajęcia zamka, CoarseList
+nadal była poprawną implementacją zbioru.
+:::
+
+x należy do zbioru jeśli:
+- jest osiągalny z głowy listy i zamek nie jest zajęty przez metodę remove(x)
+
+lub
+
+- zamek jest zajęty przez metodę add(x)
+
+
+## Zadanie 4
+:::success
+Autor: Maksymilian Komarnicki	
+:::
+
+
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+            return false;
+            }
+            Node newNode = new Node(item);
+            newNode.next = curr;
+            pred.next = newNode;
+            return true;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+public boolean remove(T item) {
+    Node pred = null, curr = null;
+    int key = item.hashCode();
+    head.lock();
+    try {
+        pred = head;
+        curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                pred.next = curr.next;
+                return true;
+            }
+            return false;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+
+Metody add() oraz remove() są linearyzowalne, bo można wyznaczyć dla nich punkty linearyzacji, czyli momenty, w których funkcje "mają efekt". Punkty te są różne w zależności, czy wywołanie metody zakończy się sukcesem, czy porażką.
+
+Metoda add() ma efekt, bo możemy zapewnić, że po dodaniu elementu znajduje się on w zbiorze. Wynika to z podpięcia nowo utworzonego węzła z węzłami pred i curr, które znajdują się w zbiorze, co wynika z tego, że są osiągalne z głowy listy.
+
+Metoda remove() ma efekt, bo możemy zapewnić, że skasowany element znajdował się w zbiorze, bo był osiągalny z głowy listy.
+
+1. Wywołanie add() zakończone sukcesem - linearyzowalne w momencie, gdy następny większy klucz jest zablokowany(linia 7 albo 13).
+
+2. Wywołanie add() zakończone porażką - linearyzowalne w momencie, gdy węzeł z dodawaną wartością jest zablokowany(linia 7 albo 13).
+
+3. Wywołanie remove() zakończone sukcesem - linearyzowalne w momencie, gdy poprzedni węzeł w stosunku do usuwanego jest zablokowany(linia 36 albo 42).
+
+4. Wywołanie remove() zakończone porażką - linearyzowalne w momencie, gdy pierwszy węzeł zawierający większą wartość niż ten usuwany jest zablokowany(linia 36 albo 42).
+
+## Zadanie 5
+:::success
+Autor: Mikołaj Depta	
+:::
+
+```java
+public boolean contains(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            // tutaj zamiana względem add / remove       
+            return curr.key == key;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+
+Ponieważ przechodzimy listę, zawsze trzymając zamki dla sąsiednich węzłów mamy gwarancję, że szukany węzeł nie zostanie wstawiony pomiędzy aktualnie rozpatrywaną parą. Nasza lista jest posortowana, musimy więc jedynie znaleźć pierwszy węzeł o kluczu niemniejszym od szukanego klucza i sprawdzić czy ten klucz i klucz szukany są tym samym.
+
+
+## Zadanie 6
+:::success
+Autor: Jan Dalecki	
+:::
+![](https://i.imgur.com/jOOeZMi.png)
+Optymistyczna implementacja zakłada, że problemy synchronizacji pojawiają się dość rzadko. Z tego powodu wątki chcące wykonać operację na elementach listy nie zakładają zamków podczas przejścia przez listę. Zamki są zakładane dopiero na modyfikowane węzły listy.
+
+Zaletą takiego podejścia jest zmniejszenie opóźnienia jeżeli problemy z synchronizacją faktycznie nie wystąpią często.
+![](https://i.imgur.com/s4zHrpH.png)
+![](https://i.imgur.com/Z7FhP5U.png)
+![](https://i.imgur.com/Q19AhkN.png)
+
+Zakładamy, że element, który chcielibyśmy usunąć znajduje się początkowo w zbiorze. Niech wątek $A$ stara się usunąć wierzchołek $v$.
+
+Aby metoda remove została zagłodzona `validate` powinno zawsze zwracać `fałsz`. 
+
++ Zatrzymajmy $A$ w linii 33 przed próbą wzięcia zamków.
++ Załóżmy teraz, że wątek $B$ dodaje między $pred_A$ oraz $curr_A$ węzeł $w$.
++ Dajemy $A$ kontynuować i okazuje się, że validate zwróci fałsz.
++ W czasie gdy $A$ zaczyna pętlę while od nowa usuwamy węzeł $w$.
+## Zadanie 7
+:::success
+Autor: Wiktor Bukowski	
+:::
+
+![](https://i.imgur.com/dGRt7Yu.png)
+
+
+Potrzebny nam będzie globalny licznik, którego stan będziemy zapisywać lokalnie na początku pętli `while(true)`. W miejscu metody `validate()` musimy zdobyć zamek na globalnym liczniku. Następnie sprawdzamy, czy jego wartość jest równa lokalnej. Jeśli nie, przechodzimy do kolejnego obiegu pętli `while(true)`. Jeśli tak, zwiększamy licznik o 1 i wykonujemy te same operacje co w oryginalnych metodach.
+
+Implementacja na przykładzie `add()`:
+```java=
+Lock counterLock;
+volatile int counter = 0;
+
+public boolean add(T item) {
+    ...
+    int localCounter;
+    while (true) {
+        localCounter = counter;
+        ...    
+        curr.lock();
+        try {
+            counterLock.lock();
+            try {
+                if (localCounter == counter) {
+                    ...
+                    counter += 1;
+                }
+            }
+            finally {
+                counterLock.unlock();
+            } 
+        }
+        ...
+    }
+}
+```
+
+## Zadanie 8
+:::success
+Autor: Marcin Wróbel	
+:::
+![](https://i.imgur.com/5PTRZoF.png)
+
+W LazyList każdy węzeł może zostać oznaczony (marked) jako usunięty. Usuwanie elementu składa się z dwóch etapów:
+- usunięcie logiczne - oznaczenie odpowiedniego węzła jako usunięty
+- usunięcie fizyczne - przepięcie odpowiedniego wskaźnika
+
+Dzięki takej różnicy możemy zmodyfikować metodę contains() tak, aby była wait-free.
+
+add() jest taki sam jak w OptimisticList (wywoływana  w add() metoda validate() jest zdefiniowana inaczej)
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    while (true) {
+        Node pred = head;
+        Node curr = pred.next;
+        while (curr.key < key) {
+            pred = curr;
+            curr = curr.next;
+        }
+        pred.lock();
+        try {
+            curr.lock();
+            try {
+                if (validate(pred, curr)) {
+                    if (curr.key == key) {
+                        return false;
+                    } else {
+                        Node node = new Node(item);
+                        node.next = curr;
+                        pred.next = node;
+                        return true;
+                    }
+                }
+            } finally {
+                curr.unlock();
+            }
+        } finally {
+            pred.unlock();
+        }
+    }
+}
+```
+remove() jest prawie takie samo jak w OptimisticList, tylko została dodana linijka 15
+```java=
+public boolean remove(T item) {
+    int key = item.hashCode();
+    while (true) {
+        Node pred = head;
+        Node curr = head.next;
+        while (curr.key < key) {
+            pred = curr; curr = curr.next;
+        }
+        pred.lock();
+        try {
+            curr.lock();
+            try {
+                if (validate(pred, curr)) {
+                    if (curr.key == key) {
+                        curr.marked = true;
+                        pred.next = curr.next;
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            } finally {
+                curr.unlock();
+            }
+        } finally {
+            pred.unlock();
+        }
+    }
+}
+```
+```java=
+public boolean contains(T item) {
+    int key = item.hashCode();
+    Node curr = head;
+    while (curr.key < key)
+        curr = curr.next;
+    return curr.key == key && !curr.marked;
+}
+```
+```java=
+private boolean validate(Node pred, Node curr) {
+    return !pred.marked && !curr.marked && pred.next == curr;
+}
+```
+
+Czy można, bez straty poprawności, zmodyfikować metodę
+**remove()** klasy **LazyList** tak, by zajmowała tylko jeden zamek?
+
+Gdyby LazyList zajmował w metodzie remove() tylko zamek na elemencie
+1. **usuwanym** (curr)
+to tuż przed przepięciem wskaźników w węźle poprzedzającym. Inny wątek mógłby usunąć węzeł poprzedzający i przepięcie wskaźników nie zmieni ścieżki z head do tail.
+Przykład:
+
+Załóżmy, że wątek B chce usunąć element b, wątek C chce usunąć element c.
+`-inf -> a -> b -> c -> d -> inf`
+Wątek B przepina wskaźniki usuwając element b
+```   
+-inf → a
+       ↓
+   b → c → d → inf
+
+```
+Wątek C przepina wskaźniki chcąc usunąć element b
+```
+-inf → a
+       ↓
+       c → d → inf
+           ↑
+           b
+```
+Choć metoda `C.remove(c)` zwróciła true, to element `c` nie został fizycznie usunięty (został usunięty logicznie wartość pola marked jest ustawiona na true). Chociaż mapa abstrakcji jest poprawna, to element C nigdy nie zostanie z tej listy usunięty (problem z wydajnością). Co najważniejsze nie będą działały wywołania metod add(b) (metoda validate(a, c) zawsze będzie zwracać fałsz i add(b) będzie wykonywać pętle while w nieskończoność). Dodatkowo nie będzie działać add( c ). Skoro kolejne wywołania niektórych metod nie będą działać, to implementacja będzie niepoprawna.
+
+2. **poprzedzającym usuwany** (pred)
+Po zajęciu pred.lock(), wiemy, że add() w innym wątku nie popsuje nic ze wskaźnikami w tym miejscu, ponieważ nie zajmie zajętego zamka. Załóżmy, że wątek B chce usunąć element b, wątek C chce usunąć element c.
+`-inf -> a -> b -> c -> d -> inf`
+Wątek B zajął lock a
+Wątek C zajął lock b
+Oba wątki wykonują metodę validate i wszystko jest ok.
+
+Wątek B przepina wskaźniki
+```   
+-inf → a
+       ↓
+   b → c → d → inf
+
+```
+Wątek C przepina wskaźniki
+```
+-inf → a
+       ↓
+       c → d → inf
+           ↑
+           b
+```
+Choć metoda `C.remove(c)` zwróciła true, to element `c` nie został fizycznie usunięty (został usunięty logicznie wartość pola marked jest ustawiona na true). Chociaż mapa abstrakcji jest poprawna, to element C nigdy nie zostanie z tej listy usunięty (problem z wydajnością). Co najważniejsze nie będą działały wywołania metod add(b) (metoda validate(a, c) zawsze będzie zwracać fałsz i add(b) będzie wykonywać pętle while w nieskończoność). Dodatkowo nie będzie działać add( c ). Skoro kolejne wywołania niektórych metod nie będą działać, to implementacja będzie niepoprawna.
+
+![](https://i.imgur.com/oZjg0Pi.png)
+
+
+## Zadanie 9
+:::success
+Autor: Mikołaj Depta
+:::
+
+![](https://i.imgur.com/mP2WtGF.png)
+![](https://i.imgur.com/xTkg65W.png)
+
+
+```java=
+public boolean contains(T item) {
+    int key = item.hashCode();
+    while (true) {
+        Entry pred = this.head; // sentinel node;
+        Entry curr = pred.next;
+        while (curr.key < key) {
+            pred = curr; 
+            curr = curr.next;
+        }
+        try {
+            // pred.lock(); curr.lock(); <- tego nie robimy
+            if (validate(pred, curr)) {
+                return (curr.key == key);
+            }
+        } finally { // always unlock
+            pred.unlock(); 
+            curr.unlock();
+        }
+    }
+}
+```
+
+Kontrprzykład:
+
+Funkcję `contains(x)` wykonuje sam wątek `A` do linijki 12 włącznie (`validate` jest ok).
+Następnie pojawia się nowy wątek `B`, który usuwa element `x` i kończy swoje działanie. 
+Następnie wątek `C` wykonuje `contains(x)` sam, kończy swoje działanie i zwraca `false`.
+Wówczas wybudza się `A` i kontynuuje swoje działanie od linijki 13 i zwraca `true`.
+
+Takie wykonanie nie jest linearyzowalne.
+
+![](https://i.imgur.com/U8FatJU.png)
+
+
+```java=
+public boolean contains(T item) {
+    int key = item.hashCode();
+    Node curr = head;
+    while (curr.key < key)
+        curr = curr.next;
+    return curr.key == key /* && !curr.marked; <- tego nie robimy */
+}
+```
+
+Pominięcie badania bitu mark powoduje, że nasz algorytm nie przestrzega mapy abstrakcji. Element powinien być uważany za usunięty ze zbioru, gdy jest albo usunięty fizycznie lub oznaczony przez bit mark (usunięty logicznie). Algorytm pomijający sprawdzanie tej wartości jest niepoprawny.
+====
+# L10 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Mikołaj Jaszcza	
+:::
+![](https://i.imgur.com/5Nx8EDn.png)
+
+Rozważmy architekturę NUMA (non-uniform memory access). Procesory niech będą podzielone na klastry. Wiemy, że zmienne współdzielone w obrębie jednego klastra będą działać znacznie szybciej od zmiennych współdzielonych między klastrami. Zauważmy, że dla takiej architektury rozwiązanie typu 'Back-off Lock' nie jest zbyt dobrze dostosowane. Tj. wydajność znacznie spadnie w sytuacji, gdy zamek będzie często 'przechodził' między klastrami (tak naprawdę jego 'zajętość').  Możemy zmodyfikować  koncept Back-off Lock -> właśnie poprzez zamek HBOLock. 
+
+Rozwiązanie to zmniejsza (w przypadku średnim) częstotliwość przechodzenia zamka między klastrami. Rozwiązanie opiera się o różne czasy 'back-off'-u dla wątków z tego samego klastra co wątek który obecnie posiada zamek w stosunku do pozostałych. 
+
+Tj. przeciętny czas backoff dla wątków w tym samym klastrze (co wątek posiadający zamek) jest średnio istotnie mniejszy niż dla pozostałych wątków. Dokładne wartośći {LOCAL/REMOTE}_{MIN/MAX}_DELAY podobnie jak dla Back-off Lock'a muszą zostać ustalone z uwzględnieniem szczegółów systemu.
+
+Zatem jego wady są podobne jak w przypadku zwykłego Back-off Lock'a:
+![](https://i.imgur.com/4t52Jtz.png)
+
+Zalety również są podobne, jest to zamek stosunkowo łatwy w implementacji. HBOLock w kodzie:
+![](https://i.imgur.com/rnh1T31.png)
+
+
+
+## Zadanie 2
+:::success
+Autor: Rafał Starypan	
+:::
+![](https://i.imgur.com/SxcePN9.png)
+![](https://i.imgur.com/M7Vd1oO.png)
+![](https://i.imgur.com/8Ch2Tmd.png)
+
+Zamki kohortowe pozwalają na użycie zamków na różnych poziomach w hierarchii pamięci. Mamy niezależne zamki dla każdej kohorty oraz wspólny,
+globalny zamek umożliwiający komunikację pomiędzy kohortami. Dany wątek otrzymuje dostęp do sekcji krytycznej, jeśli zajmie zarówno zamek lokalny 
+dla swojej kohorty, jak i zamek globalny. Aby to osiągnąć wątek najpierw zajmie lokalny zamek, a następnie przed zajęciem zamka globalnego musi 
+się upewnić, że jego kohorta zajęła zamek globalny.
+
+Przy wywołaniu unlock() wątek najpierw sprawdza, czy pewien wątek z jego kohorty nie próbuje zająć globalnego zamka. Jeśli taka sytuacja ma
+miejsce, to musi mu ustąpić nie zwalniając globalnego zamka. W przeciwnym razie wątek zwalnia obydwa zamki, dzięki czemu wątki z innych kohort mają
+możliwość zajęcia globalnego zamka. Aby jedna z kohort nie miała wyłączności na dostęp do zamków, takie rozwiązanie musi uwzględniać jakiś sposób
+na odbieranie kohorcie globalnego zamka po upływie pewnej ilości czasu. Odpowiada za to klasa TurnArbiter.
+
+Metoda alone() zwraca false, jeśli jakiś inny wątek z tej samej kohorty próbuje zająć globalny zamek.
+
+![](https://i.imgur.com/TkaS4Ad.png)
+![](https://i.imgur.com/sNHUbk5.png)
+![](https://i.imgur.com/ovpYChx.png)
+
+## Zadanie 3
+:::success
+Autor: Patryk Mazur	
+:::
+![](https://i.imgur.com/3MIemHo.png)
+![](https://i.imgur.com/nz4hLj5.png)
+![](https://i.imgur.com/NctXFi6.png)
+
+
+
+### 1.
+![](https://i.imgur.com/weVm9yR.png)
+![](https://i.imgur.com/bLP1Dpu.png)
+
+Niezmiennik reprezentacji - Warunki, które muszą być spełnione przed wywołaniem metody i po jej wywołaniu
+Mapa abstrakcji - Zbiór jaki przechowuje dana lista
+
+Na przykładzie CoarseList:
+Niezmiennik reprezentacji:
+![](https://i.imgur.com/c5ffvIQ.png)
+
+Mapa abstrakcji:
+Element jest w zbiorze wtw gdy jest osiągalny z head
+
+### 2.
+
+
+add - 24 linijka
+remove - 43 linijka
+cotains - Zajęcie locka
+
+### 3.
+W momencie zajęcia zamka  element nie został jeszcze dodany, przez co mapa abstrakcji z poprzedniego punktu nie jest poprawna (Element, który miałbyć dodany nie jest osiągalny z heada)
+Analogicznie remove
+
+### 4.
+Element x należy do zbioru wtw.
+(Element x jest osiągalny z head lub istnieje wykonanie add(x)) i nie istnieje wywołanie remove(x)
+
+## Zadanie 4
+:::success
+Autor: Kamila Goszcz	
+:::
+
+![](https://i.imgur.com/rBL3YYx.png)
+
+Zasady: Wartości $\infty$ oraz $-\infty$ nigdy nie są dodawane ani usuwane, węzły są sortowane według wartości klucza bez duplikatów, a element jest w zestawie wtedy i tylko wtedy, gdy jego węzeł jest osiągalny z głowy listy
+
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    head.lock();
+    Node pred = head;
+    
+    try {
+        Node curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                return false;
+            }
+            Node newNode = new Node(item);
+            newNode.next = curr;
+            pred.next = newNode;
+            return true;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+```java=
+public boolean remove(T item) {
+    Node pred = null, curr = null;
+    int key = item.hashCode();
+    head.lock();
+    try {
+        pred = head;
+        curr = pred.next;
+        curr.lock();
+        try {
+            while (curr.key < key) {
+                pred.unlock();
+                pred = curr;
+                curr = curr.next;
+                curr.lock();
+            }
+            if (curr.key == key) {
+                pred.next = curr.next;
+                return true;
+            }
+            return false;
+        } finally {
+            curr.unlock();
+        }
+    } finally {
+        pred.unlock();
+    }
+}
+```
+
+Punkt linearyzacji będzie zależał od wyniku metody `add()`:
+* udało się wstawić element: moment podpięcia elementu `pred.next = newNode`. Mamy spełnione wszystkie niezmienniki: 
+    * lista jest posortowana wg kluczy: `pred.key < newNode.key < curr.key` - `while` w linii 10
+    * lista nie posiada duplikatów `if` w linii 16 
+    * nowy element jest osiągalny z głowy listy - przepięcie wskaźników w linii 21
+* nie udało się wstawić: ostatnie wywołanie `curr.lock()` - linia 8 albo 14.
+
+Punkt linearyzacji będzie zależał od wyniku metody `remove()`:
+* udało się usunąć element - moment przepięcia wskaźnika wskazującego na usuwany element `pred.next = curr.next`. Mamy spełnione wszystkie niezmienniki: 
+    * lista jest posortowana wg kluczy: `pred.key < deletedNode.key < curr.key` $\rightarrow$ `pred.key < curr.key`
+    * lista nie posiada duplikatów
+    * wszystkie elementy są osiągalne: przepięcie wskaźników w linii 17
+* nie udało się usunąć: ostatnie wywołanie `curr.lock()` - linia 8 albo 14.
+
+## Zadanie 5
+:::success
+Autor: Daniel Boguszewski	
+:::
+
+Zadanie 5. Podaj implementację metody contains() dla klasy FineList. Uzasadnij jej poprawność.
+```java=
+public boolean add(T item) {
+    head.lock();
+    int key = item.hashCode();
+    Node pred = head;
+    try {
+	Node curr = pred.next;
+        while (curr.key <= key) {
+            curr.lock();
+            pred.unlock();
+            pred = curr;
+            curr = pred.next;
+        }
+    } finally pred.unlock();
+    return pred.key == key;
+}
+```
+
+
+```java=
+public boolean contains(T item) {
+int key = item.hashCode();
+head.lock();
+Node pred = head;
+try {
+Node curr = pred.next;
+curr.lock();
+try {
+while (curr.key < key) {
+pred.unlock();
+pred = curr;
+curr = curr.next;
+curr.lock();
+}
+return (curr.key == key);
+
+}
+return true;
+} finally {
+curr.unlock();
+}
+} finally {
+pred.unlock();
+}
+}
+```
+
+
+## Zadanie 6
+:::success
+Autor: Wiktor Hamberger	
+:::
+![](https://i.imgur.com/3GjIL5r.png)
+
+Skrócone działanie:
+* znajdź odpowiednie wierzchołki jak w FineList, ale bez używania "fine-grained locking"
+* zablokuj zamki na tych wierzchołkach
+* sprawdź, że:
+    * *pred* nadal jest osiągalny z HEAD
+    * *pred.next* nadal wskazuje na *curr*
+* jeżeli tak, to wykonaj operację, jak nie to wróć do HEAD
+![](https://i.imgur.com/Bin17VZ.png)
+![](https://i.imgur.com/XGrECDe.png)
+
+1. Istnieje jakiś węzeł z key >= szukanego.
+2. Remove() go znajduje.
+3. Inny wątek go w tym czasie usuwa.
+4. Remove() robi locki, failuje validate() i zdejmuje locki.
+5. Jakiś wątek dodaje z powrotem ten węzeł.
+6. Remove() wraca na początek listy.
+7. Wracamy do 1.
+## Zadanie 7
+:::success
+Autor: Jan Jankowicz	
+:::
+![](https://i.imgur.com/j00P7wN.png)
+
+> [name=Piotr Witkowski]Refleksja po ćwiczeniach: poprawność tego rozwiązania trzeba przemyśleć ponownie:
+```java=
+class StrongOptimisticList {
+
+	private AtomicInteger version = new AtomicInteger(0);
+
+	public boolean add(T item) {
+		int key = item.hashCode();
+		while (true) {
+            /* change */
+			int currentVersion = version.get();
+			
+			Node pred = head;
+			Node curr = pred.next;
+			while (curr.key <= key) {
+				pred = curr; curr = curr.next;
+			}
+			pred.lock(); curr.lock();
+			try {
+                /* change */
+				if (validate(currentVersion)) {
+					if (curr.key == key) {
+						return false;
+					} else {
+						Node node = new Node(item);
+						node.next = curr;
+						pred.next = node;
+									
+                        /* change */
+                        version.increment();
+						
+						return true;
+					}
+				}
+			} finally {
+				pred.unlock(); curr.unlock();
+			}
+		}
+	}
+	
+	public boolean remove(T item) {
+		int key = item.hashCode();
+		while (true) {	
+            
+            /* change */
+            int currentVersion = version.get();
+			
+			Node pred = head;
+			Node curr = pred.next;
+			while (curr.key < key) {
+				pred = curr; curr = curr.next;
+			}
+			pred.lock(); curr.lock();
+			try {
+                /* change */
+				if (validate(currentVersion)) {
+					if (curr.key == key) {
+						pred.next = curr.next;
+						
+                        /* change */
+						version.increment();
+						
+						return true;
+					} else {
+						return false;
+					}
+				}
+			} finally {
+				pred.unlock(); curr.unlock();
+			}
+		}
+	}
+	
+	public boolean contains(T item) {
+		int key = item.hashCode();
+		while (true) {
+            /* change */
+			int currentVersion = version.get();
+		
+			Entry pred = this.head; // sentinel node;
+			Entry curr = pred.next;
+			while (curr.key < key) {
+				pred = curr; curr = curr.next;
+			}
+			try {
+				pred.lock(); curr.lock();
+                /* change */
+				if (validate(currentVersion)) {
+					return (curr.key == key);
+				}
+			} finally {
+				// always unlock
+				pred.unlock(); curr.unlock();
+			}
+		}
+	}
+	
+    /* change */
+	private boolean validate(int savedVersion) {
+		return version.get() == savedVersion;
+	}
+	
+}
+```
+
+
+## Zadanie 8
+:::success
+Autor: Zuzanna Kania	
+:::
+![](https://i.imgur.com/BdykLp1.png)
+
+Motywacją jest to, że nie chcemy, żeby contains zajmowało zamek - jest to operacja wykonywana często, a nic nie modyfikuje.
+
+Implementacja LazyList różni się od OptimisticList tym, że wprowadza rozróżnienie na usunięcie węzła logiczne (zaznaczenie go jako nieaktualny) i fizyczne (faktyczne wypięcie z listy). Powoduje to również drobną zmianę w mapie abstrakcji - teraz element jest w zbiorze, jeśli jego węzeł jest osiągalny i nieoznaczony.
+
+Dzięki temu walidacja jest prostsza, bo nie wymaga ponownego przechodzenia listy. Natomiast sprawdzenie węzła w contains wymaga jedynie sprawdzenia, czy znaleziony węzeł nie jest oznaczony.
+
+---
+
+Metoda add jest taka sama jak w OptimisticList (nie licząc nowej metody walidacji), metoda remove ma jedynie dodane usuwanie logiczne, a metoda contains jest dużo prostsza, ponieważ wymaga tylko sprawdzenia, czy węzeł nie jest oznaczony.
+
+![](https://i.imgur.com/7ucvKiA.png)
+![](https://i.imgur.com/8uxIZGp.png)
+
+---
+
+Nie można zrealizować metody remove() z tylko jednym zamkiem.
+![](https://i.imgur.com/4LjX5a6.png)
+
+Na powyższym przykładzie otrzymujemy sytuację, kiedy w łańcuchu węzłów pozostaje wpięty węzeł "do usunięcia". Węzeł ten nie zostanie nigdy usunięty przez garbage collector, ponieważ wskazuje na niego poprzednik. Ponadto, nie będzie można nigdy więcej dodać/usunąć wartości z tego węzła ani dodać/usunąć jego następnika, ponieważ nie pozwoli na to walidacja. Zatem taka implementacja jest niepoprawna.
+
+
+## Zadanie 9
+:::danger
+Autor: Wiktor Hamberger
+
+:::
+![](https://i.imgur.com/TmgRlim.png)
+```!
+To show that a concurrent data structure is a linearizable implementation of a sequential object, it suffices to identify a linearization point, an atomic step where the method call “takes effect”; we say it is linearized at this point. [...] Here, add(a) adds a to the abstract set, remove(a) removes a from the abstract set, and contains(a) returns true or false, depending on whether a was already in the set.
+```
+Niech zmodyfikowana metoda contains() nie zajmuje żadnych zamków w OptimisticList:
+![](https://i.imgur.com/2fhzTM3.png)
+![](https://i.imgur.com/Ln6tula.png)
+
+
+Zauwżmy, że funkcja zakończy się tylko i wyłącznie jeżeli nastąpi poprawne wykonanie validate(). W takim wypadku istniał moment w czasie, w którym końcowy pred i curr były osiągalne z głowy listy i pred wskazywał na curr i w tym momencie wartość zwracana w contains() była prawidłowa względem abstrakcyjnego zbioru, więc możemy wybrać ten moment w czasie jako punkt linearyzacji, więc odpowiedź na zadanie brzmi: tak.
+
+
+---
+
+
+![](https://i.imgur.com/tzZyhuQ.png)
+
+
+Nie, ponieważ wątek A może usunąć element logicznie (punkt linearyzaji remove()) i zasnąć, wątek B może wykonać contains() na elemencie usuniętym przez A i zwrócić true, pomimo, że w abstrakcyjnym zborze element nie istnije, więc nie da się wybrać punktu linearyzacji, bo od początku wynik zwrócowny przez contains() będzie błędny.

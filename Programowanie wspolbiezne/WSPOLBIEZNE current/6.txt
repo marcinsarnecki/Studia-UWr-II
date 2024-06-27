@@ -1,0 +1,546 @@
+# L6 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Bartosz Szczeciński	
+:::
+
+### Zdefiniuj następujące własności postępu: nieczekanie (ang. wait-freeness),
+
+Każde wywołanie metody zakończy się w skończonej liczbie kroków całego systemu
+
+Tj. każdy wątek, który aktualnie się wykonuje, dokonuje postępu
+
+### niewstrzymywanie (ang. lock-freeness).
+
+Jakieś wywołanie metody (dla jakiegoś wątku) zakończy się w skończonej liczbie kroków całego systemu.
+
+Tj. cały system dokonuje postępu, ale konkretny wątek niekoniecznie dokonuje postępu.
+
+### Dlaczego te własności nazywane są nieblokującymi (ang. non-blocking) i niezależnymi (ang. independent)?
+
+Nieblokujące - bo nie dopuszczają możliwości, że czekanie któregoś wątku zablokuje inne.
+
+Niezależne - bo nie zależą od spełnienia jakiegoś warunku przez system operacyjny
+
+### Dlaczego niezakleszczenie i niezagłodzenie są blokujące i zależne?
+
+Blokujące - dopuszczają możliwość, że czekanie któregoś wątku zablokuje inne
+
+Zależne - zależą od spełnienia warunku przez system operacyjny (fair scheduling)
+
+### Czy współbieżna metoda w nietrywialny sposób wykorzystująca zamki może być nieczekająca? 
+
+Nie, bo jeśli wątek A zajmie lock i wątek B będzie na niego czekał, to B nie będzie dokonywał postępu.
+
+### Dana jest metoda weird(), której każde i-te wywołanie powraca po wykonaniu 2^i instrukcji. Czy ta metoda jest nieczekająca? 
+
+Tak, bo każde wywołanie zakończy się w skończonej liczbie kroków (po 2^i krokach)
+
+### A nieczekająca z limitem kroków (ang. bounded wait-free)?
+
+Nie, bo liczba kroków zależy od argumentu funkcji, więc nie możemy podać stałej ograniczającej liczbę kroków.
+
+## Zadanie 2
+:::success
+Autor: Michał Hetnar	
+:::
+
+```
+public:
+int32 a;
+int32 b;
+const s = 2 << 32;
+
+read(){
+int64 c = a * s;
+c = c + b; 
+return c;
+}
+write(int64 d){
+a = b / s; 
+b = d % s;
+}
+```
+Czy takie rozwiązanie spełnia warunek rejestru bezpieczniego?
+Tak,
+jeżeli nachodzą na siebie
+x było t
+x zapisało się na z
+z x przeczytano ?
+
+A: -------x.read()--
+B: ---x.write(a)----
+
+A: -------(a-b---)--
+B: ---(-a-----b)----
+
+a = z(1)
+b = t(2)
+
+przeczytane x nie jest ani t ani z ale należy do wartości dopuszczalnych
+
+regularności i atomowości.
+
+## Zadanie 3
+:::success
+Autor: Marcin Sarnecki	
+:::
+![](https://i.imgur.com/PhI1oZp.png)
+![](https://i.imgur.com/2Q0uZMo.png)
+
+
+### Algorytm Petersona
+```java
+public void lock() {
+ flag[i] = true; 
+ victim  = i; 
+ while (flag[j] && victim == i) {};
+}
+public void unlock() {
+ flag[i] = false;
+}
+```
+
+
+
+W rejestrze regularnym może wystąpić sytuacja, w której jeśli nachodzą na siebie read() i write(x), to read() odczyta starą wartość.
+
+Zauważmy, że algorytm Petersona jest dwuwątkowy. Jeśli jeden z wątków wykonuje write(x) na swojej fladze, a drugi wątek odczytuje flagę pierwszego wątku, to niezależnie od odczytanej wartości ta sytuacja jest linearyzowalna
+![](https://i.imgur.com/fPlqlWV.png)
+
+## Zadanie 4
+:::success
+Autor: Wiktor Bukowski	
+:::
+
+![](https://i.imgur.com/tpHtllG.png)
+
+Zasada działania rejestru 1-regularnego:
+
+```
+           <--read()-->
+<--write(x)-->         | 
+                       ^
+        najwcześniejsze możliwe wykonanie kolejnego write()
+```
+
+
+```java=
+class OneRegularSRSW implements Register {
+    int SIZE = log(M);
+    boolean[] value[] = {new boolean[SIZE], new boolean[SIZE]};
+    boolean valid = 0;
+    
+    public OneRegularSRSW() {
+        for(int i = 0; i < SIZE; i++) {
+            value[0][i] = 0;
+            value[1][i] = 0;
+        }
+    }
+    
+    public void write(int x) {
+        boolean to_write = 1 - valid;
+        for(int i = 0; x > 0; i++) {
+            value[to_write][i] = x % 2;
+            x /= 2;
+        }
+        valid = to_write;
+    }
+    
+    public int read() {
+        boolean my_valid = valid;
+        int val = 0;
+        for(int i = SIZE - 1; i >= 0; i++) {
+            val = 2 * val + value[my_valid][i];
+        }
+        return val;
+    }
+}
+```
+
+W działaniu sekwencyjnym poprawność działania jest oczywista.
+
+W działaniu równoległym mamy 3 przypadki:
+
+- odczyt `valid` jest wykonany po modyfikacji go przez równoległe wywołanie `write`
+
+`write` skończył działanie, a więc sytuacja jest równoważna wykonaniu sekwencyjnemu.
+
+- odczyt `valid` jest wykonany przed modyfikacją go przez równoległe wywołanie `write`
+
+`write` jest w trakcie zapisywania nowej wartości. W całości odczytamy starą wartość, która nie zostanie zmodyfikowana, ponieważ może istnieć tylko jedno równoległe wykonanie `write`.
+
+- odczyt `valid` jest wykonany w trakcie modyfikacji go przez równoległe wywołanie `write`
+
+`write` już zapisał całą nową wartość. Nieistotne jest więc, którą z dwóch wartości odczytamy.
+
+## Zadanie 5
+:::success
+Autor: Tomasz Wołczański	
+:::
+:::info
+**Definicja**
+Rejestr nazwiemy dobrym, jeśli dla każdego ciągu współbieżnych dostępów do tego rejestru (zapisów i odczytów) każda wartość odczytana występuje wśród wartości zapisanych (tzn. wartości odczytane nie biorą się “z powietrza”).
+:::
+![](https://i.imgur.com/z88XwFu.png)
+
+Weżmy dowolny dobry rejestr MRSW $r$ i dowolny ciąg $H$ współbieżnych dostępów do $r$.
+
+### $(\Rightarrow)$
+Załóżmy, że $r$ jest regularny. Pokażemy, że dla $H$ zachodzi $(*)$ i $(**)$.
+
+$(*)$
+Weźmy dowolne $i$ i załóżmy nie wprost, że $R^i \rightarrow W^i$. Ponieważ rejestr jest regularny, to odczyt $R^i$ nastąpił po zapisie $W^i$ lub współbieżnie z nim. Jest to sprzeczne z tym, że w ciągu dostępów do rejestru może być co najwyżej jeden zapis $W^i$ (tutaj mamy dwa zapisy: jeden przed lub w trakcie odczytu, a drugi po odczycie).
+
+$(**)$
+Weźmy dowolne $i,j$ i załóżmy nie wprost, że $W^i \rightarrow W^j \rightarrow R^i$. Ponieważ rejestr jest regularny, to odczyt $R^i$ nastąpił po zapisie $W^i$ i pomiędzy zapisem $W^i$ a odczytem $R^i$ nie było żadnego zapisu, lub współbieżnie z zapisem $W^i$. W obu przypadkach otrzymujemy sprzeczność z założeniem, bo zapis $W^i$ może być co najwyżej jeden.
+
+### $(\Leftarrow)$
+Załóżmy, że dla $H$ zachodzi $(*)$ i $(**)$. Pokażemy, że $r$ jest regularny. Weźmy dowolny odczyt $R$ i rozważmy dwa przypadki:
+1. odczyt $R$ nie pokrywa się w czasie z żadnym zapisem
+Ponieważ rejestr $r$ jest dobry, to zbiór możliwych wartości zwróconych przez $R$ jest równy zbiorowi wartości zapisanych przez wszystkie zapisy. Niech $W^i$ będzie ostatnim zapisem, który nastąpił przed $R$. Z $(*)$ wynika, że dla $j>i$ odczyt $R$ nie może zwrócić wartości zapisanej przez $W^j$, więc zbiór możliwych wartości zwróconych przez $R$ redukuje się do wartości zapisanych przez $W^1,W^2,\dots,W^i$. Skoro $W^i$ jest ostatnim zapisem, który nastąpił przed $R$, to dla $j<i$ mamy $W^j \rightarrow W^i \rightarrow R$, więc zgodnie z $(**)$ wartość zapisana przez $W^j$ nie może zostać zwrócona przez $R$. Zatem jedyną wartością, którą może zwrócić $R$ jest wartość zapisana przez $W^i$, co odpowiada zachowaniu rejestru regularnego.
+2. odczyt $R$ pokrywa się w czasie z pewnym zapisem
+Niech $W^i$ będzie ostatnim zapisem, który nastąpił przed $R$, a $W^{i+1}, W^{i+2},\dots,W^{j}$ zapisami, które pokrywają się w czasie z $R$. Podobnie jak w przypadku 1. zbiór możliwych wartości zwróconych przez $R$ można zredukować do wartości zapisanych przez $W^1, W^2,\dots,W^j$. Analogicznie jak w przypadku 1. dla $k < i$ wartość zapisana przez $W^k$ nie może zostać zwrócona przez $R$. Zatem zbiór wartości, które może zwrócić $R$ jest równy zbiorowi wartości zapisanych przez $W^i, W^{i+1},\dots, W^{j}$. To odpowiada zachowaniu rejestru regularnego, ponieważ $W^i$ jest ostatnim zapisem poprzedzającym $R$, a $W^{i+1},W^{i+2},\dots,W^{j}$ zapisami pokrywającymi się w czasie z $R$.
+
+## Zadanie 6
+:::danger
+Autor: dodeklarować
+:::
+
+## Zadanie 7
+:::success
+Autor: Jan Dalecki	
+:::
+![](https://i.imgur.com/BBNQaXE.png)
+
+![](https://i.imgur.com/mtwpm07.png)
+
+### Lemat 1
+
+**Wywołanie funkcji read zawsze zwróci wartość z przedziału $0...M-1$ ustawioną przez pewien zapis.**
+
+Zauważmy, że zawsze co najmniej jeden bit ma wartość true. 
+
+
+Załóżmy, że wątek czyta $bit[j]$ oraz $bit[k] = true$ dla $k \ge j$.
+
+Jeżeli zacznie czytać $j+1$ to oznacza, że $bit[j] = false$ i $k > j$.
+
+Zapisujący wątek wyczyści $bit[k]$ tylko wtedy gdy pewien $bit[t]$, $t > k$ jest ustawiony na true.
+
+
+Wywołanie funkcji odczytu odczyta wartość ustawioną przez pewne wywołanie zapisu.
+
+
+Załóżmy, że wątek czyta $bit[j]$ oraz wszytkie bity dla $i > j$ mają wartość false.
+
+
+### Lemat 2
+
+**Dana implementacja jest rejestrem $M$ regularnym MRSW.**
+
+Załóżmy, że dla dowolnego wywołania funkcji read $x$ będzie ostatnio zapisaną wartością przez nierównoległy wątek. 
+
+Mamy $bit[x] = true$ oraz $bit[i] = false$ dla każdego $i < x$. Jeżeli czytelnik zwróci wartość inną niż $x$ np. $k$ to $bit[k]$ musiał być ustalony przez współbieżny zapis. 
+
+
+
+## Zadanie 8
+:::success
+Autor: Mikołaj Depta	
+:::
+
+Do implementacji tego rejestru dla n wątków użyjemy tablicy `n x n` rejestrów atomic SRSW.
+
+Wątek piszący pisze do komórek na przekątnej (jest ich writerem) nową wartość oraz timestamp.
+
+`i`'ty reader będzie postępować w następujący sposób:
+1. odczytaj komórkę z przekątnej `[i][i]`
+2. Sprzawdź czy inny reader nie odczytał nowszej wartości poprzez przeczytanie swojego wiersza (komórki `[_][i]` poza `[i][i]`) i ewentualnie zaktualizuj wartość.
+3. Wpisz swoją nową wartość do swojej klumny (komórki `[i][_]` poza `[i][i]`)
+
+Każdy reader jest również writerem dla swojego wiersza, jest on jedynym piszącym co jest wymagane dla rejestru SRSW.
+
+![](https://i.imgur.com/2JHrFYK.png)
+
+
+1. Nigdy nie zajdzie $R^i$ → $W^i$ - spełnione w oczywisty sposób.
+2. Nigdy nie zajdzie $W^i$ → $W^j$ → $R^i$ - Po zakończonym zapisie $W^j$ przekątna zawiera już wartości z nowym największym timestampem, więc porównania z potencjalnie mniejszymi lub równymi wartościami w kolumnach nie wpłyną na wybór wartości zwracanej.
+3. $R^i$ → $R^j$ to $i \le j$ - ta właściwość mówi, że odczyt z rejestru atomowego musi odczytać tą samą lub nowszą wartość co wcześniejszy odczyt. Zapis do wierszy gwarantuje nam tę właściwość. Każdy odczyt $A$ → $B$ oznacza, że $A$ wpisał najnowszą zaobserowaną przez niego wartość do wiersza $B$. Tym samym podczas odczytu $B$ trafi na tę wartość w swojej kolumnie przez co zwróci wartość o nie mniejszym timestampie niż $A$.
+
+Te 3 właściwości definiują rejestr atomowy.
+
+
+## Zadanie 9
+:::success
+Autor: Julia Matuszewska	
+:::
+
+![](https://i.imgur.com/caJLeEc.png)
+
+![](https://i.imgur.com/0jUGmN3.png)
+
+**Działanie w dużym skrócie:**
+- **Tworzymy** tablicę, która w każdej komórce (po jednej komórce na każdy wątek) ma atomowy rejest MRSW (z wartością wstępną).
+- Przy **zapisie** wątek czyta całą tablicę by wybrać najwyższy timestamp i do swojej komórki zapisać (max_timestamp+1, wartość).
+- Przy **czytaniu** wątek czyta wszystkie komórki i wybiera tę z najwyższym timestampem.
+- **Remisy** w timestampach rozwiązujemy na korzyść mniejszego `THREAD.id()`
+
+**Dowód poprawności:**
+![](https://i.imgur.com/L1nJS1w.png)
+Łatwo można zauważyć, że wywołanie read() nie może przeczytać wartości z naszej tablicy, dopóki nie zostanie ona tam zapisana.
+
+###
+![](https://i.imgur.com/D8tTkyD.png)
+Załóżmy, że mamy wątki A, B i C takie, że A wykonało `write(x)` całkowicie przed wywołaniem `write(y)` w B, oraz wątek C wykonał `read` całkowicie po wywołaniu `write(y)` B.
+
+Pokażmy, że nie odczytamy `x`, jeżeli `read` został wywołany całkowicie po zapisaniu `y`
+
+```
+A  <write(x)>[timestamp]
+B                          <write(y)>[timestamp+1]
+C                                                   <read()>
+```
+
+**Przypadki:**
+
+**1. A!=B**
+C odczyta wartość zapisaną przez B (`y`), bo ma wyższy timestamp.
+
+**2. A=B (tj. jest to ten sam wątek)** czyli wykonany zostaje zapis sekwencyjny
+C odczyta wartość zapisaną przez B (`y`), bo zapis A (`x`) został przez B nadpisany.
+
+### (***)
+![](https://i.imgur.com/QzJo1I2.png)
+Załóżmy, że mamy wątki A, B, C i D, takie, że:
+- `read_A()` całkowicie poprzedza `read_B()`
+- `write_C(x)` wykonany w porządku zapisu przed `write_D(y)`
+
+Pokażmy, że jeżeli A zwróci `y` (wartość zapisana przez D), to B nie zwróci `x`
+
+**Przypadki:**
+
+1. $timestamp_C < timestamp_D$
+Jeżeli A odczyta i zwróci wartość `y`, B odczyta również tę wartość lub wartość z wyższym timestampem, więc nie zwróci `x`
+
+2. $timestamp_C = timestamp_D$
+Wtedy wątki wykonywały zapis współbieżnie.
+Jeżeli A odczyta i zwróci wartość `y` (`a_table[D]`), to B również odczyta wartość w `a_table[D]` skojarzoną z $timestamp_D$ lub większym, nawet jeśli odczytał $timestamp_C$ z `a_table[C]`, bo $C<D$
+
+=====
+
+# L6 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Adam Jarząbek	
+:::
+
+**Nieczekanie** - każdy operacja skończy się w skończonej liczbie kroków (gwarancja, że każdy wątek robi progres).
+
+**Niewstrzymywanie** - pojedyncze wątki mogą głodować, ale system jako całość dokonuje progresu.
+
+Te własności nazywane są nieblokującymi, ponieważ porażka lub wstrzymanie jednego porocesu nie spowoduje zablokowania innego procesu.
+
+Niezależne, ponieważ wystąpienie tych własności nie zależy od systemu operacyjnego.
+
+Niezakleszczenie i niezagłodzenie są blokujące, ponieważ, w przeciwieństwie do w.w., istnieje możliwość zablokowania jednego wątku przez problemy drugiego.
+
+Są zależne, ponieważ zależą od tego, czy system operacyjny sprawiedliwie rozdysponuje czas procesora.
+
+Współbieżna metoda wykorzystująca zamki nie będzie nieczająca, ponieważ niektóre wątki będą czekać na dostęp do zamka i nie będą dokonywać postępu.
+
+Metoda weird() jest nieczekająca, ponieważ wykona się po skończonej liczbie kroków. Nie jest bounded wait-free, ponieważ liczba kroków nie jest stała.
+
+## Zadanie 2
+:::success
+Autor: Zuzanna Kania	
+:::
+![](https://i.imgur.com/odoE0To.png)
+
+```java
+class Reg64bit {
+    Reg32bit reg1, reg2;
+    
+    read() {
+        val = reg1;
+        val += reg2 << 32;
+        return val;
+    }
+    
+    write(x) {
+        reg1 = x % (1 << 32);
+        reg2 = x >> 32;
+    }
+}
+```
+
+Rejest jest bezpieczny, ponieważ w przypadku wywołań sekwencyjnych zawsze zwraca wartość ostatnio zapisaną. Nie jest jednak regularny, ponieważ w przypadku współbieżnego odczytu i zapisu odczyt rejestru może zwrócić wartość, która nie została nigdy wcześniej zapisana. Skoro nie jest regularny, to nie jest też atomowy.
+
+
+## Zadanie 3
+:::success
+Autor: Rafał Starypan	
+:::
+![](https://i.imgur.com/4iBO7eC.png)
+![](https://i.imgur.com/jH6hKIk.png)
+![](https://i.imgur.com/Fef6xzq.png)
+![](https://i.imgur.com/nYVIJ01.png)
+![](https://i.imgur.com/rfHxrpu.png)
+
+Z definicji rejestrów regularnego i atomowego wynika, że jeśli zapis i odczyt się nie nakładają, to to zachowują się one w ten sam sposób.
+
+Można zauważyć, że w tym algorytmie odczyt następuje tylko w jednym miejscu w pętli while(), jeżeli wątek A jest w pętli while, a drugi pisze flag[B]=true.
+
+Dowód wzajemnego wykluczania dalej działa niech
+writeB(Flag[B]=true) oznacza koniec wykonania flag[B]=true
+
+(1)writeB(Flag[B]=true)→writeB(victim=B)
+
+(2)writeA(victim=A)→readA(flag[B])→readA(victim)
+
+(3)writeB(victim=B)→writeA(victim=A) (można to założyć ponieważ victim jest nadal atomowe)
+
+writeB(victim=B)→readB(flag[A])→readB(victim)
+
+(1)+(3)+(2)
+writeB(Flag[B]=true)→writeB(victim=B)→writeA(victim=A)→readA(flag[B])→readA(victim)
+
+A nie mogło wejść do sekcji krytycznej
+
+
+## Zadanie 4
+:::success
+Autor: Kamila Goszcz	
+:::
+
+![](https://i.imgur.com/PnVsCrj.png)
+![](https://i.imgur.com/BzxKmhp.png)
+
+Do przechowywania pojedynczej M-wartości potrzebujemy $log\ m$ rejestrów boolowskich - będziemy zapisywać M-wartość jako jej reprezentacje w systemie dwójkowym.
+
+Do rejestru 1-regularnego SRSW będziemy potrzebować dwóch M-wartości: jedna z nich reprezentować będzie poprzednią wartość, a druga aktualną, na której będą wprowadzane zmiany. Dodatkowo będziemy potrzebowali jednego rejestru który będzie reprezentował, która z tych wartości jest aktualna - nazwijmy ja current. Razem O(log m)
+
+1. read():
+Czyta ze zmiennej current, z którego rejestru ma czytać M-wartość i ją zwraca
+2. write():
+Czyta ze zmiennej current, która M-wartość jest aktualna i d tej drugiej zapisuje nową M-wartość po czym zmienia wartość current na przeciwną
+
+- read(), które nie jest współbieżne z żadnym write zczyta sobie wartość która została wpisana jako ostatnia
+- read(), współbieżne z dokładnie jednym write(). Jeżeli write() zdąży zmienić zmienną current to read przeczyta świeżo wpisaną wartość. W p.p. read() odczyta starą wartość, z write() zapisze do tej drugiej
+- read(), współbieżne z wieloma write(). Write() będzie wielokrotnie zmieniał current, zatem zapisywane będzie do obu M-wartości, również do tej z ktrej read() będzie aktualnie czytał - wynik może być dowolny
+
+## Zadanie 5
+:::success
+Autor: Daniel Wiczołek	
+:::
+
+![](https://i.imgur.com/fVXkXsY.png)
+![](https://i.imgur.com/tpekPkn.png)
+![](https://i.imgur.com/ckQjJnf.png)
+<!-- ![](https://i.imgur.com/EWGI2OB.png) -->
+
+regularny czyli gdy overlapping read&write to current lub prev wartosc, a gdy nie to prev ofc.
+"wb" - współbieżny 
+
+- $\rightarrow$
+    - zalozmy nie wprost ze:
+    - **a)** istnieje takie $i$ ze $R^i \to W^i$, 
+        - z definicji Ri wraca to co zapisal Wi
+        - sprzecznosc bo z regularnosci wiemy, że zwracamy poprzedni albo wb, a $\to$ mowi ze są rozdzielne, istnieje tylko jeden zapis Wi
+    - lub 
+    - **b)** istnieą $i,j$, t. że $W^i \to W^j \to R^i$
+        - to samo sprzecznosc z regularnoscia (wynik to wb lub prev zapis, a "$\to$" mówi, że są rozdzielne)
+- $\leftarrow$
+    - **a)** odczyt nie jest wb z zapisem
+        - załóżmy nie wprost, że odczytał z innego zapisu niż poprzedniego
+        - z dobroci wiemy ze wartosc musi pochodzic z jakiegos zapisu 
+        - jeśli ten inny to przyszły to sprzecznośc z *
+        - wpp sprzeczność z własnością ** 
+    - **b)** $R^i$ jest wb z $W^p .. W^q$
+        - $W^k$ - ostatni zapis nie wb z $R^i$
+        - pokaŻ prev lub obecny
+        - załóżmy, że był to $W^x$
+        - z * wiemy, że $x <= q$ (nie mógł odczytać z przyszłości) 
+        - z wlasnosci 2 wiemy ze $x >= k$ (nie mógł odczytać z jakiegoś który w poprzedza $W^k$)
+
+## Zadanie 6
+:::success
+Autor: Hubert Obrzut	
+:::
+![](https://i.imgur.com/V7nEzf5.png)
+
+![](https://i.imgur.com/PSmgWBg.jpg)
+
+
+## Zadanie 7
+:::success
+Autor: Patryk Mazur	
+:::
+![](https://i.imgur.com/m8L1NuH.png)
+
+![](https://i.imgur.com/qVUxuyr.png)
+
+
+**Lemat 1.**
+Wywołanie *read()* zawsze zwraca bit odpowiadający wartości $(0, M-1)$ ustalony przez jakieś wywołanie *write()*
+
+- *$r\_{bit}[0]$* jest początkowo ustawiony na *true*
+- *write* ustawia *$r\_{bit}[j]$* na *true* a następnie, dla każdego $i < j$ ustala *$r\_{bit}[i]$* na *false*
+
+**Lemat 2.**
+Powyższy rejestr jest regularnym M-wartościowym rejestrem MRSW
+
+Niech $x$ będzie wartością zapisaną przez ostatnie wywołanie *write()*. Po zakończeniu *write()* *$r\_{bit}[x]$* jest ustawiony na *true* oraz *$r\_{bit}[i]$* jest ustawione na *false* dla każdego $i < x$. Jeżeli *read()* zwróci wartość, która nie jest $x$ to (z lematu 1.) musiał natknąć się na jakieś *$r\_{bit}[j]$* ($j \neq x$) ustawiony na *true*. Więc ten bit musiał być ustawiony przez współbieżne wykonanie *write()*, co dowodzi regularności tego rejestru.
+
+## Zadanie 8
+:::success
+Autor: Joanna Stachowicz	
+:::
+![](https://i.imgur.com/Y77ZWbe.jpg)
+![](https://i.imgur.com/NHoP2TT.png)
+![](https://i.imgur.com/EAmeerR.png)
+![](https://i.imgur.com/3uxNXI4.png)
+
+![](https://i.imgur.com/LbkP2YK.jpg)
+![](https://i.imgur.com/pQtjQnw.jpg)
+
+
+
+## Zadanie 9
+:::success
+Autor: Daniel Wiczołek	
+:::
+![](https://i.imgur.com/caJLeEc.png)
+
+![](https://i.imgur.com/o4Gd3sg.png)
+write idzie po tablicy (od 0 w prawo)
+i bierze max timespamp
+new_timestamp = max+1
+zapisz do tablicy z stamped val z new_timestamp
+Każdy thread zapisuje do swojej tablicy czyli na podst swojego id
+
+![](https://i.imgur.com/EWGI2OB.png)
+
+*
+Timestamp zapisany przez wi jest > niz to co odczyta read (bo bierzemy max+1), więc read
+nie mógł go odczytać.
+
+** 
+Znowu: timestamp Wj bedzie wiekszy niz timestamp Wi, a read czyta z max timestamp.
+-> ozancza, że są rozdzielne.
+
+\***
+![](https://i.imgur.com/VqT2VEs.png)
+
+read_A -> read_B
+write_C -> write_D
+Jeśli A zwraca wartość D to B nie zwróci C
+(czytli to czym różni się atomic od regular)
+- $t_C < t_D$ A czyta D, więc B nie mógł przeczytać mniejszego timestampu, więc nie przeczytał C.
+- t_C == t_D wtedy CD wykonały zapis współbierznie A czyta D, B też ten timestamp lub większy, bo C < D, a w pętli idziemy od najmniejszego leksykalno-graficznie do największego, od 0 do max id, więc jeśli 
+i < j oraz t_i == t_j to read zwróci wartosc j
+
+

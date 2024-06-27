@@ -1,0 +1,409 @@
+# Ćwiczenia 14, grupa cz. 12-14, 3. lutego 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |     |  X  |  X  |     |  X  |  X  |  X  |
+Michał Błaszczyk         |       |     |     |     |     |     |     |     |
+Dawid Dudek              |       |     |     |     |     |     |     |     |
+Krzysztof Juszczyk       |       |     |     |     |     |     |     |     |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |     |     |     |
+Kacper Komenda           |    X  |     |  X  |     |     |  X  |     |     |
+Aleksandra Kosińska      |       |     |     |     |     |     |     |     |
+Łukasz Orawiec           |       |     |     |     |     |     |     |     |
+Kamil Puchacz            |       |     |     |     |     |     |     |     |
+Paweł Sikora             |       |     |     |     |     |     |     |     |
+Michał Sobecki           |       |     |     |     |     |     |     |     |
+Cezary Stajszczyk        |       |     |     |     |     |     |     |     |
+Piotr Stokłosa           |       |     |     |     |     |     |     |     |
+Cezary Troska            |   X   |     |  ==X==  |  X? |     |  X  |     |     |
+:::
+
+
+Tutaj można do-deklarować zadania 6, 7 z listy 13:
+
+|   Imię i nazwisko      | 6   | 7   |
+| ----------------------:| --- | --- |
+|    Jacek Bizub         |     |  X  |
+|       ...              |     |     |
+|       ...              |     |     |
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+
+:::success
+Autor: Kacper Komenda
+:::
+
+![](https://i.imgur.com/NcoZX7V.png)
+
+Sieci zliczające składają się z balanserów. To takie obiekty, które odpowiednio rozkładają wejście na wyjście, tak, że niezależnie od tego ile będzie na wejściu, to na wyjściu będzie po równo, lub nierówno (jak wejście będzie nieparzyste, ale będzie się różniło o 1). Działa w ten sposób, że za każdym obrotem zmienia stan, raz przesuwa na 1 raz na 2 (można zobaczyć implementację np. w zadaniu 3)
+Takie balansery są połączone w taki sposób, że wyjście jednego wchodzi do wejścia drugiego. Jeśli mowa o sieci zliczającej kluczowy jest tzw własność kroku (step property). Działa ona w taki sposób, że na wyjściach liczba (wyjść) różni się maksymalnie o 1 w porównaniu z innymi kablami. Dzięki własności kroku można w łatwy sposób przerobić ten schemat na licznik dodając liczniki na kablach wyjściowych. 
+W sieci z 4 wyjściami i 4 wejściami mamy balansery ustawione na true (wygląda to jak na schemacie)
+
+![](https://i.imgur.com/QYWA7uQ.png)
+![](https://i.imgur.com/cPBIw2W.png)
+
+
+## Zadanie 2
+
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/938106120810160158/unknown.png)
+
+![](https://media.discordapp.net/attachments/895259310702088223/938111988431736852/unknown.png)
+
+![](https://media.discordapp.net/attachments/895259310702088223/938112361741561886/unknown.png)
+
+![](https://media.discordapp.net/attachments/895259310702088223/938110184738390086/unknown.png)
+
+
+### Konstrukcja dla ${2^k}$
+Siec składa się z dwóch części:
+* Sieci Bitonic[${2^{k-1}}$]
+* Sieci Merger[${2^k}$]
+
+Zarówno Bitonic i Merger dla 2 to pojedynczy przełącznik.
+
+Skoro Bitonic[${2^{k-1}}$] powstaje rekurencyjnie (i właśnie go omawiamy) musimy zastanowić się wyłącznie nad konstrukcja Mergera.
+
+#### Merger $2^k$
+Również powstaje rekurencyjnie. Składa się z dwóch sieci Merger[$2^{k-1}$] oraz wielu pojedynczych przełączników.
+
+Podzielmy wejście sieci Merger na pół i poindexujmy ich elementy od zera.
+
+Do pierwszej sieci Merge[$2^{k-1}$] podłączamy parzyste indexy pierwszej połowy wejścia po czym nieparzyste drugiej połowy wyjścia.
+
+W drugiej sieci symetrycznie. Podłączamy nieparzyste elementy z pierwszej połowy wejścia i parzyste z drugiej.
+
+Na koniec podłączamy wyjścia sieci łączących o tym samym indexie do tych samych przełączników.
+
+
+
+### Własność kroku Merga
+Przez indukcje.
+#### Podstawa
+Dla sieci merga o wyjściu ilości: 2. Merga realizuje jeden przełącznik.
+#### Krok
+Załóżmy, że sieć łącząca dla $2^k$ zawiera własność kroku, pokażmy, że będzie ją również zawierała siec $2^{k+1}$.
+
+Wejście interpretujemy jako dwa osobne ciągi i zakładamy, że każdy z nich spełnia własność krokową.
+
+![](https://media.discordapp.net/attachments/895259310702088223/938120810705604699/unknown.png)
+
+Pokażmy, zatem że wyjście również będzie posiadało tę własność.
+
+(Więcej, więcej i więcej screenów!!!)
+
+Jak już wiemy do podsieci Merga[$2^k$] podłączamy parzyste i nieparzyste elementy. Jeśli z sekwencji wybierzemy elementy tylko o parzystym indexie (lub tylko o nieparzystym) to będą one zawierać własność kroku.
+
+![](https://cdn.discordapp.com/attachments/895259310702088223/938123255036923964/unknown.png)
+
+![](https://media.discordapp.net/attachments/895259310702088223/938123366173388820/unknown.png)
+
+
+Co to oznacza?
+Dzieląc taką sekwencję na na parzyste i nieparzyste indexy to 
+*  Indexy parzyste będą zawierały  $\lfloor\frac{x}{2} \rfloor + k$ (gdzie k to 0 lub 1).
+* Indexy nieparzyste natomiast $\lfloor\frac{x}{2} \rfloor$ elementów
+
+Zatem pierwsza z podsieci otrzyma 
+${(\lfloor\frac{x}{2} \rfloor + k) + (\lfloor\frac{z}{2} \rfloor ) \Rightarrow \lfloor\frac{x}{2} \rfloor + \lfloor\frac{z}{2} \rfloor + k}$
+A druga 
+${(\lfloor\frac{z}{2} \rfloor + l) + (\lfloor\frac{x}{2} \rfloor ) \Rightarrow \lfloor\frac{x}{2} \rfloor + \lfloor\frac{z}{2} \rfloor + l}$
+
+Zatem różnica elementów, jakie mogą otrzymać obydwie sieci to maksymalnie jeden.
+
+![](https://media.discordapp.net/attachments/895259310702088223/938126923547177041/unknown.png)
+
+
+Skoro na podsieci zachowują własność krokową, to na ich wyjściu otrzymamy dwa ciągi, które również będą ją zachowywać. Dodatkowo wiemy, że będą one różnić się maksymalnie o jeden element.
+
+![](https://media.discordapp.net/attachments/895259310702088223/938127241911599165/unknown.png)
+
+Pozostała nam do rozpatrzenia ostatnia warstwa merga (ciąg pojedynczych przełączników).
+
+Jej zadaniem jest łączenie wyjść z sieci łączących. 
+![](https://media.discordapp.net/attachments/895259310702088223/938129186122526730/unknown.png)
+
+Jeśli przełącznik otrzyma dwa tokeny, to pracę rozpoczyna kolejny przełącznik. W przeciwnym razie będzie czekał na token (przypadek dla ostatnich tokenów na wyjściu z podsieci).
+
+### Dowód poprawności 
+Dowód przez indukcję:
+
+#### Podstawa: $2^1$
+W tym przypadku jest to pojedyńczy przełącznik
+
+#### Krok:
+Załużmy że sieci dla $2^k$ wejść jest poprawna i pokażym że dla $2^{k+1}$ również.
+
+![](https://media.discordapp.net/attachments/895259310702088223/938120475412955206/unknown.png)
+
+Bitonic[k] są poprawne. W takim razie dane na ich wyjściu muszą posiadać własność krokową.
+
+
+Musimy jednak pokazać że dane na wyjściu Merga również będą ją zachowywać. Co pokazaliśmy w wcześniejszym punkcie.
+
+## Zadanie 3
+
+:::success
+Autor: Cezary Troska
+:::
+
+```java=
+public class Balancer {
+    AtomicBoolean toggle = true;
+    public int traverse() {
+        while(true)
+        {
+            value = toggle.get();
+            if (toggle.compareandset(value, !value))
+                return value;
+        }
+     }
+ }
+```
+
+## Zadanie 4
+
+:::success
+Autor: Jacek Bizub
+:::
+
+Podobnie jak w poprzednim zadaniu ale wrzucamy AtomicInteger. Wyznaczenie linii wyjścia polega na zrobieniu `|counter.getAndIncrement()| % 2`
+
+A get() +
+B get() +
+A increment()
+B incremen()
+A set() -
+B set() -
+A get() -
+A decrement() 
+A set () +
+
+A get() +
+B get() +
+A increment()
+B incremen()
+A set() -
+B set() -
+...
+
+
+## Zadanie 5
+
+:::success
+Autor: Kamil Kasprzak
+:::
+
+![](https://media.discordapp.net/attachments/895259310702088223/938134731214688336/unknown.png)
+
+
+```java=
+public class BucketList < T > implements Set < T > {
+    static final int HI_MASK = 0x80000000;
+    static final int MASK = 0x00FFFFFF;
+    Node head;
+    public BucketList() {
+        head = new Node(0);
+        head.next =
+            new AtomicMarkableReference < Node > (new Node(Integer.MAX_VALUE), false);
+    }
+    public int makeOrdinaryKey(T x) {
+        int code = x.hashCode() & MASK; // take 3 lowest bytes
+        return reverse(code | HI_MASK);
+    }
+    private static int makeSentinelKey(int key) {
+        return reverse(key & MASK);
+    }
+    public boolean contains(T x) {
+        int key = makeOrdinaryKey(x);
+        Window window = find(head, key);
+        Node curr = window.curr;
+        return (curr.key == key);
+    }
+    public BucketList < T > getSentinel(int index) {
+        int key = makeSentinelKey(index);
+        boolean splice;
+        while (true) {
+            Window window = find(head, key);
+            Node pred = window.pred;
+            Node curr = window.curr;
+            if (curr.key == key) {
+                return new BucketList < T > (curr);
+            } else {
+                Node node = new Node(key);
+                node.next.set(pred.next.getReference(), false);
+                splice = pred.next.compareAndSet(curr, node, false, false);
+                if (splice)
+                    return new BucketList < T > (node);
+                else
+                    continue;
+            }
+        }
+    }
+}
+```
+
+
+```java=
+public class LockFreeHashSet < T > {
+    protected BucketList < T > [] bucket;
+    protected AtomicInteger bucketSize;
+    protected AtomicInteger setSize;
+    
+    public LockFreeHashSet(int capacity) {
+        bucket = (BucketList < T > []) new BucketList[capacity];
+        bucket[0] = new BucketList < T > ();
+        bucketSize = new AtomicInteger(2);
+        setSize = new AtomicInteger(0);
+    }
+    
+    public boolean add(T x) {
+        int myBucket = BucketList.hashCode(x) % bucketSize.get();
+        BucketList < T > b = getBucketList(myBucket);
+        if (!b.add(x))
+            return false;
+        int setSizeNow = setSize.getAndIncrement();
+        int bucketSizeNow = bucketSize.get();
+        if (setSizeNow / bucketSizeNow > THRESHOLD)
+            bucketSize.compareAndSet(bucketSizeNow, 2 * bucketSizeNow);
+        return true;
+    }
+    
+    public boolean contains(T x){
+        int myBucket = BucketList.hashCode(x) % bucketSize.get();
+        BucketList < T > b = getBucketList(myBucket);
+        return b.contains(x);
+    }
+    
+    public boolean remove(T x){
+        int myBucket = BucketList.hashCode(x) % bucketSize.get();
+        BucketList < T > b = getBucketList(myBucket);
+        if (!b.remove(x))
+            return false;
+        setSize.decrementAndGet();
+        return true;
+    }
+    
+    private BucketList < T > getBucketList(int myBucket) {
+        if (bucket[myBucket] == null)
+            initializeBucket(myBucket);
+        return bucket[myBucket];
+    }
+    
+    private void initializeBucket(int myBucket) {
+        int parent = getParent(myBucket);
+        if (bucket[parent] == null)
+            initializeBucket(parent);
+        BucketList < T > b = bucket[parent].getSentinel(myBucket);
+        if (b != null)
+            bucket[myBucket] = b;
+    }
+    
+    private int getParent(int myBucket) {
+        int parent = bucketSize.get();
+        do {
+            parent = parent >> 1;
+        } while (parent > myBucket);
+        parent = myBucket - parent;
+        return parent;
+    }
+}
+```
+
+## Zadanie 6
+
+:::success
+Autor: Cezary Troska
+:::
+
+![](https://i.imgur.com/XFjARsr.png)
+![](https://i.imgur.com/MA1rp4X.png)
+
+Blokada ta służy do zapewnienia, że nie odczytujemy z lokalizacji, do której inny obiekt w tym momencie pisze oraz, że nie piszemy do miejsca z którego ktoś inny czyta / do niego pisze. Możliwe są natomiast jednoczesne odczyty z tego samego miejsca w pamięci.
+
+Implementacja FIFO ma zapobiegać scenariuszowi, że próby odczytu zagłodzą próby zapisu.
+
+## Zadanie 7
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![](https://i.imgur.com/MhOcE5A.png)
+
+![](https://i.imgur.com/HNfLemu.png)
+
+```scala=
+  def writeLock(): Unit = {
+    lock.lock()
+    try {
+      while (writer) condition.await()
+      writer = true
+      writerRequests += 1
+      while (readAcquires != (readReleased + writerRequests)) condition.await()
+    } finally {
+      lock.unlock()
+    }
+  }
+
+  def writeUnlock(): Unit = {
+    lock.lock()
+    try {
+      writerRequests -= 1
+      writer = false
+      condition.signalAll()
+    } finally {
+      lock.unlock()
+    }
+  }
+```
+
+## Zadanie 8
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![](https://i.imgur.com/Ke9hthW.png)
+
+```scala=
+  def lock(team: Int): Unit = {
+    gateway.lock()
+    try {
+      while (inside(other(team)) > 0 || drainPolicy()) gateway.wait()
+      inside(team) += 1
+    } finally {
+      gateway.unlock()
+    }
+  }
+  
+  def unlock(team: Int): Unit = {
+    gateway.lock()
+    try {
+      inside(team) -= 1
+      if (inside(team) == 0) gateway.notifyAll()
+    } finally {
+      gateway.unlock()
+    }
+  }
+```
+
+Polityki moga byc rozne. Mozna np. powiedziec, ze dany team nie moze zajac zamka wiecej niz 50 razy z rzedu i musi po tym thresholdzie wpuscic tych drugich.

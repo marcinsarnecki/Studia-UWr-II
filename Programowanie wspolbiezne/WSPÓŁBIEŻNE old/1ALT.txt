@@ -1,0 +1,363 @@
+# Ćwiczenia 1, grupa cz. 12-14, 14. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8  |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |--- |
+Marcin Bieganek          |       |     |     |     |     |     |     |    |
+Michał Błaszczyk         |   X   |  X  |  X  |  X  |  X  |  X  |     |    |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |     | X  |
+Dawid Dudek              |   X   |  X  |  X  |  X  |  X  |  X  |     | X  |
+Mateusz Gil              |       |     |     |     |     |     |     |    |
+Wiktor Hamberger         |   X   |  X  |  X  |  X  |  X  |  X  |  X  | X  |
+Krzysztof Juszczyk       |   X   |  X  |  X  |     |  X  |  X  |     | X  |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |  X  |     | X  |
+Kacper Kingsford         |       |  X  | X   |==X==|  X  |  X  |     | X  |
+Kacper Komenda           |       |  X  | X   |     |==X==|  X  |     |  X |
+Aleksandra Kosińska      |   X   |==X==|  X  |  X  |  X  |  X  |     | X  |
+Łukasz Orawiec           |   X   |  X  |  X  |  X  |  X  |  X  |  X  |    |
+Kamil Puchacz            |   X   |  X  |  X  |  X  |     |     |  X  |  X |
+Michał Sobecki           |   X   |  X  |  X  |  X  |  X  |  X  |     | X  |
+Cezary Stajszczyk        |   X   |  X  |  X  |  X  |  X  |  X  |     |  X |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |  X  |  X  |     |  X |
+Cezary Troska            |   X   |  X  |  X  | X   |  X  |  X  |     |  X |
+Daniel Wiczołek          |       |     |     |     |     |     |     |    |
+Radosław Zazulczak       |       |     |     |     |     |     |     |    |
+:::
+
+## Zadanie 1
+
+:::warning
+Autor: Michał Błaszczyk
+:::
+
+
+P = CV^2^f
+
+C = at (a const., t liczba tranzystorów)
+V = bf (b const.)
+
+       |
+       V
+       
+P = (ab^2^)tf^3^
+
+Zauważmy, że (przy założonym idealnym przypadku) możemy, dla dowolnego k >= 2, możemy zmniejszyć częstotliwość k-krotnie i wziąć k rdzeni co da identyczną wydajność. Wówczas P = (ab^2^)ktf^3^/k^3^ = (ab^2^)tf^3^/k^2^ = P~0~/k^2^ < P~0~. Więc opisany procesor można zaprojektować.
+
+## Zadanie 2
+
+:::success
+Autor: Aleksandra Kosińska
+:::
+
+![](https://i.imgur.com/B1A7TF9.png =500x)
+
+*wskażnik* wskazuje osobę, której jest kolej do wpuszczenia smoka
+podniesiona *flaga* pokazuje, że osoba jest chętna do wpuszczenia smoków
+
+Protokół Alicji:
+- podnieś flagę
+- pociągnij za sznurek ustawiając kolej Bob'a
+- dopóki Bob ma podniesioną flagę i jest ustawiona jego kolej:
+    - czekaj
+- wypuść smoka do stawu
+- gdy smok wyjdzie opuść flagę
+
+Protokół Bob'a:
+- podnieś flagę
+- pociągnij za sznurek ustawiając kolej Alicji
+- dopóki Alicja ma podniesioną flagę i jest ustawiona jej kolej:
+    - czekaj
+- wypuść smoka do stawu
+- gdy smok wyjdzie opuść flagę
+
+
+**wzajemne wykluczenie:**
+Załóżmy, że oba smoki są w stawie. Bez straty ogólności załóżmy, że Bob jako drugi wpuścił smoka do stawu. Aby mógł to zrobić to musiał zobaczyć, że Alicja:
+1. opuściła flagę
+    - Jeśli alicja ma opuszczoną flagę to jej smok jest poza stawem
+
+lub
+
+2. przestawiła wskaźnik na jego kolej i czeka
+    - dopóki jest kolej Bob'a to Alicja czeka i nie wpuszcza smoka
+
+czyli gdy Bob wpuszczał smoka to w stawie nie było smoka Alicji - SPRZECZNOŚĆ
+
+**niezakleszczenie:**
+Załóżmy, że doszło do zakleszczenia, czyli Alicja i Bob nie mogą wpuścić swoich smoków. 
+1. Oboje mają podniesione flagi. Bez straty ogólności załóżmy że Bob jako ostatni pociągnął za sznurek, czyli wskażnik wskazuje imię Alicji. Alicja czeka, patrzy na wskaźnik i wpuszcza smoka do jeziora. SPRZECZNOŚĆ
+2. Jedno z nich śpi. Bez straty ogólności załóżmy, że to Bob, czylli tylko Alicja ma podniesioną flagę. Może ona odrazu wpuścić smoka, ponieważ dzięki temu, że Bob ma opuszczoną flagę nie musi czekać. SPRZECZNOŚĆ
+
+**niezagłodzenie:**
+Załóżmy, że doszło do zagłodzenia, czyli jeden ze smoków nie będzie mógł wejść nigdy do jeziora. Bez straty ogólności załóżmy, że smok Bob'a jest głodzony, czyli flaga Bob'a jest podniesiona i czeka on aż Alicja:
+1. opuści flagę
+    - Gdy smok Alicji wyjdzie ze stawu to Alicja opuszcza flagę, czyli smok Bob'a może wejść do jeziora
+
+lub
+
+2. pociągnie za sznurek (przestawi wskaźnik)
+    - Gdy Alicja chce wpuścić smoka to po podniesieniu flagi zmienia wskaźnik na imię Bob'a, wtedy Bob może wypuścić smoka
+
+Smok Bob'a wszedł do jeziora - SPRZECZNOŚĆ
+
+## Zadanie 3
+
+:::danger
+Autor: Krzysztof Juszczyk
+:::
+
+### Problem producent-konsument: 
+Mamy 2 wątki, które współdzielą bufor. Wątek producenta produkuje zasób i umieszcza go w buforze, a wątek konsumenta ten zasób odbiera z bufora i konsumuje. Należy zadbać o to aby producent nie próbował dokładać zasobów do pełnego bufora oraz aby konsumnet nie próbował zabierać zasobów z pustego bufora.
+
+
+### Pomysł rozwiązania problemu Alicji i Boba:
+Alicja ma swoją puszkę, którą może trącić Bob i Bob też ma puszkę, którą może trącić Alicja
+
+Stan początkowy: 
+Jezioro jest bez jedzenia, Alicja ma puszkę postawioną, Bob ma puszkę przewróconą.
+
+Protokół Boba:
+1. Czeka aż, zostanie przewrócona puszka Boba
+2. Zostawia jedzenie w jeziorze
+3. Bob stawia swoją puszkę
+4. Bob trąca puszkę Alicji (sygnalizuje, że jedzenie jest w jeziorze i może wpuścić smoki)
+
+Protokół Alicji: 
+1. Czeka aż, zostanie przewrócona puszka Alicji
+2. Wpuszcza smoki do jeziora
+3. Zabiera smoki z jeziora i sprawdza czy zostało jedzenie w jeziorze 
+    * Jeżeli tak, to idzie do punktu 2.
+    * Jeżeli nie, to stawia swoją puszkę, a następnie trąca puszkę Boba (syganlizuje, że nie ma smoków w jeziorze oraz nie ma jedzenia)
+
+
+Czy jest wzajemne wykluczanie? -- aby doszło do spotkania Boba i Alicji przy jeziorze musi nastąpić sytuacja, że obie puszki są przewrócone. Ale aby trącić przeciwną puszkę należy najpierw postawić swoją.
+
+Czy jest niezagłodzenie? -- Aby nastąpiło zagłodzenie obie puszki muszą być podniesione i żadna ze stron nie może mieć możliwości trącenia puszki. W tym protokole natychmiast po podniesieniu swojej puszki następuje trącenie puszki przeciwnej.
+
+Producent-konsument -- Bob dokłada jedzenie tylko wtedy, gdy Alicja da znak, że całe zostało zjedzone, Alicja wypuszcza smoki tylko jak Bob da znak że wyprodukował jedznie lub gdy widzi, że jedzenie nie zostało do końca zjedzone.
+
+:::info
+obrazek stworzony przez: Aleksanda Kosińska :dragon:
+:::
+![](https://i.imgur.com/BR6zoUy.png =450x)
+
+
+## Zadanie 4
+
+:::danger
+Autor: Kacper Kingsford
+:::
+![](https://i.imgur.com/7PlPTDv.png)
+
+
+![](https://i.imgur.com/g3jrYrB.png)
+ bezpieczeństwo, ponieważ każdy klient będzie równo potraktowany.
+
+![](https://i.imgur.com/lgKr66k.png)
+żywotność, coś musi zejść na dół
+
+![](https://i.imgur.com/X2H62wf.png)
+żywotność, jednemu z wątków się uda (co jest pożądane)
+
+![](https://i.imgur.com/1VVCtgC.png)
+bezpieczeństwo, mamy pewność że w ciągu sekundy wydrukowany jest komunikat.
+
+![](https://i.imgur.com/o8sW9jj.png)
+żywotność, kiedyś zostanie wydrukowany komunikat
+
+![](https://i.imgur.com/VrVfAWj.png)
+bezpieczeństwo, spadek kosztu życia nigdy nie nastąpi
+
+![](https://i.imgur.com/YpLKuEY.png)
+żywotność, pożądane są śmierć i podatki, które w końcu się wydarzą.
+
+
+## Zadanie 5
+
+:::danger
+Autor: Kacper Komenda
+:::
+Strategia wyjścia z więzienia:
+Spośrób grupy więźniów wybieramy jednego, który będzie pełnił inną rolę.
+Pozostali więźniowie:
+-gdy jeszcze nigdy nie włączyli przełącznika i jest on wyłączony włączają go
+-gdy przełącznik jest włączony lub już kiedyś włączyli przełącznik nic nie robią
+Więzień mózg:
+-liczy ile razy przełącznik był włączony i gdy widzi, że jest włączony wyłącza go
+-gdy doliczy do liczby K-1 (K-liczba więźniów), to zgłasza, że już każdy odwiedził przełączalnię
+## Zadanie 6
+
+:::danger
+Autor: Cezary Stajszczyk
+:::
+
+Spośród $n$ więźniów wybierany jest jeden więzień alfa (ten największy, bo największy zawsze rządzi).
+
+Gdy więzień wchodzi do pokoju i widzi wyłączony przełącznik oraz przełączył go do tej pory mniej niż dwa razy, włącza go. W przeciwnym przypadku nie robi nic.
+Gdy alfa wejdzie do pokoju i zobaczy włączony przełącznik, wyłącza go i inkrementuje w pamięci swój licznik. Jeśli licznik dobije do $2n-2$ może on stwierdzić "każdy z nas przynajmniej raz był w przełączalni".
+
+Dowód:
+1. Przełącznik na początku był włączony - oznacza to, że przełącznik został przez wiąźniów przełączony $2n-3$ razy.  Tylu przełączeń nie mogło dokonać mniej niż $n-1$ więźniów.
+2. Przełącznik na początku był wyłączony - oznacza to, że przełącznik został przez więźniół przełączony $2n-2$ razy. Czyli każdy więzień zrobił to $2$ razy.
+
+## Zadanie 7
+
+:::danger
+Autor: Wiktor Hamberger
+:::
+![](https://i.imgur.com/9JlbJZ1.png)
+### 1.
+![](https://i.imgur.com/Hq2823Y.png)
+
+$$
+lim_{n\rightarrow\infty}\frac{1}{1-p+\frac{p}{n}}=lim_{n\rightarrow\infty}\frac{1}{0.4-\frac{0.6}{n}}=lim_{n\rightarrow\infty}\frac{1}{\frac{4n-6}{10n}}=lim_{n\rightarrow\infty}\frac{10n}{4n-6}=lim_{n\rightarrow\infty}\frac{10n}{(4-\frac{6}{n})n}=2.5 
+$$
+
+### 2. 
+![](https://i.imgur.com/hI5s074.png)
+x - szukane przyspieszenie M
+Czas wykonywania P':
+$$
+0.3 + \frac{0.7}{n}
+$$
+Przyspieszenie P' w stosunku do P
+$$
+S' = \frac{1}{0.3 + \frac{0.7}{n}}
+$$
+Czas wykonywania P'':
+$$
+\frac{0.3}{x}+\frac{1- \frac{0.3}{x}}{n}
+$$
+Przyspieszenie P'' w stosunku do P
+$$
+S''= \frac{1}{\frac{0.3}{x}+\frac{1- \frac{0.3}{x}}{n}}
+$$
+$$
+\frac{S'}{S''} = 2
+$$
+Korzystając z pow. wzorów należy obliczyć x
+$$
+\frac{\frac{0.3}{x}+\frac{1- \frac{0.3}{x}}{n}}{0.3 + \frac{0.7}{n}} = 2
+$$
+$$
+x = \frac{3n-3}{6n +4}
+$$
+
+
+### 3.
+![](https://i.imgur.com/1ffUJcs.png)
+
+$m$ -> część czasu programu P potrzebna na wykonanie M
+$m'' = \frac{m}{3}$
+$p=1-m$
+$p''=1-m''$
+Czas wykonywania P':
+$$
+m + \frac{1-m}{n}
+$$
+Przyspieszenie P' w stosunku do P
+$$
+S' = \frac{1}{m + \frac{1-m}{n}}
+$$
+Czas wykonywania P'':
+$$
+\frac{m}{3}+\frac{1-\frac{m}{3}}{n}
+$$
+Przyspieszenie P'' w stosunku do P
+$$
+S''= \frac{1}{\frac{m}{3}+\frac{1-\frac{m}{3}}{n}}
+$$
+Wiemy, że:
+$$
+\frac{S'}{S''} = 2
+$$
+$$
+\frac{\frac{m}{3}+\frac{1-\frac{m}{3}}{n}}{{m + \frac{1-m}{n}}} = 2
+$$
+$$
+m = \frac{3}{5(n-1)}
+$$
+
+## Zadanie 8
+
+:::info
+Autor: Jacek Bizub
+:::
+
+![](https://i.imgur.com/3NzyT92.png)
+...
+![](https://i.imgur.com/jBQ70Op.png)
+
+----
+
+Scenariusz zakleszczenia:
+- wszyscy filozofowie myślą
+- wszyscy jednocześnie poczuli głód
+- każdy z nich chwyta za lewą pałeczkę
+- w tym momencie każdy trzyma jedną z pałaczek ale nigdy nie będzie miał możliwości żeby zabrać drugą z nich
+
+Jak temu zapobiec? Wystarczy złamać symetrię:
+
+```java=
+        for (int i = 0; i < N - 1; i++) {
+            p = new Philosopher(i,
+                    forks[i],
+                    forks[(i + 1) % N]);
+            philos[i] = p;
+            p.start();
+        }
+
+        p = new Philosopher(N-1,
+                forks[0],
+                forks[N-1]);
+        philos[N-1] = p;
+        p.start();
+```
+
+alternatywnie:
+
+```java=
+public void run() {
+        Random random = new Random();
+        while (true) {
+            try {
+//                sleep(random.nextInt(1000));
+//                sleep(100);
+                System.out.println("Philosopher " + id + " is hungry");
+                if (id % 2 == 0) {
+                    left.get();
+                    right.get();
+                } else {
+                    right.get();
+                    left.get();
+                }
+
+                System.out.println("Philosopher " + id + " is eating");
+                left.put();
+                right.put();
+            } catch (InterruptedException ex) {
+                return;
+            }
+        }
+    }
+```
+
+Takie złamanie symetrii sprawia, że nie powstanie cykl w grafie oczekiwania.
+
+----
+
+Dowód nie wprost:
+Weźmy dowolnego filozofa, który "jest uczestnikiem zakleszczenia". Taki filozof musi trzymać jedną pałeczkę i oczekiwać na drugą.
+Załóżmy bez spraty ogólności, że trzyma pałeczkę lewą. Wynika z tego, że oczekuje teraz na pałeczkę prawą.
+Wiemy też, że jego sąsiąd z prawej strony najpierw podnosi pałeczkę po swojej prawej stronie. Skoro trzyma (sąsiad) lewą pałeczkę to musi też trzymać prawą. Skoro ma obie pałeczki to znaczy, że aktualnie spożywa posiłek i zaraz odłoży pałeczki. Ale wtedy "zakleszczony filozof" będzie mógł sięgnąć po drugą pałeczkę i zjeść. Sprzeczność.

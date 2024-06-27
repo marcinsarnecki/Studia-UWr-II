@@ -1,0 +1,425 @@
+# L8 - GRUPA 1
+
+## Zadanie 1
+:::success
+Autor: Mikołaj Depta	
+:::
+![](https://i.imgur.com/r3lTpqg.png)
+
+![](https://i.imgur.com/kZkAKPo.png)
+
+Użycie rejestrów atomowych nie umożliwia nam rozwiązania problemu konsensusu.
+
+Rozważmy możliwe operacje na rejestrach RMW, które zmieniają stan.
+Wybierzmy dowolny rejestr, bez straty ogólności może być to `C`.
+Będziemy rozpatrywać jak działanie wątków `A` i `B` wpływa na stan widziany przez `C`.
+
+Możliwe zachowanie
+
+1. `A` i `B` piszą do rejestrów współdzielonych z `C` - Wówczas niezależnie od kolejności wykonania tych zapisów `C` zobaczy ten sam stan.
+
+![](https://i.imgur.com/EqNKX37.png)
+
+2. `A` i `B` piszą do rejestru, który współdzielą między sobą. Wątek `C` nie ma w ogóle dostępu do tego rejestru, więc ich działania nie zmieniają stanu dla niego widzialnego.
+
+## Zadanie 2
+:::success
+Autor: Jan Dalecki	
+:::
+![](https://i.imgur.com/BFGwu5Q.png)
+```java
+public class RMWConsensus
+    extends ConsensusProtocol {
+    private AtomicInteger[] r = new AtomicInteger(-1)[3];
+    public T decide(T value) {
+        int i    = Thread.getId();
+        int reg1 = i; //0, 1, 2
+        int reg2 = (reg1+1)%3;
+        propose(value);
+        double_cAS(r[reg1], r[reg2], -1, i);
+        int val = r[reg1].read();
+        if(val == i || val != -1){
+            return proposed[val];
+        } else {
+            val = r[reg2].read();
+            return proposed[val];
+        }
+    }
+}
+```
+
+Zmiany wprowadzone przez `double_cAS` zostaną zobaczone przez wszystkie wątki w tym samym momencie.
+
+Załóżmy, że wątek $A$ jako pierwszy wykonał instrukcję `double_cAS`. Rejestry które zostaną zapisane to RAB oraz RAC czyli kolejne wykonanie instrukcji `double_cAS` przez wątki $B$ oraz $C$ się nie powiodą.
+
+## Zadanie 3
+:::success
+Autor: Maksymilian Komarnicki	
+:::
+
+Przypuśćmy, że poziom konsensusu n-ograniczonej funkcji compareAndSet() to n+1. Rozpatrzmy protokół używający rejestru wyposażonego w te funkcję. Protokół taki musi mieć stan krytyczny.
+
+BSO wydzielmy z grupy n+1 wątków n wątków oraz rozważmy ich dowolne dwie permutacje. Gdy kolejne wątki w tych permutacjach będą wywoływać ograniczoną funckję compareAndSet(), to rejestr będzie zachowywać się w sposób standardowy. W momencie wywołania compareAndSet() przez (n+1)-szy wątek rejestr wpadnie w stan wadliwy oraz zwróci ⊥. Oznacza to, że ostatni wątek nie będzie w stanie rozróżnić ciągu wywołań funkcji, zatem nie będzie w stanie zadecydować o różnych wartość, z czego wynika sprzeczność.
+
+## Zadanie 4
+:::success
+Autor: PWit
+:::
+**Uwaga: źle!**
+
+
+```clike=
+public class Assign23<T> {
+
+AtomicReference<T>[] r = (AtomicReference<T>[])new Object[3];
+
+    public Assign23(T init ) {
+        for (int i = 0; i < r.length ; i++)
+            r [ i ] = new AtomicReference<T>(init);
+    }
+    
+    public void assign(T v0, T v1, int i0 , int i1) {
+        T t0 = r[ i0 ]. get ();
+        T t1 = r[ i1 ]. get ();
+        r [ i0 ]. compareAndSet(t0, v0);
+        r [ i1 ]. compareAndSet(t0, v0);
+    }
+        
+    public T read(int i) {
+        return r [ i ]. get ();
+    }
+
+}
+
+
+```
+Pokażemy, że `assign` jest linearyzowalna. W tym celu rozważmy dowolną współbieżną historię (być może wielu) wywołań `assign` i `read`:
+
+1. wywołanie `assign` współbieżne z wywołaniami `read` (ale nie `assign`!):
+ - :ok: 
+2. wywołanie `assign` (oznaczmy je przez A) współbieżne z innym wywołaniem `assign` (oznaczmy je przez B) i dowolną liczbą wywołań `read`. Mamy przypadki:
+ a) ustalenia wartości rejestrów w wierszach 13 i 14 powiodły się dla A i B:
+  - linearyzacja w kolejności zmian
+  - zmiany widoczne dla odczytów
+
+ b) tylko jeden z wierszy 13 i 14 powiódł się dla każdego wątku
+  - oznacza to że A i B wykonywały współbieżnie wiersze (11,14)
+  - linearyzacja w kolejności zmian
+  - wątki wykonujące odczyt po punkcie linearyzacji widzą efekt dwóch rozłącznych zapisów
+  - wątki wykonujące odczyt współbieżnie z zapisami A i B widzą: początkową wartość rejestrów, odczyt wygenerowany przez A lub B (zalezy, którą komórkę odczytają)
+
+c) żaden z wierszy 13 i 14 nie powiódł się dla A i B
+ - assign jednego z wątków (np. A) współbieżny z dwoma instancjami assign wykonywanymi przez wątek drugi (B i np. C). 
+
+
+Ciekawa sytuacja:
+
+- wątek A pisze do komórek 0 i 1
+- wątek B pisze do komórek 1 i 0
+- dla każdego z wątków dokładnie jeden zapis w wierszach 13 i 14 udaje się
+
+Załóżmy że zapis do komórki 0 udaje się dla A, zapis do komórki 1 udaje się dla B.
+
+Na początku te dwie komórki mają wartość (init, init)
+
+(init, init)
+
+(a, init)
+
+(a, b)
+
+
+
+
+
+
+
+
+
+## Zadanie 5
+:::success
+Autor: Marcin Wróbel	
+:::
+
+![](https://i.imgur.com/AsitN7z.png)
+
+
+Poziom konsensusu dla obiektów QuasiConsensus wynosi 1.
+Da się go zaimplementować używając tylko rejestrów atomowych.
+```java
+public class  QuasiConsensus {
+    static const int A = 0;
+    static const int B = 1;
+    
+    int propose[] = new int[]{-1,-1}; // rejestry atomowe
+    
+    public int decide(int v) {
+        int me = ThreadID.get();
+        if (me == A) return decideA(v);
+        return decideB(v);        
+    }
+    
+    public int decideA(int v) {
+        if (v == 1) return 1;
+        
+        propose[A] = 0;        
+        if (propose[B] == 1)
+            return 1;
+        
+        return 0;
+    }
+    
+    public int decideB(int v) {
+        if (v == 0) return 0;
+        
+        propose[B] = 1;        
+        if (propose[A] == 0)
+            return 0;
+        
+        return 1;
+    }
+}
+
+```
+- wątek A proponuje 1
+Wątek zawsze A ustali 1. Gdy wątek B zaproponuje 0 i ustali 0 (wątki ustalają różną wartość), albo wątek B zaproponuje 1 i ustali 1 (oba wątki ustalają tą samą wartość 1).
+- wątek B proponuje 0
+Analogicznie jak powyżej wszystko działa
+- wątek A proponuje 0, wątek B proponuje 1
+Mamy pewność, że co najmniej 1 wątek wejdzie do if'a (*). Załóżmy, że jest to wątek A. Stąd wątek A zwróci 1. Jeżeli wątek B zwróci 1 to oba ustalą 1 (poprawna sytuacja). Jeżeli wątek B zwróci 0, to zwrócą rózne wartości (A zwróci 1, B zwróci 0).
+
+(*) Co najmniej 1 wątek wejdzie do if'a w decideA, lub decideB
+`write(propose[A] = 0)` → `read(propose[B] == 1)`
+`write(propose[B] = 1)` → `read(propose[A] == 0)`
+
+BSO załóżmy, że `write(propose[A] = 0)` → `write(propose[B] = 1)`
+wtedy `write(propose[A] = 0)` → `write(propose[B] = 1)` → `read(propose[A] == 0)`. Wątek A wejdzie do if'a.
+
+
+:::success
+Autor: Marcin Sarnecki	
+:::
+![](https://i.imgur.com/eBizqHX.png)
+
+Rozważmy drzewo stanów z poprzednich dowodów. Wtedy korzystaliśmy z własności wait-free, aby w nieskończoność nie pozostać w stanie biwalentnym. Niewstrzymywanie (lock-freedom) gwarantuje nam to samo - nie będziemy w jakimś stanie nieskończenie długo, jakiś wątek cały czas postępuje pomimo możliwości uśpienia innych watków. Reszta dowodu jest identyczna
+
+## Zadanie 7
+:::success
+Autor: Julia Matuszewska	
+:::
+
+![](https://i.imgur.com/RTsoEEq.png)
+
+**Algorytm z poprzedniej listy**
+(została tam też udowodniona jego poprawność)
+:::spoiler Zad5 lista7
+## Zadanie 5
+```
+Autor: Marcin Sarnecki	
+```
+
+![](https://i.imgur.com/I5O5J5E.png)
+![](https://i.imgur.com/eWrHYnJ.png)
+* Załóżmy nie wprost, że zwrócono wartość różną od zaproponowanych przez dwa wątki. Zauważmy, że aby do tego doszło, wątek pierwszy musiałby wykonać $return\space proposed[j];$ na niezainicjowanej $proposed[j]$. Dochodzimy do sprzeczności, ponieważ wtedy musiało zajść $position[i] < position[j]$, co implikuje przypisanie wartości $proposed[j]$ 
+
+* Załóżmy nie wprost, że dwa wątki zwróciły różne wartości. 
+
+Rozważmy przypadek wykonania 
+```java
+if (position[i] < position[j]) // I am behind you
+return proposed[j];
+```
+Jeden z wątków musiał wykonać tego ifa jako pierwszy, wartości $position[]$ mogą się tylko zwiększać, zatem niemożliwe jest, że drugi wątek następnie odczytał swoje position jako mniejsze
+
+Rozważmy przypadek wykonania
+```java
+if (position[i] > position[j] + speed[j]) // I am far ahead of you
+return proposed[i];
+```
+Jeden z wątków musiał wykonać tego ifa jako pierwszy, drugi z wątków na pewno wykona drugiego ifa zwracającego $proposed[j]$
+
+* To rozwiązanie nie jest $wait-free$, jeśli wartości $position[]$ są takie same, to wolniejszy wątek może wykonać trzy razy pętlę $while$, następnie szybszy wątek wykona raz pętle i wracamy so sytuacji z równymi $position[]$
+
+:::
+```java=
+public class ConsensusProposal {
+    Boolean proposed[] = new Boolean[2];
+    Integer[] speed = new Integer[2];
+    Integer[] position = new Integer[2]];
+    public ConsensusProposal(){
+        position[0] = 0;
+        position[1] = 0;
+        speed[0] = 3;
+        speed[1] = 1;
+    }
+    
+    public Boolean decide(Boolean value) {
+        int i = ThreadID.get(); //0 or 1
+        int j = 1 - i;
+        proposed[i] = value;
+        while (true) {
+            position[i] = position[i] + speed[i];
+            if (position[i] > position[j] + speed[j]) // I am far ahead of you
+                return proposed[i];
+            else if (position[i] < position[j]) // I am behind you
+                return proposed[j];
+        }
+    }
+}
+```
+
+Korzystamy tylko z rejestrów atomowych więc algorytm nie jest wait-free
+
+---
+
+### Dowód na to, że metoda jest *niehamowana*
+###### (jeśli każdy wątek który od pewnego momentu wykonuje metodę przez cały czas w izolacji, zakończy ją)
+
+Zauważmy, że w algorytmie dla dwóch wątków od pewnego momentu możemy znaleźć się w sytuacji, że jeden z wątków (niech będzie to A) zakończył działanie funkcji `decide`, a drugi jeszcze nie (niech będzie to B) i jest w stanie ciągłej **izolacji** od tego momentu.
+
+Musimy pokazać, że wątek B zakończy funkcję `decide`
+**2 przypadki:**
+
+1. `position[B] < position[A]`
+    wtedy w kolejnej iteracji pętli `B` zakończy działanie w 21 linijce
+2. `position[B] >= position[A]`
+    `A` nie zwiększy swojej pozycji bo już zakończył `decide` więc `B` będzie wykonywać pętlę (zwiększać swoją pozycję) aż do spełnienia warunku w linijce 18 i zakończy działanie
+
+Zatem B zakończy swe działanie i jest to metoda niehamowana
+
+![](https://i.imgur.com/74igxoZ.png)
+
+=====
+
+# L8 - GRUPA 2
+
+
+## Zadanie 1
+:::success
+Autor: Joanna Stachowicz	
+:::
+![](https://i.imgur.com/BhyUI5n.png)
+![](https://i.imgur.com/EoJ75Xg.jpg)
+
+
+
+
+## Zadanie 2
+:::success
+Autor: Magdalena Rzepka	
+:::
+
+Wątki **A,B,C** mają odpowiednio id **0,1,2**.
+**R = {-1, -1, -1} // RAC  RAB  RBC**
+Każdy wątek wykonuje:
+**MRSW[ID] = x** // wartość do konsensusu wątku ID
+**double_cAS(R[ID], R[(ID+1)%3],-1,ID)** //tylko pierwszy wątek zapisze swoje ID na 2 pozycjach
+**if(R[ID].get() != -1) -> return MRSW[R[ID].get()]
+else -> return MRSW[R[(ID+1)%3].get()]**
+
+Tylko pierwszemu wątkowi uda się zapisać swoje ID w 2 miejscach.
+Jeżeli na R[ID] nic nie zostało zapisane to wystarczy znaleźć rejestr, który na pewno będzie zawierał dane.
+
+![](https://i.imgur.com/3yGNJLc.png =500x)
+
+
+## Zadanie 3
+:::success
+Autor: Patryk Mazur	
+:::
+![](https://i.imgur.com/iy6uU0Y.png)
+
+
+Załóżmy nie wprost, ze n-ograniczona funkcja **compareAndSet()** ma poziom konsensusu $n+1$ dla $n$ wątków ($n>=2$)
+
+![](https://i.imgur.com/YbqH6Rj.png)
+
+Każdy wątek wykonuje jeden raz instrukcję **compareAndSet()**
+![](https://i.imgur.com/DxEHWza.png)
+
+Wątek $n+1$-szy przy wywołaniu **compareAndSet()** zwróci pinezkę. Zatem nie będzie mógł rozróżnić stanu (odtworzyć kolejności poprzednich instrukcji). Jeżeli teraz w obu przypadkach wątek $n+1$-szy pójdzie solo, to dostaniemy sprzeczność, ponieważ po wykonaniu tych samych instrukcji z identycznego stanu możemy dostać dwie wartości konsensusu (Lewa strona 0-walentna, prawa 1-walentna).
+
+
+## Zadanie 4
+:::danger
+Autor: dodeklarować
+:::
+
+## Zadanie 5
+:::success
+Autor: Maria Szlasa	
+:::
+:::info
+Rozważmy następujący dwuwątkowy obiekt QuasiConsensus z metodą decide(v), gdzie v jest wartością binarną. Jeśli obydwa wątki, A i B, wywołały decide() z tą samą wartością v, to wspólnie uzgodnioną wartością jest v — decide() zwraca v. Jeśli wątki wywołały decide() z różnymi argumentami to albo muszą uzgodnić jedną z nich, albo B otrzyma wartość 0 i A otrzyma wartość 1 (ale nie na odwrót). Dokładnie jedno z poniższych zadań ma rozwiązanie. Wybierz odpowiednie i rozwiąż je.
+1. Pokaż, że poziom konsensusu dla obiektów QuasiConsensus jest ≥ 2. Tzn. zaimplementuj dwuwątkowy protokół konsensusu używając obiektów QuasiConsensus i rejestrów atomowych.
+2. Pokaż, że poziom konsensusu dla obiektów QuasiConsensus wynosi 1. 
+:::
+
+Wybieram: 2. Pokaż, że poziom konsensusu dla obiektów QuasiConsensus wynosi 1.
+
+Pokażę, że poziom konsensusu QuasiConsensus nie wynosi 2.
+
+Załóżmy, że jesteśmy w stanie krytycznym. Rozważmy przypadki:
+
+**A decide(0), B decide(0)**
+Stan ten jest równoważny z wykonaniem operacji B decide(0) -> A decide(0). Ale te dwa wywołania są w innych poddrzewach. (jedno jest 1-walentne, a drugie jest 0-walentne).
+
+**A decide(1), B decide(1)**
+Analogicznie do poprzedniego.
+
+**A decide(1), B decide(0)**
+W tym przypadku wątki uzgadniają wartość albo zwracają A=1, B=0. Niezależnie od kolejności wykonania wątków możemy otrzymać te wartości. Zatem są to stany nierozróżnialne. Ale te dwa wywołania są w innych poddrzewach. (jedno jest 1-walentne, a drugie jest 0-walentne).
+
+**A decide(0), B decide(1)**
+Analogicznie do poprzedniego.
+
+> Komentarz:
+> istnieje jeszcze jeden przypadek, ale podobno nieciekawy: wywołują decide na różnych obiektach QuasiConsensus
+> alternatywne rozwiązanie: można było podać implementację QuasiConsensus jako dowód
+> ale przedstawione rozwiązanie jest ok
+
+## Zadanie 6
+:::success
+Autor: Zuzanna Kania	
+:::
+
+![](https://i.imgur.com/XomHMOD.png)
+
+![](https://i.imgur.com/cM85ipr.png)
+
+Konstrukcja drzewa decyzyjnego protokołu bazowała po pierwsze na tym, któremu z wątków uda się wykonać akcję na zadanym stanie jako pierwszemu. W przypadku warunku nieczekania wiedzieliśmy, że zarówno A i B będą postępować (bo muszą się zakończyć w skończonej liczbie kroków), więc któryś z nich wykona akcję jako pierwszy. Można jednak zauważyć, że według podanej definicji niewstrzymywanie działa praktycznie tak samo - dla pewnego stanu w końcu któryś z wątków wykona akcję (jako pierwszy), nawet jeśli pozostałe śpią.
+
+Po drugie korzystaliśmy z faktu, że każdy protokół nieczekający ma stan krytyczny. Jest tak również w przypadku protokołu niewstrzymywanego, ponieważ zawsze znajdziemy przynajmniej jeden wątek, który zakończy swoje działanie w skończonej liczbie kroków. Skoro tak, to wątek ten działając solo trafi w końcu na jakiś stan krytyczny - w przeciwnym razie nie miałby skończonej liczby kroków.
+
+![](https://i.imgur.com/tcY549g.png)
+
+Całość dowodu przebiega zatem analogicznie poza faktem, że wcześniej mogliśmy wybrać dowolny wątek działający solo, a teraz musimy go wybrać spośród tych, o których wiemy, że zakończą się w skończonej liczbie kroków (a jak zauważyliśmy powyżej, przynajmniej jeden taki wątek zawsze istnieje).
+
+## Zadanie 7
+:::success
+Autor: Daniel Wiczołek	
+:::
+
+![](https://i.imgur.com/zDQdd08.png)
+
+Z zadania 5 listy 7:
+![](https://i.imgur.com/NHBUWaq.png)
+
+W zad5 lista7 pokazalismy, że jest to impl. bin konsensusu.
+Pokażemy, że jest obstruction free.
+Załóżmy, że wątek B od pewnego momentu wykonuje ją w iolacji.
+Musi więc powtarzać wykonywanie pętli while.
+
+Zauważmy, że 
+- position[j] oraz speed[j] się nie zmieniają.
+- speed[i] >= 1
+
+Niech $position_n[i]$ będzie wartością position[i] po n-tej iteracji.
+Dla dowolnego $n \in N$ zachodzi: $position_n[i] < position_{n+1}[i]$,
+podstawa:
+$position_1[i] >= 0+1 > 0 == position_0[i]$
+krok:
+position_{n+1}[i] >= position_n[i] + 1 > position_n[i]
+
+Więc ciąg pozycji jest rozbieżny, czyli istnieje iteracja, w której 
+pozycja jest większa niż stała: $position[j] + speed[j]$.

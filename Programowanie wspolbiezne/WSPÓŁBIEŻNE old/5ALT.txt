@@ -1,0 +1,337 @@
+# Ćwiczenia 5, grupa cz. 10-12, 18. listopada 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Dominik Budzki           |       |     |     |     |     |     |     |
+Przemysław Hoszowski     |       |  X  |  X  |  X  |  X  |     |  X  |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |    X   |  X   |  X   |  X   |  X   |  X   |  X   |
+Łukasz Pluta             |    X   |   X  |  X   |   X  |   X  |   X  | X    |
+Antoni Pokusiński        |       |  X  |   X |  X  |  X  |     |  X  |
+Szymon Rysz              |   X   |  X  |==X==|  X  |  X  |    |  X  |
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |    X  |  X  |  X  |  X  |     |     |  X  |
+Mateusz Szwelengreber    |       |     |     |     |     |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Zieliński         |   X   |==X==|  X  |  X  |     |     |     |
+:::
+
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+:::success
+Autor: Mateusz Sidło
+:::
+
+Algorytm implementujący zamek nazywamy *First-Come-First-Served* (FCFS), gdy dla każdego systemu złożonego z przynajmniej dwóch wątków A i B, jeśli $𝐷_A^j\rightarrow D_B^k$ to $CS_A^j\rightarrow CS_B^k$, gdzie $D_C^i$ oraz $CS_C^i$ oznaczają odpowiednio i-te wykonanie sekcji wejściowej algorytmu oraz i-te zajęcie zamka przez wątek C. Intuicyjnie oznacza to, że jeśli A zakończy wykonanie sekcji wejściowej zanim zrobi to B, to A weźmie zamek zanim zrobi to B. 
+
+Pokazaliśmy, że algorytm Petersona jest FCFS gdy za sekcję wejściową przyjąć kilka pierwszych instrukcji metody `lock()`, a dokładniej instrukcje odczytu numeru wątku oraz ustawiania flag i ofiary. Zmieńmy teraz definicję sekcji wejściowej tak, by oznaczała po prostu pierwszą instrukcję metody `lock()`.
+
+1. Pokaż, że żaden z poniższych wariantów algorytmu Petersona nie jest FCFS przy tak zmienionej definicji sekcji wejściowej:
+    a. pierwszą instrukcją algorytmu jest odczyt numeru wątku: `i = Thread.getID()`, gdzie i jest zmienną lokalną wątku,
+    
+    ```java=
+    public void lock() {
+        int i = Thread.getID(); //D 
+        
+        flag[i] = true; //
+        victim = i;     // S
+        int j = 1 - i;  //
+        
+        while (flag[j] && victim == i) {};
+    }
+
+    public void unlock() {
+        flag[i] = false;
+    }
+    ```
+    Załóżmy, że:
+    $$
+        D_0^i \rightarrow D_1^j\\
+        S_1^j \rightarrow S_0^i 
+    $$
+    Wtedy:
+    $$
+        CS_1^j \rightarrow CS_0^i
+    $$
+    
+    b. pierwszą instrukcją jest ustawienie flagi: `flag[Thread.getID()] = true`,
+    
+    ```java=
+    public void lock() {
+        flag[Thread.getID()] = true; //D 
+        
+        int i = Thread.getID(); //
+        victim = i;             // S
+        int j = 1 - i;          //
+        
+        while (flag[j] && victim == i) {};
+    }
+
+    public void unlock() {
+        flag[i] = false;
+    }
+    ```
+    Załóżmy, że:
+    $$
+        D_0^i \rightarrow D_1^j\\
+        S_1^j \rightarrow S_0^i 
+    $$
+    Wtedy:
+    $$
+        CS_1^j \rightarrow CS_0^i
+    $$
+    
+    c. pierwszą instrukcją jest ustawienie ofiary:   `victim = Thread.getID()`, czyli instrukcje ustawiania flag i ofiary są w odwróconej kolejności w stosunku do oryginalnego algorytmu.
+    
+       
+    ```java=
+    public void lock() {
+        victim = Thread.getID(); //D 
+        
+        int i = Thread.getID(); //
+        flag[i] = true;         // S
+        int j = 1 - i;          //
+        
+        while (flag[j] && victim == i) {};
+    }
+
+    public void unlock() {
+        flag[i] = false;
+    }
+    ```
+    
+    Załóżmy, że:
+    $$
+        D_0^i \rightarrow D_1^j\\
+        S_1^j \rightarrow S_0^i 
+    $$
+    Wtedy:
+    $$
+        CS_1^j \rightarrow CS_0^i
+    $$
+    
+    
+> [name=Piotr Witkowski] Powyższy kod nie ma własności wzajmnego wykluczania (mój błąd). Dlatego lepiej jest rozważyć taki kod:
+
+    ```java=
+    public void lock() {
+        
+        foo = Thread.getID(); // D (foo jest zmienną współdzieloną, która występuje tylko w tym wierszu algorytmu)
+
+        int i = Thread.getID(); //
+        flag[i] = true; //
+        victim = i;     // S
+        int j = 1 - i;  //
+        
+        while (flag[j] && victim == i) {};
+    }
+
+    public void unlock() {
+        flag[i] = false;
+    }
+    ```
+
+    
+    
+    
+2. Wywnioskuj stąd, że żaden algorytm implementujący zamek (wzajemne wykluczanie) i zachowujący warunek niezagłodzenia nie jest FCFS, jeśli sekcja wejściowa to pierwsza instrukcja metody `lock()`.
+     
+> [name=Piotr Witkowski] Odpowiadając na poniższe pytania należy posłużyć się pojęciem stan systemu. Np. w pkcie a: stan systemu po wykonaniu najpierw sekcji wejściowej wątku A a później sekcji wejściowej wątku B jest nieodróżnialny (jest taki sam) od stanu systemu w którym te sekcje wykonały się w odwrotnej kolejności. A zatem system "nie wie" w jakiej kolejności ma wpuścić wątki do sekcji krytycznej.
+> 
+
+    
+     
+     a. odczytem tej samej komórki lub różnych komórek pamięci w zależności od wątku, 
+         
+     Kolejnośc wejścia do sekcji krytycznych zależy od tego, co zostało odczytane oraz od kolejnych instrukcji.
+     
+     b. zapisem do różnych komórek,
+     
+     Do różnych komórek zapisywana jest jakś z góry znana liczba. Jeżeli w kolejnych krokach nie nastąpi zapis do innych miejsc w pamięci, to algorytm nie spełnia własności niezagłodzenia. Jeżel nastąpił to kolejność wykonywania sekcji krytycznej zależy od kolejności zapisów do innych komórek w pamięci.
+     
+     c. zapisem do tej samej komórki.
+     
+     Jedna komórka pamięci jestnie wystarczjąca do zagwarantowania wzajemnego wykluczenia, a zatam wątki muszą dokonać zapisu do innych komórek pamięci i kolejność tego zapisu ma wpływ na kolejność dostępu do sekcji krytycznej.
+
+Wersja poprawiona:
+     
+ a. odczytem tej samej komórki lub różnych komórek pamięci w zależności od wątku, 
+
+ Odczytanie wartości z pamięci nie ma wpływu na stan systemu, a zatem taka sytuacja w której $D_A \rightarrow D_B$ jest nieodróżnialna od $D_B \rightarrow D_A$. System "nie wie", który wątek powinien jako pierwszy wejść do sekcji krytycznej.
+
+ b. zapisem do różnych komórek,
+
+ Do różnych komórek zapisywane są jakieś z góry znane wartości. Stan systemu w sytuacji w której $D_A \rightarrow D_B$ jest nieodróżnialny od $D_B \rightarrow D_A$, bo niezależnie od tego, który wątek jako pierwszy wykona swoją sekcję wejściową, to w pamięci będą zapisane te same wartości. System "nie wie", który wątek powinien jako pierwszy wejść do sekcji krytycznej.
+
+ c. zapisem do tej samej komórki.
+
+ Stan systemu w sytuacji w której mamy dwa wątki, dla których $D_A \rightarrow D_B$ jest nieodróznialna od sytuacji w której mamy tylko wątek $B$. Jako, że system spełnia własność niezagłodzenia, to w obu przypadkach wątek $B$ jako pierwszy powinien wykonać swoją sekcję krytyczną.
+
+## Zadanie 2
+:::success
+Autor: Michał Zieliński
+:::
+
+### Treść
+Pokaż, że sekwencyjna spójność nie ma własności kompozycji.
+### Rozwiązanie
+Weźmy taki ciąg zdarzeń dla kolejek FIFO p i q:
+1 A p.enq(x)
+2 B q.enq(y)
+3 A q.enq(x)
+4 B p.enq(y)
+5 A p.deq() (y)
+6 B q.deq() (x)
+
+Dla poszczególnych wątków mamy kolejność 1-3-5 i 2-4-6 (dla wątków zachodzi spójność sekwencyjna).
+
+Patrząc na kolejki, musimy mieć 4-1-5 i 3-2-6.
+
+Nie możemy uzyskać takiej "kompozycji", żeby dało się zachować spójność.
+
+## Zadanie 3
+:::success
+Autor: Szymon Rysz
+:::
+![](https://i.imgur.com/ACU6mxO.png)
+
+![](https://i.imgur.com/FP7IbOv.png)
+
+![](https://i.imgur.com/MRLija9.png)
+![](https://i.imgur.com/Vw80Dhj.png)
+
+
+Dwa procesy mogą pobrać wartość $flag[j]$ na początku $lock()$ -> oba będą przechowywały wartość $flag[j] == false$ -> oba wejdą do sekcji krytycznej.
+## Zadanie 4
+:::success
+Autor: Antoni Pokusiński
+:::
+
+:::info
+Z użyciem klasy *AtomicInteger* zaprogramowano poniższą
+implementację kolejki FIFO, dopuszczającej wiele wątków
+wkładających i wyciągających elementy. Pokaż, że jest ona
+niepoprawna. W tym celu pokaż, że nie jest linearyzowalna.
+:::
+```java=
+class IQueue<T> {
+    AtomicInteger head = new AtomicInteger(0);
+    AtomicInteger tail = new AtomicInteger(0);
+    T[] items = (T[]) new Object[Integer.MAX_VALUE];
+    
+    public void enq(T x) {
+        int slot;
+        do {
+            slot = tail.get();
+        } while (! tail.compareAndSet(slot, slot+1)); // rezerwacja
+        items[slot] = x; // dopiero tutaj efekt widoczny dla innych wątków
+    }
+    
+    public T deq() throws EmptyException {
+        T value;
+        int slot;
+        do {
+            slot = head.get();
+            value = items[slot];
+            if (value == null)
+                throw new EmptyException();
+        }  while (! head.compareAndSet(slot, slot+1));
+        return value;
+    }
+}
+```
+Problem - w procedurze ```enq()``` operacje ```tail.compareAndSet``` i ```items[slot] = x``` nie są wykonane atomowo. Nieformalnie - może to doprowadzić do sytuacji, gdy wątek zatrzyma się pomiędzy tymi instrukcjami, czyli - zarezerwował już miejsce, ale nic do niego nie wstawił. Jeśli teraz inny wątek wykona ```enq()```, a potem ```deq()```, to zwróci *EmptyException*, mimo że kolejka nie jest pusta. Formalnie:
+
+```
+ A: ---<A.enq(x)................>---
+ B: -----<B.enq(y)>---<B.deq()>-----
+```
+**1.** A.enq(x)
+**2.** B.enq(y)
+**3.** B: void
+**4.** B.deq()
+**5.** B: EmptyException
+**6.** A: void()
+
+Taka historia nie jest linearyzowalna - ```B.deq()``` wykonuje się po operacji ```B.enq(y)```(czyli mamy gwarancję, że w FIFO znajduje jakiś element), a mimo to dostajemy *EmptyException*. Jest to niezgodne z sekwencyjną specyfikacją FIFO.
+
+## Zadanie 5
+:::success
+Autor: Przemysław Hoszowski
+:::
+![](https://i.imgur.com/wlwfR7K.png)
+W metodzie enq punkty odpowiadają instrukcją (pierwszy punkt to pierwsza instrukcja) 
+### a)
+Dla wykonania:
+![](https://i.imgur.com/DIWwbg1.png)
+Jeśli pierwszy punkt będzie punktem linearyzacji to otrzymamy kolejność:
+```
+A enq(0)
+B enq(1)
+B deq(1)
+```
+Co jest sprzeczne z oczekiwanym działaniem kolejki.
+### b)
+Dla wykonania:
+![](https://i.imgur.com/lX0tdlU.png)
+Jeśli drugi punkt będzie punktem linearyzacji to otrzymamy kolejność:
+```
+B enq(1)
+A enq(0)
+B deq(0)
+```
+Co jest sprzeczne z oczekiwanym działaniem kolejki.
+
+### Czy z powyższych punktów wynika, że enq() nie jest linearyzowalna?
+
+Nie możemy: ![](https://i.imgur.com/gxfiR1o.png)
+
+## Zadanie 6
+:::success
+Autor: Jan Wańkowicz
+:::
+
+Sprowadźmy najpierw przedziały, w jakich działa nasza funkcja do trochę mniejszych. Jeśli historia będzie linearyzowalna dla mniejszych przedziałów, to oczywistym jest, że będzie również dla większych. 
+W tym celu początek funkcji enq() ustalamy jako moment wykonania pierwszej instrukcji, a koniec jako moment wykonania drugiej instrukcji. Deq() zaś skracamy do pojedynczego punktu, który odpowiada momentowi, w którym znajdujemy pierwszy niepusty element. Możemy zauważyć, że w tym przypadku mamy dla funkcji deq() jasno wyznaczony punkt linearyzacji. 
+Przesortujmy teraz rosnąco nasze przedziały deq(x) rosnąco po punktach linearyzacji oraz enq(x) rosnąco po odpowiadających im wywołaniom deq(x). Teraz możemy po prostu po kolei iść po przedziałach dla wywołań enq() i jako ich punkt linearyzacji brać pierwszy taki punkt, który nie został jeszcze wybrany wcześniej. Okazuje się, że zawsze taki istnieje.
+
+#### Dowód nie wprost:
+
+Załóżmy, że istnieje takie wywołanie enq(j), dla którego nie możemy już wybrać punktu linearyzacji. Jest to równoważne z tym, że wybraliśmy dla jakiegoś wcześniejszego przedziału taki punkt, który jest później od końca naszego przedziału. Jeśli zaś zawsze bierzemy najwcześniejszy porpawny punkt, musieliśmy gdzieś wybrać taki punkt, który znajduje się ma początku przedziału i jest później od końca naszego przedziału. Mamy wtedy następującą sytuację:
+
+Lemat:
+
+Jeśli istnieje takie j, że nie możemy dla niego wybrać punktu linearyzacji, to musi istnieć takie i, że enq(j) -> enq(i) -> deq(i) -> deq(j).
+
+![](https://i.imgur.com/lwpp7fP.png)
+
+
+To jest zaś sprzeczność, gdyż w tym przypadku w wywołaniu programów przy pierwszym wywołaniu deq() ściągnelibyśmy j zamiast i.
+
+
+## Zadanie 7
+:::success
+Autor: Łukasz Pluta
+:::
+
+Metoda ma własność wait-free - zawsze wraca po skończonym czasie (mimo, że ten czas wydłuża się po każdym wywołaniu funkcji).
+
+Metoda nie ma wlasności bounded wait-free, 2^i, i->inf nie da sie ograniczyć od góry przez stałą.
+
+
+

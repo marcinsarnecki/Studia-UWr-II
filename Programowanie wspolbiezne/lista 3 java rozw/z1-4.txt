@@ -1,0 +1,411 @@
+# lista 3
+Z1
+```java 
+class Main {
+    public static void main(String[] args) {
+
+        int[] arr = new int[100];
+        for (int i = 0; i < 100; i++)
+            arr[i] = (-50 + i * 76) % 123;
+        int[] tmp = new int[100];
+        MergeSort mergeSort = new MergeSort(arr, tmp, 0, arr.length - 1);
+        Thread t = new Thread(mergeSort);
+        t.start();
+        try {
+            t.join();
+            System.out.println(Arrays.toString(arr));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+}
+```
+
+```java 
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] temp;
+    protected int l, r;
+
+    MergeSort(int[] arr, int[] temp, int l, int r) {
+        this.arr = arr;
+        this.temp = temp;
+        this.l = l;
+        this.r = r;
+    }
+
+    private void merge(int l, int m, int r) {// 1.2 usuwamy synchronized bo nie potrzeba
+        int n1 = m - l + 1;
+        int n2 = r - m;
+//        int[] left = new int[n1];
+//        int[] right = new int[n2];
+        System.arraycopy(arr, l, temp, l, n1);
+        System.arraycopy(arr, m + 1, temp, m + 1, n2);
+        int i = 0, j = 0;
+        int k = l;
+        while (i < n1 && j < n2)
+            if (temp[l + i] < temp[m + 1 + j])
+                arr[k++] = temp[l + i++];
+            else
+                arr[k++] = temp[m + 1 + j++];
+        while (i < n1)
+            arr[k++] = temp[l + i++];
+        while (j < n2)
+            arr[k++] = temp[m + 1 + j++];
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int m = (this.l + this.r) / 2;
+            MergeSort left = new MergeSort(arr, temp, this.l, m);
+            MergeSort right = new MergeSort(arr, temp, m + 1, this.r);
+            Thread t1 = new Thread(left);
+            Thread t2 = new Thread(right);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(this.l, m, this.r);
+        }
+    }
+}
+
+
+```
+
+
+Z2
+```java 
+class Main {
+    public static void main(String[] args) {
+
+        int[] arr = new int[100];
+        for (int i = 0; i < 100; i++)
+            arr[i] = (-50 + i * 76) % 123;
+        int[] tmp = new int[100];
+        MergeSort mergeSort = new MergeSort(arr, tmp, 0, arr.length - 1);
+        Thread t = new Thread(mergeSort);
+        t.start();
+        try {
+            t.join();
+            System.out.println(Arrays.toString(arr));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+}
+```
+
+```java 
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] temp;
+    protected int l, r;
+    final static int MIN_ARRAY_SIZE = 8;
+
+    MergeSort(int[] arr, int[] temp, int l, int r) {
+        this.arr = arr;
+        this.temp = temp;
+        this.l = l;
+        this.r = r;
+    }
+
+    private void merge(int l, int m, int r) {
+        int n1 = m - l + 1;
+        int n2 = r - m;
+        System.arraycopy(arr, l, temp, l, n1);
+        System.arraycopy(arr, m + 1, temp, m + 1, n2);
+        int i = 0, j = 0;
+        int k = l;
+        while (i < n1 && j < n2)
+            if (temp[l + i] < temp[m + 1 + j])
+                arr[k++] = temp[l + i++];
+            else
+                arr[k++] = temp[m + 1 + j++];
+        while (i < n1)
+            arr[k++] = temp[l + i++];
+        while (j < n2)
+            arr[k++] = temp[m + 1 + j++];
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int m = (this.l + this.r) / 2;
+            MergeSort left = new MergeSort(arr, temp, this.l, m);
+            MergeSort right = new MergeSort(arr, temp, m + 1, this.r);
+            if (this.r - this.l > MIN_ARRAY_SIZE) {
+                Thread t2 = new Thread(right);
+                t2.start();
+                left.run();
+                try {
+                    t2.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                this.merge(this.l, m, this.r);
+            } else {
+                left.run();
+                right.run();
+                this.merge(this.l, m, this.r);
+            }
+        }
+    }
+}
+```
+
+Z3
+```java
+public class Main {
+    public static void main(String[] args) {
+        Random rand = new Random();
+        int[] arr = new int[100];
+        for (int i = 0; i < 100; i++)
+            arr[i] = rand.nextInt(100);
+        int[] tmp = new int[100];
+        AtomicCounter atomicCounter = new AtomicCounter(8);
+        MergeSort mergeSort = new MergeSort(arr, tmp, 0, arr.length - 1, atomicCounter);
+        Thread t = new Thread(mergeSort);
+        t.start();
+        try {
+            t.join();
+            System.out.println(Arrays.toString(arr));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
+```
+```java 
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] temp;
+    protected int l, r;
+    final static int MIN_ARRAY_SIZE = 8;
+    final AtomicCounter atomicCounter;
+
+    MergeSort(int[] arr, int[] temp, int l, int r, AtomicCounter atomicCounter) {
+        this.arr = arr;
+        this.temp = temp;
+        this.l = l;
+        this.r = r;
+        this.atomicCounter = atomicCounter;
+    }
+
+    private void merge(int l, int m, int r) {
+//        System.err.printf("%s %d %d%n", Thread.currentThread(), l, r);
+        int n1 = m - l + 1;
+        int n2 = r - m;
+        System.arraycopy(arr, l, temp, l, n1);
+        System.arraycopy(arr, m + 1, temp, m + 1, n2);
+        int i = 0, j = 0;
+        int k = l;
+        while (i < n1 && j < n2)
+            if (temp[l + i] < temp[m + 1 + j])
+                arr[k++] = temp[l + i++];
+            else
+                arr[k++] = temp[m + 1 + j++];
+        while (i < n1)
+            arr[k++] = temp[l + i++];
+        while (j < n2)
+            arr[k++] = temp[m + 1 + j++];
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int m = (this.l + this.r) / 2;
+            if (this.r - this.l > MIN_ARRAY_SIZE && atomicCounter.checkAndIncrement()) {
+                MergeSort left = new MergeSort(arr, temp, this.l, m, atomicCounter);
+                MergeSort right = new MergeSort(arr, temp, m + 1, this.r, atomicCounter);
+                Thread t2 = new Thread(right);
+                t2.start();
+                left.run();
+                try {
+                    t2.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                atomicCounter.decrement();
+                this.merge(this.l, m, this.r);
+            } else {
+                this.sort(l, m);
+                this.sort(m + 1, r);
+                this.merge(this.l, m, this.r);
+            }
+
+        }
+    }
+}
+
+```
+
+Z4
+
+```java
+public class AtomicCounter {
+    private int counter = 0;
+    private final int M;
+    public synchronized boolean checkAndIncrement() {
+        if (counter < M) {
+            counter++;
+            return true;
+        }
+        return false;
+    }
+    public synchronized void decrement() {
+        counter--;
+    }
+    public AtomicCounter(int m) {
+        M = m - 1;
+    }
+}
+```
+
+```java 
+class Subsequence implements Runnable {
+    private int[] arr;
+    final AtomicCounter atomicCounter;
+    public SubsequenceResult result;
+    private int l, r;
+
+    public Subsequence(int[] arr, AtomicCounter atomicCounter, int l, int r) {
+        this.arr = arr;
+        this.atomicCounter = atomicCounter;
+        this.l = l;
+        this.r = r;
+    }
+
+    private SubsequenceResult merge(SubsequenceResult left, SubsequenceResult right, int m) {
+        int ile = left.ile, k = left.x; //
+        if (left.ile < right.ile) {     //
+            ile = right.ile;            // wstepnie nastawiamy wynik na najlepszy sposrod lewego/prawego podprzedzialu
+            k = right.x;                //
+        }                               //
+        if (arr[m] == arr[m + 1] && left.ileR + right.ileL > ile) { //byc moze znaki na brzegach na srodku sa takie same oraz znajduje sie tam dluzszy wynik
+            ile = left.ileR + right.ileL;
+            k = arr[m];
+        }
+        if(left.n == left.ileL && arr[m] == arr[m+1]) //jesli lewy podprzedzial jest caly taki sam oraz prawy podprzedzial z lewej strony pasuje do niego to nalezy inaczej obliczyc ileL podczas laczenia podprzedzialow
+            left.ileL = left.n + right.ileL;
+        if(right.n == right.ileL && arr[m] == arr[m+1]) // symetrycznie
+            right.ileR = right.n + left.ileR;
+        return new SubsequenceResult(left.n + right.n, left.ileL, right.ileR, ile, k);
+    }
+
+    public SubsequenceResult findSequence(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            var left = findSequence(l, m);
+            var right = findSequence(m + 1, r);
+            return merge(left, right, m);
+        }
+        return new SubsequenceResult(1, 1, 1, 1, arr[l]);
+    }
+
+    @Override
+    public void run() {
+        if (this.l < this.r && atomicCounter.checkAndIncrement()) {
+            int m = (l + r) / 2;
+            var left = new Subsequence(arr, atomicCounter, l, m);
+            var right = new Subsequence(arr, atomicCounter, m + 1, r);
+            Thread t2 = new Thread(right);
+            t2.start();
+            left.run();
+            try {
+                t2.join();
+                this.result = merge(left.result, right.result, m);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            this.result = this.findSequence(l, r);
+        }
+    }
+
+    static class SubsequenceResult {
+        public int ileL = 0, ileR = 0, ile = 0, x = -1;//ile takich samych z lewej/prawej strony, dlugosc, wynik
+        public int n = 0;
+
+        @Override
+        public String toString() {
+            StringBuilder stringBuilder = new StringBuilder("[");
+            stringBuilder.append(x);
+            for(int i = 1; i <= ile - 1; i++) {
+                stringBuilder.append(',');
+                stringBuilder.append(x);
+            }
+            stringBuilder.append(']');
+            return stringBuilder.toString();
+        }
+
+        public SubsequenceResult(int n, int ileL, int ileR, int ile, int x) {
+            this.n = n;
+            this.ileL = ileL;
+            this.ileR = ileR;
+            this.ile = ile;
+            this.x = x;
+        }
+    }
+}
+```
+```java 
+class Main {
+    public static void main(String[] args) {
+        Random rand = new Random();
+        int n = 20, r = 3;
+        int[] arr = new int[n];
+        for (int i = 0; i < n; i++)
+            arr[i] = rand.nextInt(r);
+        AtomicCounter atomicCounter = new AtomicCounter(8);
+        var subsequence = new Subsequence(arr, atomicCounter, 0, arr.length - 1);
+        Thread t = new Thread(subsequence);
+        t.start();
+        try {
+            t.join();
+            System.out.println(Arrays.toString(arr));
+            System.out.println(subsequence.result);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+}
+```
+Przykład:
+[1, 0, 1, 0, 0, 0, 1, 2, 0, 2, 2, 2, 1, 1, 1, 0, 1, 2, 1, 2]
+[0,0,0]

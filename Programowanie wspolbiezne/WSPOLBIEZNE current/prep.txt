@@ -1,0 +1,98 @@
+# WSPÓŁBIEŻNE - PREP
+
+## Lista 1 (podstawowe pojęcia, smoki!)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/BJLVZ4R3i
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/BkAPZEA2i
+
+**Zarys teoretyczny:**
+https://hackmd.io/@HEHEHEHEHEH/HkMlL402o
+
+## Lista 2 (podstawy, Petersen, r-ograniczone, dowody niezakleszczeń/niezagłodzeń itp)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/HyR2ZVCho
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/B11Jz4C2i
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/HkM7840ho
+
+## Lista 3 (java, nic ciekawego)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/ryKMfNAns
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/B1fSGVAho
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/B1v48ECns
+
+## Lista 4 (bakery, filter, sekwencyjna spójność, kompozycja, historie H S)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/ByhLfV0ni
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/rJXdz4Anj
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/HkMYI4Rhs
+
+## Lista 5 (wait-free, lock-free, blocking, punkty linearyzacji, proste, niepoprawne kolejki)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/Sy45zNA3j
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/Hyb3zVRhi
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/SJY2LVC3i
+
+## Lista 6 (wait-freeness, lock-freeness, non-blocking, rejestry - SRSW, MRSW, MRMW)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/H1aTGVRhi
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/r1mlQV0hj
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/B1Xyw40ni
+
+## Lista 7 (migawki, konsensusy, poziomy konsensusu, ogólny na podstawie binarnych)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/BkUGXEA2o
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/HJzNmNAhi
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/r1wgDER3o
+
+
+
+## Lista 8 (kwasi-konsensusy, zabawy z CaS)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/HJbIQNAhi
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/BkswXN0hj
+
+**Zarys teoretyczny:**
+
+## Lista 9 (TAS, TTAS, CLH, Anderson Queue Lock, expo-backoff)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/H1LFQVRhj
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/ryMo74Cni
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/SkjKffgas
+
+## Lista 10 (HBOLock, zamki kohortowe, wsp. listy)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/ryuam4Rho
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/ByCkNV02s
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/H1j3GGgTs
+
+## Lista 11 (zbiór, Lock Free List, sygnały, Window, zag. pobudka, (Un)Bounded Queue)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/HkCZV4Chs
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/S1zX4ERho
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/rJbRfflTs
+
+## Lista 12 (punkty linearyzacji, Lock Free Queue, ABA, randezvouz)
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/S1aE4NAhi
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/H1E8VNA3j
+
+
+**Zarys teoretyczny:** https://hackmd.io/@HEHEHEHEHEH/ryF1QGeTo
+
+## Lista 13
+
+**Grupa 1:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/SyiwNNC2o
+**Grupa 2:** https://hackmd.io/@RC72VSlmQJKTHIznF_nVHQ/H1OnNNA2s
+
+**Zarys teoretyczny:**
+
+## Lista 14 - NIE MA

@@ -1,0 +1,265 @@
+# Ćwiczenia 11, grupa cz. 10-12, 13. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Przemysław Hoszowski     |   X   |  X  |  X  |  X  |     |     |     |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |   X    |     |  X   |   X  |  X   |  X   |  X   |
+Łukasz Pluta             |   X    |     |  X   |  X   |  X   | X    |  X   |
+Antoni Pokusiński        |       |  X   |   X  |     |  X   |    X |   X  |
+Szymon Rysz              |   X   |  X  |  X  |  X  |  X  |  X  |==X==|
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |  X  |     |  X  |     |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Zieliński         |    X  |     |  X  |  X  |     |     |  X  |
+:::
+
+
+
+Poniżej można do-deklarować zad. 6. i 7. z listy 10 (proszę wpisać personalia i numer zadania/zadań): 
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Mateusz Sidło
+:::
+
+:::info
+Rozważmy standardową sekwencyjną (jednowątkową) implementację listową zbioru (elementy przechowywane na liście uporządkowanej względem kluczy, bez powtórzeń, ze strażnikami). Dlaczego zastąpienie wszystkich operacji przypisania referencji w funkcjach $\texttt{add()}$ oraz $\texttt{remove()}$ operacjami $\texttt{compareAndSet()}$ nie daje w wyniku poprawnej współbieżnej implementacji zbioru? W jaki sposób użycie pola marked oraz klasy $\texttt{AtomicMarkableReference<T>}$ pomaga w rozwiązaniu powstałego problemu?
+:::
+
+![](https://i.imgur.com/WvkT9FW.png)
+
+![](https://i.imgur.com/t2tqfH8.png)
+![](https://i.imgur.com/P0ADZT8.png)
+![](https://i.imgur.com/W696Ti5.png)
+
+![](https://i.imgur.com/x1hMV2I.png)
+
+## Zadanie 2
+
+:::success
+Autor: Przemysław Hoszowski
+:::
+![](https://i.imgur.com/G3e97Fn.png)
+![](https://i.imgur.com/1bUtvF9.png)
+![](https://i.imgur.com/OfdQAaY.png)
+![](https://i.imgur.com/SFpNL1m.png)
+
+
+### CompareAndSet
+#### 17 
+Wywołanie mające na celu usunięcie martwego wierzchołka. Zawiedzie, gdy:
+1) pred przestanie być żywy - inny wątek logicznie go usunie, wtedy jego flaga next będzie true != false
+2) Zmieni się kolejny element - inny wątek fizycznie usunie w metodzie find lub zostanie dodany nowy wierzchołek.
+#### 39
+Wywołanie mające na celu dodanie nowego wierzchołka. Zawiedzie, gdy:
+1) pred przestanie być żywy - inny wątek logicznie go usunie, wtedy jego flaga next będzie true != false
+2) Zmieni się kolejny element - zostanie dodany nowy wierzchołek.
+#### 55
+Wywołanie mające na celu logiczne usunięcie danego wierzchołka.
+1) Zmieni się next w curr. To może się zdarzyć na skutek add i remove na kolejnym wierzchołu.
+2) Zmieni się mark w usuwanym wierzchołku. Wtedy 
+#### 58
+Wywołanie mające na celu fizyczne usunięcie danego wierzchołka.
+1) Zostanie dodany element bezpośrednio wcześniejszy
+2) Zostanie usunięty element bezpośrednio wcześniejszy
+
+### Dlaczego rezultat drugiego wywołania compareAndSet() w metodzie remove() nie jest sprawdzany? Czy można je usunąć nie tracąc poprawności implementacji?
+
+Ponieważ logicznie element został usunięty, nie ma różnicy czy zostanie on usunięty fizycznie przez remove, czy metodę find, która ma za zadanie te elementy czyścić. Usunięcie tego pola nie powoduje więc utraty poprawności.
+
+
+## Zadanie 3
+
+:::success
+Autor: Michał Zieliński
+:::
+
+### Treść
+#### Polecenie
+Załóżmy, że w metodzie $add()$ klasy $LockFreeList$ okazało się, że niezbędny jest kolejny obrót pętli $while(true)$, ponieważ $pred$ nie wskazuje już na curr, ale pred nie ma ustawionego pola marked.
+Czy w tej sytuacji koniecznie musimy przeglądać całą listę od początku?
+#### Kod
+```java=
+public boolean add(T item) 
+{ 
+    int key = item.hashCode(); 
+    while (true) 
+    {
+        Window window = find(head, key);
+        Node pred = window.pred, curr = window.curr; 
+        if (curr.key == key) 
+        {
+            return false; 
+        } 
+        else 
+        {
+            Node node = new Node(item);
+            node.next = new AtomicMarkableReference(curr, false);
+            if (pred.next.compareAndSet(curr, node, false, false))
+            {
+                return true; 
+            }
+        }
+    }
+}
+```
+### Rozwiązanie
+Pytanie dotyczy konieczności uruchomienia find od head listy. Nie jest to konieczne w podanym przypadku, ponieważ pred nie został oznaczony marked. Oznaczo to, że pred jest logicznie na liście (w konsekwencji także fizycznie). Ponieważ interesowało nas "okienko" od pred do jakiegoś większego elementu, a z założenia elementy na liście są posortowane, wystarczy rozpocząć poszukiwanie od pred.
+
+## Zadanie 4
+
+:::success
+Autor: Mateusz Opala
+:::
+
+![](https://i.imgur.com/UtrCxNq.png)
+![](https://i.imgur.com/A7bFUGU.png)
+![](https://i.imgur.com/0SUvZCc.png)
+![](https://i.imgur.com/btFxbbJ.png)
+
+
+## Zadanie 5
+
+:::success
+Autor: Antoni Pokusiński
+:::
+```java=
+public class BoundedQueue<T> {
+    ReentrantLock enqLock, deqLock;
+    Condition notEmptyCondition, notFullCondition;
+    AtomicInteger size;
+    Node head, tail;
+    int capacity;
+    
+    public BoundedQueue(int _capacity) {
+        capacity = _capacity;
+        head = new Node(null);
+        tail = head;
+        size = new AtomicInteger(0);
+        enqLock = new ReentrantLock();
+        notFullCondition = enqLock.newCondition();
+        deqLock = new ReentrantLock();
+        notEmptyCondition = deqLock.newCondition();
+    }
+    
+    public void enq(T x) {
+        boolean mustWakeDequeuers = false;
+        enqLock.lock();
+        try {
+            while (size.get() == capacity)
+                notFullCondition.await();
+            Node e = new Node(x);
+            tail.next = tail = e;
+            if (size.getAndIncrement() == 0)
+                mustWakeDequeuers = true;
+        } finally {
+            enqLock.unlock();
+        }
+        if (mustWakeDequeuers) {
+            deqLock.lock();
+            try {
+                notEmptyCondition.signalAll();
+            } finally {
+                deqLock.unlock();
+            }
+        }
+    }
+    
+    public T deq() {
+        T result;
+        boolean mustWakeEnqueuers = true;
+        deqLock.lock();
+        try {
+            while (size.get() == 0)
+                notEmptyCondition.await();
+            result = head.next.value;
+            head = head.next;
+            if (size.getAndDecrement() == capacity) {
+                mustWakeEnqueuers = true;
+            }
+        } finally {
+            deqLock.unlock();
+        }
+        if (mustWakeEnqueuers) {
+            enqLock.lock();
+            try {
+                notFullCondition.signalAll();
+            } finally {
+                enqLock.unlock();
+            }
+        }
+        return result;
+    }
+}
+```
+:::info
+Czy istnieje taka sekwencja wykonań metod ```enq()``` i ```deq()```, że zmienna *size()* staje się ujemna?
+:::
+
+Jedynym miejscem gdzie zmniejszamy zmienną *size* jest ```getAndDecrement()``` w funkcji ```deq()```. Musiałaby więc nastąpić dekrementacja zmiennej, gdy jest ona równa 0. Jednak w momencie wywoływania ```getAndDecrement()``` wiemy, że jest ona >0, ponieważ wątek przeszedł przez instrukcję ```while(size.get() == 0)```. Jest on również jedynym wątkiem, który jest w tym miejscu - gwarantuje nam to założenie zamka na początku (```deqLock.lock()```) oraz zasada działania funkcji ```await()```.
+## Zadanie 6
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+Problem zagubionej pobudki występuje w przypadku, kiedy któreś wątki czekają na wybudzenie nie zauważając, że ich warunek na wybudzenie został już spełniony.
+
+W przypadku enquerów, sprawdzamy czy size jest równe capacity. Mimo, że zmienna ta nie jest zabezpieczona lockiem, to podczas wysyłania sygnału z deque nakładamy locka na enquerów, więc między sprawdzeniem warunku a ciałem warunku nie może zostać do tego wątku wysłany sygnał.
+
+W przypadku dequerów sytuaja jest praktycznie taka sama - sprawdzamy, czy head jest nullem, następnie czekamy na sygnał, którego nie możemy dostać pomiędzy sprawdzeniem warunku i ciałem funkcji.
+
+
+## Zadanie 7
+
+:::success
+Autor: Szymon Rysz
+:::
+![](https://i.imgur.com/3cyCmlt.png)
+
+
+```java=
+public T deq() throws EmptyException {
+    T result;
+    deqLock.lock();
+    try {
+        if (head.next == null) {
+            throw new EmptyException();
+        }
+        result = head.next.value;
+        head = head.next;
+    } finally {
+        deqLock.unlock();
+    }
+    return result;
+}
+```
+
+Tak, jest konieczne zajęcie zamka podczas sprawdzania niepustości kolejki. W przeciwnym razie mógłby wystąpić `NullPointerException`.
+
+**Przykład:**
+
+Wątek A: sprawdza czy `head.next == null` (false)
+Wątek B: sprawdza czy `head.next == null` (false)
+
+Wątek A: usuwa element i `head.next` staję się nullem
+Wątek B: próbuje operować na węźle, którego już nie ma (`result = head.next.value`)

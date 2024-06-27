@@ -1,0 +1,1148 @@
+# Ćwiczenia 2, grupa cz. 12-14, 21. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   x   |  X  |  X  |     |     |  X  |  X  |
+Michał Błaszczyk         |       |     |     |     |     |     |     |
+Dawid Dudek              |   X   |  X  |  X  |     |     |  X  |  X  |
+Mateusz Gil              |       |     |     |     |     |     |     |
+Wiktor Hamberger         |   X   |  X  |  X  |  X  |     |     |     |
+Krzysztof Juszczyk       |   X   |  X  |  X  |  X  |  X  |     |     |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Kacper Kingsford         |       |     |     |     |     |     |     |
+Kacper Komenda           |   X   |  X  |  X  |     |     |     |     |
+Aleksandra Kosińska      |   X   |  X  |  X  |     |     |     |     |
+Łukasz Orawiec           |   X   |  X  |  X  |  X  |     |     |     |
+Kamil Puchacz            |   X   |  X  |  X  |  X  |  X  |     |     |
+Paweł Sikora             |   X   |  X  |  X  |     |     |  X  |  X  |
+Michał Sobecki           |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Cezary Stajszczyk        |   X   |  X  |  X  |     |     |     |     |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Cezary Troska            |   X   |  X  |  X  |     |     |     |     |
+Daniel Wiczołek          |       |     |     |     |     |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor:Aleksandra Kosińska
+:::
+```java=
+
+class MergeSort implements Runnable {
+    //dodanie tablicy pomocniczej
+    //static aby nie były tworzone nowe dla każdego wątku
+    protected static int help_arr[];
+    protected static int arr[];
+    protected int l, r;
+
+    //konstruktor przy tworzeniu pierwszego wątku
+    MergeSort(int arr[], int l, int r) {
+        MergeSort.arr = arr;
+        MergeSort.help_arr = new int[MergeSort.arr.length];
+        
+        this.l = l;
+        this.r = r;
+    }
+
+    //konstruktor bez tworzenia tablic
+    MergeSort(int l, int r) {
+        this.l = l;
+        this.r = r;
+    }
+
+    //nie musi być synchronized bo działa na odrębnych częściach tablicy
+    private void merge(int l, int m, int r) {
+        int left_size = m - l + 1;
+        int right_size = r - m;
+
+        //nie tworzymy tablic pomocniczych
+
+        int i = 0, j = 0;
+        int k = l;
+        while (i < left_size && j < right_size) {
+            //odpowiedni indeks w tablicy
+            //sortujemy w help_arr
+            if (MergeSort.arr[l+i] <= MergeSort.arr[m+1+j]) {
+                MergeSort.help_arr[k] = MergeSort.arr[l+i];
+                i += 1;
+            } else {
+                MergeSort.help_arr[k] = MergeSort.arr[m+1+j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i < left_size) {
+            MergeSort.help_arr[k] = MergeSort.arr[l+i];
+            k += 1;
+            i += 1;
+        }
+        while (j < right_size) {
+            MergeSort.help_arr[k] = MergeSort.arr[m+1+j];
+            k += 1;
+            j += 1;
+        }
+        //przepisujemy wartości do arr
+        for (int z = l; z <= r; z++)
+            MergeSort.arr[z] = MergeSort.help_arr[z];
+    }
+
+    //z sort nie korzystamy
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int m = (this.l + this.r) / 2;
+            MergeSort left = new MergeSort(this.l, m);
+            MergeSort right = new MergeSort(m + 1, this.r);
+            Thread left_thread = new Thread(left);
+            Thread right_thread = new Thread(right);
+            left_thread.start();
+            right_thread.start();
+            try {
+            //czeka az wątki się zakończą
+                left_thread.join();
+                right_thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(this.l, m, this.r);
+        }
+    }
+}
+
+
+public class Zadanie1 {
+
+    public static void main(String[] args) {
+        int arr[] = {4, 3, 2, 1};
+        MergeSort w = new MergeSort(arr, 0, arr.length-1);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < arr.length; i++)
+            System.out.printf("%d ", arr[i]);
+    }
+}
+```
+
+## Zadanie 2
+
+:::success
+Autor: Kacper Komenda
+:::
+```java=
+    private final static int MIN_SIZE = 5;
+
+    private void chooseSortType(int left, int right){
+        if (right < left + MIN_SIZE){
+            sort(left, right);
+        }
+        else if (left < right) {
+            sortMultiThread(left, right);
+        }
+    }
+    
+    private void sortMultiThread(int left, int right){
+
+        int m = (left + right) / 2;
+        MergeSort rightPart = new MergeSort(array, m + 1, right);
+        Thread thread = new Thread(rightPart);
+        thread.start();
+        chooseSortType(left, m);
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        this.merge(this.left, m, this.right);
+    }
+
+
+private void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+```
+## Zadanie 3
+
+:::success
+Autor: Cezary Troska
+:::
+```java=
+
+class MergeSort_3 implements Runnable {
+    //dodanie tablicy pomocniczej
+    //static aby nie były tworzone nowe dla każdego wątku
+    protected static int helper_array[], arr[];
+    protected static int max_threads, current_threads;
+    protected int l, r;
+    private static final Object countLock = new Object();
+    
+    //konstruktor przy tworzeniu pierwszego wątku
+    MergeSort_3(int arr[], int l, int r, int max_threads) {
+        MergeSort_3.arr = arr;
+        MergeSort_3.helper_array = new int[MergeSort_3.arr.length];
+        MergeSort_3.max_threads = max_threads;
+        MergeSort_3.current_threads = 0;
+        
+        this.l = l;
+        this.r = r;
+    }
+    
+    //konstruktor bez tworzenia tablic
+    MergeSort_3(int l, int r) {
+        this.l = l;
+        this.r = r;
+    }
+
+    private void merge(int l, int m, int r) {
+        int left_size = m - l + 1;
+        int right_size = r - m;
+
+        int i = 0, j = 0;
+        int k = l;
+        while (i < left_size && j < right_size) {
+            if (MergeSort_3.arr[l+i] <= MergeSort_3.arr[m+1+j]) {
+                MergeSort_3.helper_array[k] = MergeSort_3.arr[l+i];
+                i += 1;
+            } else {
+                MergeSort_3.helper_array[k] = MergeSort_3.arr[m+1+j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i < left_size) {
+            MergeSort_3.helper_array[k] = MergeSort_3.arr[l+i];
+            k += 1;
+            i += 1;
+        }
+        while (j < right_size) {
+            MergeSort_3.helper_array[k] = MergeSort_3.arr[m+1+j];
+            k += 1;
+            j += 1;
+        }
+        for (int z = l; z <= r; z++)
+            MergeSort_3.arr[z] = MergeSort_3.helper_array[z];
+    }
+
+    private boolean  increment_current_thread_count() {
+        synchronized(MergeSort_3.countLock)
+        {
+        if (MergeSort_3.current_threads < MergeSort_3.max_threads) {
+            MergeSort_3.current_threads+= 1;
+            return true;
+        }
+        else
+            return false;            
+        }
+    }
+
+    private void decreace_current_thread_count() {
+        synchronized(MergeSort_3.countLock)
+        {
+            MergeSort_3.current_threads=Math.max(MergeSort_3.current_threads-1, 0);
+        }
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int m = (this.l + this.r) / 2;
+            Thread left_sort_thread = null;
+            Thread right_sort_thread = null;
+
+
+            if (increment_current_thread_count()) {
+                MergeSort_3 left_sort = new MergeSort_3(this.l, m);
+                left_sort_thread = new Thread(left_sort);
+                left_sort_thread.start();
+            }
+
+            if (increment_current_thread_count()) {
+                MergeSort_3 right_sort = new MergeSort_3(m + 1, this.r);
+                right_sort_thread = new Thread(right_sort);
+                right_sort_thread.start();                    
+            }
+
+            try {
+                if (left_sort_thread != null) {
+                    left_sort_thread.join();
+                    decreace_current_thread_count();
+                }
+                else
+                    sort(this.l, m);
+
+                if (right_sort_thread != null) {
+                    right_sort_thread.join();
+                    decreace_current_thread_count();
+                }
+                else
+                    sort(m+1,this.r);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(this.l, m, this.r);
+        }
+    }
+}
+
+
+public class RookieMergeSort_z3l2 {
+
+    public static void main(String[] args) {
+        int arr[] = {-3,5,8,-4,2,2,2,5,5,5,134,567,89};
+        //int arr[] = {2,1};
+        MergeSort_3 w = new MergeSort_3(arr, 0, arr.length-1, 4);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < arr.length; i++)
+            System.out.printf("%d ", arr[i]);
+    }
+}
+```
+
+alternatywnie:
+
+```kotlin=
+package l2.task3
+
+import java.util.concurrent.Semaphore
+
+fun main() {
+    val arr = intArrayOf(3, 2, 5, 1, 4, 10, 6, 7, 9, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+
+    val semaphore = Semaphore(Runtime.getRuntime().availableProcessors())
+
+    MergeSortSubProblem(arr, IntArray(arr.size), semaphore, regionStart = 0, regionEnd = arr.lastIndex).run()
+
+    println(arr.joinToString(" "))
+}
+
+class MergeSortSubProblem(
+    val arrayToSort: IntArray,
+    val buffer: IntArray,
+    val semaphore: Semaphore,
+    val regionStart: Int,
+    val regionEnd: Int,
+) : Runnable {
+    val mid = (regionStart + regionEnd) / 2
+
+    override fun run() {
+        if (regionStart < regionEnd) {
+            val (t1, t2) = fork()
+            processSubProblems(t1, t2)
+            join()
+        }
+    }
+
+    private fun fork(): Pair<MergeSortSubProblem, MergeSortSubProblem> = Pair(
+        MergeSortSubProblem(arrayToSort, buffer, semaphore, regionStart, mid),
+        MergeSortSubProblem(arrayToSort, buffer, semaphore, mid + 1, regionEnd)
+    )
+
+    private fun processSubProblems(leftSubProblem: MergeSortSubProblem, rightSubProblem: MergeSortSubProblem) {
+
+        if (semaphore.tryAcquire(2)) {
+            System.err.println("par sorting")
+            val t1 = Thread(leftSubProblem).also { it.start() }
+            val t2 = Thread(rightSubProblem).also { it.start() }
+            t1.join()
+            t2.join()
+            semaphore.release(2)
+        } else {
+            System.err.println("seq sorting")
+            leftSubProblem.run()
+            rightSubProblem.run()
+        }
+    }
+
+    private fun join() {
+        doMergeSort()
+    }
+
+    private fun doMergeSort() {
+        setupBuffer()
+
+        var iterLeft = regionStart
+        var iterRight = mid + 1
+        var iterMain = regionStart
+
+        // pick smaller
+        while (iterLeft <= mid && iterRight <= regionEnd) {
+            if (buffer[iterLeft] <= buffer[iterRight]) {
+                arrayToSort[iterMain] = buffer[iterLeft]
+                iterLeft += 1
+            } else {
+                arrayToSort[iterMain] = buffer[iterRight]
+                iterRight += 1
+            }
+            iterMain += 1
+        }
+
+        // use remaining elements
+        while (iterLeft <= mid) {
+            arrayToSort[iterMain] = buffer[iterLeft]
+            iterMain += 1
+            iterLeft += 1
+        }
+        while (iterRight <= regionEnd) {
+            arrayToSort[iterMain] = buffer[iterRight]
+            iterMain += 1
+            iterRight += 1
+        }
+    }
+
+    private fun setupBuffer() {
+        for (i in regionStart..regionEnd) {
+            buffer[i] = arrayToSort[i]
+        }
+    }
+}
+
+```
+
+## Zadanie 4
+
+:::success
+Autor:Wiktor Hamberger
+:::
+```java	=
+
+
+class LongestSubsequence implements Runnable {
+
+    protected int arr[];
+    protected int l, r;
+    static public int longestL=0, longestR=0;
+    
+    public LongestSubsequence(int _arr[], int _l, int _r) {
+        this.arr = _arr;
+        this.l= _l;
+        this.r = _r;
+    }
+
+    private void CheckInTheMiddle(int _l, int _m, int _r) {
+        int l = _m, r = _m;
+        while (l-1 >= _l && arr[_m] == arr[l-1])
+            l--;
+        while (r+1 <= _r && arr[_m] == arr[r+1])
+            r++;
+        UpdateLongest(l, r);
+    }
+
+    private synchronized void UpdateLongest(int _l, int _r) {
+        if(_r - _l > LongestSubsequence.longestR - LongestSubsequence.longestL) {
+            LongestSubsequence.longestL = _l;
+            LongestSubsequence.longestR = _r;
+        }
+    }
+
+    @Override
+    public void run() {
+        if (this.r > this.l) {
+            int m = (this.l + this.r)/2;
+            LongestSubsequence ls1 = new LongestSubsequence(this.arr, this.l, m);
+            LongestSubsequence ls2 = new LongestSubsequence(this.arr, m+1, this.r);
+            Thread t1 = new Thread(ls1);
+            Thread t2 = new Thread(ls2);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            CheckInTheMiddle(this.l, m, this.r);
+        }
+        
+    }
+    
+}
+
+class testCase {
+    int arr[], size;
+    LongestSubsequence ls;
+    testCase(int _arr[], int _size) {
+        this.arr=_arr;
+        this.size=_size;
+    } 
+    void run() {
+        this.ls = new LongestSubsequence(this.arr, 0, size-1);
+        LongestSubsequence.longestL = 0;
+        LongestSubsequence.longestR = 0;
+        Thread t1 = new Thread(ls);
+        t1.start();
+        try {
+            t1.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        for (int i = LongestSubsequence.longestL; i <= LongestSubsequence.longestR; i++)
+            System.out.printf("%d ", this.arr[i]);
+        System.out.println("");
+    };
+} 
+
+public class zad4 {
+    public static void main(String[] args) {
+        int arr1[] = {1, 2, 3, 3, 4, 1};
+        int arr2[] = {1, 2, 1, 2, 1, 2, 1, 2, 3, 3, 3};
+        int arr3[] = {1, 1, 1, 2, 1, 4, 1, 2, 2, 3, 3};
+        int arr4[] = {1, 2};
+        int arr5[] = {2, 2};
+        testCase t1 = new testCase(arr1, 6);
+        testCase t2 = new testCase(arr2, 11);
+        testCase t3 = new testCase(arr3, 11);
+        testCase t4 = new testCase(arr4, 2);
+        testCase t5 = new testCase(arr5, 2);
+        t1.run();
+        t2.run();
+        t3.run();
+        t4.run();
+        t5.run();
+    }
+}
+
+```
+
+## Zadanie 5
+
+:::success
+Autor: Kamil Kasprzak
+:::
+```
+Zadanie 5 (fork/join). Napisz wielowątkowy program, który dla
+zadanej tablicy liczb typu int wyliczy jej tablicę sum
+prefiksowych. Tablica ta na pozycji i-tej zawiera sumę liczb w
+tablicy wejściowej na pozycjach mniejszych niż i. Np. dla
+argumentu [1,2,3,4] wynikiem jest [0,1,3,6].
+```
+
+```java=
+
+class Sumator implements Runnable{
+    int index;
+    int[] arr;
+    int[] out;
+
+    Sumator(int[] arr,int index, int[] out){
+        this.arr=arr;
+        this.index=index;
+        this.out=out;
+    }
+
+    @Override
+    public void run(){
+        if(this.index >= this.arr.length)
+            return;
+
+        Sumator s = new Sumator(this.arr, this.index+1, this.out);
+        Thread t = new Thread(s);
+        t.start();
+
+        int sum=0;
+        for(int i=0;i<this.index;i++){
+            sum+= this.arr[i];
+        }
+        this.out[this.index]=sum;
+
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+}
+
+public class Main {
+
+    public static void sum(int[] arr){
+        int[] output = new int[arr.length];
+        Sumator s = new Sumator(arr, 0, output);
+        s.run();
+        for (int i : output) {
+            System.out.printf("%d, ", i);
+        }
+        System.out.printf("\n");
+    }
+    public static void main(String[] args) {
+        int arr[] = {1,2,3,4 };
+        sum(arr);
+    }
+}
+```
+
+> [name=Piotr Witkowski] O algorytmach dla współbieżnego/równoległego liczenia sum prefiksowych można przeczytać np. tu: https://skos.ii.uni.wroc.pl/pluginfile.php/45997/mod_resource/content/1/iccet.2010.5485315.pdf
+
+
+## Zadanie 6
+
+:::success
+Autor: Jacek Bizub
+:::
+
+```kotlin=
+package l2.task6
+
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.Semaphore
+
+fun main() {
+    val arr = intArrayOf(3, 2, 5, 1, 4, 10, 6, 7, 9, 8)
+
+    MergeSortExecutionContext()
+        .sort(arr, buffer = IntArray(arr.size), regionStart = 0, regionEnd = arr.lastIndex)
+
+    println(arr.joinToString(" "))
+}
+
+class MergeSortWorker(
+    private val commandQueue: CommandQueue
+) : Runnable {
+
+    private var finished = false
+    override fun run() {
+        while (!finished) {
+            val command = commandQueue.poll()
+            process(command)
+        }
+    }
+
+    private fun process(command: Command) {
+        System.err.println(command)
+        when(command) {
+            is SortCommand -> sort(command)
+            is MergeCommand -> merge(command)
+            is ShutdownCommand -> shutdown()
+        }
+    }
+
+    private fun sort(sortCommand: SortCommand) {
+        val (arrayToSort, buffer, regionStart, regionEnd, followUp) = sortCommand
+        val mid = (regionStart + regionEnd) / 2
+
+        if (regionStart < regionEnd) {
+            val mergeCommand = MergeCommand(
+                arrayToSort,
+                buffer,
+                regionStart,
+                regionEnd,
+                sync = Semaphore(1),
+                followUp
+            )
+
+            val leftSubProblem = SortCommand(
+                arrayToSort,
+                buffer,
+                regionStart,
+                mid,
+                followUp = mergeCommand
+            )
+            val rightSubProblem = SortCommand(
+                arrayToSort,
+                buffer,
+                mid + 1,
+                regionEnd,
+                followUp = mergeCommand
+            )
+
+            commandQueue.offer(leftSubProblem)
+            commandQueue.offer(rightSubProblem)
+        } else {
+            follow(followUp)
+        }
+    }
+
+    private fun follow(followUp: MergeCommand?) {
+        if (followUp == null) {
+            commandQueue.offer(ShutdownCommand)
+        } else {
+            if (!followUp.sync.tryAcquire()) {
+                commandQueue.offer(followUp)
+            }
+        }
+    }
+
+    private fun merge(mergeCommand: MergeCommand) {
+        val (arrayToSort, buffer, regionStart, regionEnd, _, followUp) = mergeCommand
+        val mid = (regionStart + regionEnd) / 2
+
+        setupBuffer(arrayToSort, buffer, regionStart, regionEnd)
+
+        var iterLeft = regionStart
+        var iterRight = mid + 1
+        var iterMain = regionStart
+
+        // pick smaller
+        while (iterLeft <= mid && iterRight <= regionEnd) {
+            if (buffer[iterLeft] <= buffer[iterRight]) {
+                arrayToSort[iterMain] = buffer[iterLeft]
+                iterLeft += 1
+            } else {
+                arrayToSort[iterMain] = buffer[iterRight]
+                iterRight += 1
+            }
+            iterMain += 1
+        }
+
+        // use remaining elements
+        while (iterLeft <= mid) {
+            arrayToSort[iterMain] = buffer[iterLeft]
+            iterMain += 1
+            iterLeft += 1
+        }
+        while (iterRight <= regionEnd) {
+            arrayToSort[iterMain] = buffer[iterRight]
+            iterMain += 1
+            iterRight += 1
+        }
+
+        follow(followUp)
+    }
+
+    private fun setupBuffer(arrayToSort: IntArray, buffer: IntArray, regionStart: Int, regionEnd: Int) {
+        for (i in regionStart..regionEnd) {
+            buffer[i] = arrayToSort[i]
+        }
+    }
+
+    private fun shutdown() {
+        finished = true
+        commandQueue.offer(ShutdownCommand)
+    }
+}
+
+sealed interface Command
+
+data class SortCommand(
+    val arrayToSort: IntArray,
+    val buffer: IntArray,
+    val regionStart: Int,
+    val regionEnd: Int,
+    val followUp: MergeCommand?
+) : Command
+
+data class MergeCommand(
+    val arrayToSort: IntArray,
+    val buffer: IntArray,
+    val regionStart: Int,
+    val regionEnd: Int,
+    val sync: Semaphore,
+    val followUp: MergeCommand?
+) : Command
+
+object ShutdownCommand : Command
+
+class CommandQueue(private val queue: ConcurrentLinkedQueue<Command>, private val elements: Semaphore) {
+    fun poll(): Command {
+        elements.acquire()
+        return queue.poll()
+    }
+
+    fun offer(command: Command) {
+        queue.offer(command)
+        elements.release()
+    }
+}
+
+class MergeSortExecutionContext(
+    poolSize: Int = Runtime.getRuntime().availableProcessors()
+) {
+    private val commandQueue = CommandQueue(
+        ConcurrentLinkedQueue<Command>(),
+        Semaphore(0)
+    )
+    private val pool = Array(poolSize) { _ -> Thread(MergeSortWorker(commandQueue)).also { it.start() } }
+
+    fun sort(arrayToSort: IntArray, buffer: IntArray, regionStart: Int, regionEnd: Int) {
+        val sortCommand = SortCommand(
+            arrayToSort,
+            buffer,
+            regionStart,
+            regionEnd,
+            followUp = null
+        )
+        commandQueue.offer(sortCommand)
+        pool.forEach{ it.join() }
+    }
+}
+```
+
+## Zadanie 7
+
+:::success
+Autor: Piotr Stokłosa
+:::
+```java=
+
+import java.util.Random;
+import java.util.concurrent.LinkedBlockingQueue;
+
+class Task{
+    public Task(int l, int r, int task, Task parent, SynchronizedCounter counter) {
+        this.l = l;
+        this.r = r;
+        this.task = task;
+        this.parent = parent;
+        this.counter = counter;
+    }
+
+    public Task(int task){
+        this.task = task;
+    }
+
+    public int l;
+    public int r;
+    public int task;
+    public Task parent;
+    public SynchronizedCounter counter;
+}
+
+class SynchronizedCounter {
+    private int c = 0;
+    public synchronized int increment() { return ++c;}
+}
+
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] help_arr;
+    protected LinkedBlockingQueue<Task> queue;
+    protected int threadsNumber;
+    boolean exit = false;
+
+    MergeSort(int[] arr, int[] help_arr, LinkedBlockingQueue<Task> queue, int threadsNumber) {
+        this.arr = arr;
+        this.help_arr = help_arr;
+        this.queue = queue;
+        this.threadsNumber = threadsNumber;
+    }
+
+    private void merge(Task task) throws InterruptedException {
+        int m = (task.l + task.r) / 2;
+        int l = task.l;
+        int r = task.r;
+        int leftArraySize = m - l + 1;
+        int rightArraySize = r - m;
+
+        if (r + 1 - l >= 0) System.arraycopy(arr, l, help_arr, l, r + 1 - l);
+
+        int leftCurrent = 0, rightCurrent = 0, resCurrent = l;
+        while (leftCurrent < leftArraySize && rightCurrent < rightArraySize) {
+            if (help_arr[l + leftCurrent] <= help_arr[m + 1 + rightCurrent]) {
+                arr[resCurrent] = help_arr[l + leftCurrent];
+                leftCurrent += 1;
+            } else {
+                arr[resCurrent] = help_arr[m + 1 + rightCurrent];
+                rightCurrent += 1;
+            }
+            resCurrent += 1;
+        }
+
+        int begin = leftCurrent < leftArraySize ? l + leftCurrent : m + 1 + rightCurrent;
+        int size = leftCurrent < leftArraySize ? leftArraySize - leftCurrent : rightArraySize - rightCurrent;
+        System.arraycopy(help_arr, begin, arr, resCurrent, size);
+
+        if (task.parent == null) {
+            killThreads();
+            return;
+        }
+
+        if (task.parent.counter.increment() == 2){
+            task.parent.task = 1;
+            queue.put(task.parent);
+        }
+    }
+
+    void killThreads(){
+        while(threadsNumber-- > 0) queue.offer(new Task(2));
+        exit = true;
+    }
+
+    public void sort(Task task) throws InterruptedException {
+        if (task.l < task.r) {
+            int m = (task.l + task.r) / 2;
+            queue.put(new Task(task.l, m, 0, task, new SynchronizedCounter()));
+            queue.put(new Task(m+1, task.r, 0, task, new SynchronizedCounter()));
+        }
+        else {
+            if(task.parent == null){ killThreads();}
+            else if (task.parent.counter.increment() == 2){
+                task.parent.task = 1;
+                queue.put(task.parent);
+            }
+        }
+    }
+
+    @Override
+    public void run() {
+        while(!exit){
+            try {
+                Task task = queue.take();
+                switch (task.task) {
+                    case 0 -> sort(task);
+                    case 1 -> merge(task);
+                    case 2 -> exit = true;
+                }
+            } catch(Exception ex) {ex.printStackTrace();}
+        }
+    }
+}
+
+public class Main {
+
+    static boolean isSorted(int[] array) {
+        for (int i = 0; i < array.length - 1; i++) {
+            if (array[i] > array[i + 1])
+                return false;
+        }
+        return true;
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        int THREADS = 10;
+        int[] arr = new int[1000000];
+        Random rd = new Random();
+        for (int i = 0; i < arr.length; i++) arr[i] = rd.nextInt();
+
+        System.out.println(isSorted(arr));
+
+        LinkedBlockingQueue<Task> queue = new LinkedBlockingQueue<>();
+        queue.offer(new Task(0, arr.length-1, 0, null, new SynchronizedCounter()));
+        int[] help_arr = new int[arr.length];
+
+        Thread[] threads = new Thread[THREADS];
+
+        for (int i = 0; i < THREADS; i++) threads[i] = new Thread(new MergeSort(arr, help_arr, queue, THREADS));
+        for (Thread thread:threads) thread.start();
+        for (Thread thread:threads) thread.join();
+
+        System.out.println(isSorted(arr));
+    }
+}
+```
+
+
+# Pytania
+
+## Zadanie 6 - żonglowanie zadaniami w kolejce.
+
+Czy rozwiązanie które dodaje nierozwiązywalne zadania i po zweryfikowaniu niemożliwości ich rozwiązania wrzuca na koniec kolejki ma sens? 
+
+```java=
+package Z6;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+
+public class Main {
+
+    static final int M = 4;
+
+    public static void main(String[] args) {
+//        int arr[] = {4, 3, 2, 1, 2, 4, 654, 66, 24, 565, 543, 654, 54, 5 ,77 , 76, 43, 65};
+//        int arr[] = {2,1};
+        int arr[] = {1};
+        int toFillArr[] = new int[arr.length];
+
+        ConcurrentLinkedQueue<Task> queue = new ConcurrentLinkedQueue<>();
+        queue.offer(new Task(0, arr.length - 1));
+
+        MergeSortQue[] mergs = new MergeSortQue[M];
+        Thread[] threads = new Thread[M];
+
+        for (int i = 0; i < M; i++) {
+            mergs[i] = new MergeSortQue(arr, toFillArr, queue);
+            threads[i] = new Thread(mergs[i]);
+            threads[i].start();
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        for (int i = 0; i < arr.length; i++)
+            System.out.printf("%d ", arr[i]);
+
+
+    }
+}
+
+
+package Z6;
+
+public class Task {
+
+    protected int taskStartIndex, taskCenterIndex, taskEndIndex;
+    protected boolean isSort;
+    protected boolean isDone = false;
+    protected Task leftChildTask;
+    protected Task rightChildTask;
+    protected Task parentTask;
+
+    public Task(int taskStartIndex,
+                int taskCenterIndex,
+                int taskEndIndex,
+                Task leftChildTask,
+                Task rightChildTask,
+                Task parentTask) {
+        this.taskStartIndex = taskStartIndex;
+        this.taskCenterIndex = taskCenterIndex;
+        this.taskEndIndex = taskEndIndex;
+        isSort = false;
+        this.leftChildTask = leftChildTask;
+        this.rightChildTask = rightChildTask;
+        this.parentTask = parentTask;
+    }
+
+    public Task(int taskStartIndex,
+                int taskCenterIndex) {
+        this.taskStartIndex = taskStartIndex;
+        this.taskEndIndex = taskCenterIndex;
+        isSort = true;
+    }
+}
+
+
+
+
+package Z6;
+
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+public class MergeSortQue implements Runnable {
+    static boolean isOriginalTaskDone = false;
+
+    protected int[] arr;
+    protected int[] toFillArr;
+    protected ConcurrentLinkedQueue<Task> queue;
+
+    MergeSortQue(int[] arr, int[] toFillArr, ConcurrentLinkedQueue<Task> queue) {
+        this.arr = arr;
+        this.toFillArr = toFillArr;
+        this.queue = queue;
+    }
+
+    private void merge(int left, int center, int right) {
+        for (int i = 0; i < right - left + 1; i++) {
+            toFillArr[left + i] = arr[left + i];
+        }
+
+        int i = left, j = center + 1;
+        int k = left;
+        while (i <= center && j <= right) {
+            if (toFillArr[i] <= toFillArr[j]) {
+                arr[k] = toFillArr[i];
+                i += 1;
+            } else {
+                arr[k] = toFillArr[j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i <= center) {
+            arr[k] = toFillArr[i];
+            k += 1;
+            i += 1;
+        }
+        while (j <= right) {
+            arr[k] = toFillArr[j];
+            k += 1;
+            j += 1;
+        }
+    }
+
+    private void sort(int left,
+                      int right,
+                      Task parentForMerge) {
+        if (left < right) {
+            int center = (left + right) / 2;
+            Task leftChildTask = new Task(left, center);
+            Task rightChildTask = new Task(center + 1, right);
+
+            queue.offer(leftChildTask);
+            queue.offer(rightChildTask);
+
+            Task merge = new Task(left, center, right, leftChildTask, rightChildTask, parentForMerge);
+            queue.offer(merge);
+        } else {
+            parentForMerge.isDone = true;
+            if (left == 0 && right == arr.length - 1){
+                MergeSortQue.isOriginalTaskDone = true;
+            }
+        }
+    }
+
+    @Override
+    public void run() {
+        Task task;
+        while (!MergeSortQue.isOriginalTaskDone) {
+            if ((task = queue.poll()) != null) {
+                if (task.isSort) {
+                    sort(task.taskStartIndex, task.taskEndIndex, task);
+                }
+                else {
+                    if (!task.leftChildTask.isDone || !task.rightChildTask.isDone){
+                        queue.offer(task);
+                    }
+                    else {
+                        merge(task.taskStartIndex, task.taskCenterIndex, task.taskEndIndex);
+                        task.parentTask.isDone = true;
+                        if (task.taskStartIndex == 0 && task.taskEndIndex == arr.length - 1)
+                            MergeSortQue.isOriginalTaskDone = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+```

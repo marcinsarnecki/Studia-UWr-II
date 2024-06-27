@@ -1,0 +1,533 @@
+# Ćwiczenia 2, 30. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Michał Błaszczyk         |   X   |  X  |  X  |  X  |  X  |     |     |
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+```java=
+class MergeSort implements Runnable {
+    protected int arr[];
+    protected int buf[];
+    protected int l, r;
+
+    MergeSort(int arr[], int buf[], int l, int r) {
+        this.arr = arr;
+        this.buf = buf;
+        this.l = l;
+        this.r = r;
+    }
+
+    private void copy_sorted(int l, int m, int r) {
+       for (int i = l; i <= m; i++) {
+            buf[i] = arr[i];
+        }
+        for (int i = m + 1; i <= r; i++) {
+            buf[i] = arr[i];
+        }
+    }
+
+    private void merge(int l, int m, int r) {
+        copy_sorted(l, m, r);
+
+        int i = l, j = m + 1;
+        int k = l;
+        while (i <= m && j <= r) {
+            if (buf[i] <= buf[j]) {
+                arr[k] = buf[i];
+                i += 1;
+            } else {
+                arr[k] = buf[j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i <= m) {
+            arr[k] = buf[i];
+            k += 1;
+            i += 1;
+        }
+        while (j <= r) {
+            arr[k] = buf[j];
+            k += 1;
+            j += 1;
+        }
+    }
+
+    @Override
+    public void run() {
+        if (l < r) {
+            int m = (l + r) / 2;
+            MergeSort left = new MergeSort(arr, buf, l, m);
+            MergeSort right = new MergeSort(arr, buf, m + 1, r);
+            Thread t1 = new Thread(left);
+            Thread t2 = new Thread(right);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            merge(l, m, r);
+        }
+    }
+}
+
+
+public class RookieMergeSort {
+
+    public static void main(String[] args) {
+        int arr[] = {4, 3, 2, 1};
+        MergeSort w = new MergeSort(arr, new int[4], 0, 3);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < 4; i++)
+            System.out.printf("%d ", arr[i]);
+
+
+    }
+}
+```
+
+## Zadanie 2
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+```java=
+class MergeSort implements Runnable {
+    protected static final int MINIMAL_MERGE_SORT_SIZE = 16;
+    protected int arr[];
+    protected int buf[];
+    protected int l, r;
+
+    MergeSort(int arr[], int buf[], int l, int r) {
+        this.arr = arr;
+        this.buf = buf;
+        this.l = l;
+        this.r = r;
+    }
+
+    private void copy_sorted(int l, int m, int r) {
+       for (int i = l; i <= m; i++) {
+            buf[i] = arr[i];
+        }
+        for (int i = m + 1; i <= r; i++) {
+            buf[i] = arr[i];
+        }
+    }
+
+    private void merge(int l, int m, int r) {
+        copy_sorted(l, m, r);
+
+        int i = l, j = m + 1;
+        int k = l;
+        while (i <= m && j <= r) {
+            if (buf[i] <= buf[j]) {
+                arr[k] = buf[i];
+                i += 1;
+            } else {
+                arr[k] = buf[j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i <= m) {
+            arr[k] = buf[i];
+            k += 1;
+            i += 1;
+        }
+        while (j <= r) {
+            arr[k] = buf[j];
+            k += 1;
+            j += 1;
+        }
+    }
+
+    private void insert_sort() {
+        for (int i = l + 1; i <= r; i++) {
+            int val = arr[i];
+            int j = i - 1;
+            for (; j >= l && arr[j] > val; j--) {
+                arr[j + 1] = arr[j];
+            }
+            arr[j + 1] = val;
+        }
+    }
+
+    @Override
+    public void run() {
+        int size = r - l + 1;
+
+        if (size >= MINIMAL_MERGE_SORT_SIZE) {
+            int m = (l + r) / 2;
+            MergeSort left = new MergeSort(arr, buf, l, m);
+            MergeSort right = new MergeSort(arr, buf, m + 1, r);
+            Thread t1 = new Thread(left);
+            Thread t2 = new Thread(right);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            merge(l, m, r);
+        } else {
+            insert_sort();
+        }
+    }
+}
+
+
+public class RookieMergeSort {
+
+    public static void main(String[] args) {
+        int arr[] = {4, 3, 2, 1};
+        MergeSort w = new MergeSort(arr, new int[4], 0, 3);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < 4; i++)
+            System.out.printf("%d ", arr[i]);
+
+
+    }
+}
+```
+
+## Zadanie 3
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+```java=
+class MergeSort implements Runnable {
+    protected static final int MINIMAL_MERGE_SORT_SIZE = 0;
+    protected static final int MAXIMUM_THREAD_COUNT = 1;
+    protected static int thread_count = 0;
+    protected int arr[];
+    protected int buf[];
+    protected int l, r;
+
+    MergeSort(int arr[], int buf[], int l, int r) {
+        this.arr = arr;
+        this.buf = buf;
+        this.l = l;
+        this.r = r;
+        synchronized(this) {
+            thread_count++;
+        }
+    }
+
+    private void copy_sorted(int l, int m, int r) {
+       for (int i = l; i <= m; i++) {
+            buf[i] = arr[i];
+        }
+        for (int i = m + 1; i <= r; i++) {
+            buf[i] = arr[i];
+        }
+    }
+
+    private void merge(int l, int m, int r) {
+        copy_sorted(l, m, r);
+
+        int i = l, j = m + 1;
+        int k = l;
+        while (i <= m && j <= r) {
+            if (buf[i] <= buf[j]) {
+                arr[k] = buf[i];
+                i += 1;
+            } else {
+                arr[k] = buf[j];
+                j += 1;
+            }
+            k += 1;
+        }
+        while (i <= m) {
+            arr[k] = buf[i];
+            k += 1;
+            i += 1;
+        }
+        while (j <= r) {
+            arr[k] = buf[j];
+            k += 1;
+            j += 1;
+        }
+    }
+
+    private void insert_sort() {
+        for (int i = l + 1; i <= r; i++) {
+            int val = arr[i];
+            int j = i - 1;
+            for (; j >= l && arr[j] > val; j--) {
+                arr[j + 1] = arr[j];
+            }
+            arr[j + 1] = val;
+        }
+    }
+
+    @Override
+    public void run() {
+        int size = r - l + 1;
+        boolean room;
+
+        synchronized(this) {
+            room = thread_count < MAXIMUM_THREAD_COUNT;
+        }
+
+        if (room && size >= MINIMAL_MERGE_SORT_SIZE) {
+            int m = (l + r) / 2;
+            MergeSort left = new MergeSort(arr, buf, l, m);
+            MergeSort right = new MergeSort(arr, buf, m + 1, r);
+            Thread t1 = new Thread(left);
+            Thread t2 = new Thread(right);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            merge(l, m, r);
+        } else {
+            insert_sort();
+        }
+    }
+}
+
+
+public class RookieMergeSort {
+
+    public static void main(String[] args) {
+        int arr[] = {4, 3, 2, 1};
+        MergeSort w = new MergeSort(arr, new int[4], 0, 3);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < 4; i++)
+            System.out.printf("%d ", arr[i]);
+    }
+}
+```
+
+## Zadanie 4
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+```java=
+class Prefix {
+  public int idx;
+  public int length;
+
+  Prefix(int idx, int length) {
+    this.idx = idx;
+    this.length = length;
+  }
+}
+
+class LongestPrefix implements Runnable {
+  private Prefix pxs[];
+  private int pxidx;
+  private int arr[];
+  private int l;
+  private int r;
+
+  LongestPrefix(Prefix pxs[], int pxidx, int arr[], int l, int r) {
+    this.pxs = pxs;
+    this.pxidx = pxidx;
+    this.arr = arr;
+    this.l = l;
+    this.r = r;
+  }
+
+  @Override
+  public void run() {
+    int max = 0, idx = -1;
+
+    for (int i = l; i < r; i++) {
+      int j = i + 1;
+      for (; j < arr.length && arr[j] == arr[i]; j++);
+      int length = j - i;
+      if (length > max) {
+        max = length;
+        idx = i;
+      }
+    }
+
+    pxs[pxidx] = new Prefix(idx, max);
+  }
+}
+
+class Main {
+  private static final int NTHREADS = 2;
+
+  public static void main(String args[]) {
+    int arr[] = {1, 2, 1, 2, 1, 2, 1, 2, 3, 3, 3};
+    Prefix pxs[] = new Prefix[NTHREADS];
+    Thread tds[] = new Thread[NTHREADS];
+    int size = arr.length / NTHREADS;
+
+    for (int i = 0; i < NTHREADS - 1; i++) {
+      tds[i] = new Thread(new LongestPrefix(pxs, i, arr, size * i,
+                                            size * (i + 1)));
+      tds[i].start();
+    }
+    int idx = NTHREADS - 1;
+    tds[idx] = new Thread(new LongestPrefix(pxs, idx, arr, size * idx,
+                                            arr.length));
+    tds[idx].start();
+
+    for (int i = 0; i < NTHREADS; i++) {
+      try {
+        tds[i].join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    int pxidx = 0;
+    for (int i = 1; i < NTHREADS; i++) {
+      if (pxs[i].length > pxs[pxidx].length)
+        pxidx = i;
+    }
+
+    int length = pxs[pxidx].length;
+    idx = pxs[pxidx].idx;
+    for (int i = idx; i < idx + length; i++)
+      System.out.printf("%d ", arr[i]);
+    System.out.println("");
+  }
+}
+```
+
+1 1 1 1 2 2 | 2 2 2 3 3 3 
+
+
+
+## Zadanie 5
+
+:::warning
+Autor: Michał Błaszczyk
+:::
+
+```java=
+class PrefixSum implements Runnable {
+  private static int cnt = 0;
+  private int arr[];
+  private int sums[];
+
+  PrefixSum(int arr[], int sums[]) {
+    this.arr = arr;
+    this.sums = sums;
+  }
+
+  public synchronized int getNextIdx() {
+    return (cnt < arr.length) ? cnt++ : -1;
+  }
+
+  public void compute(int idx) {
+    int sum = 0;
+    for (int i = 0; i < idx; i++)
+      sum += arr[i];
+    sums[idx] = sum;
+  }
+
+  @Override
+  public void run() {
+    for(;;) {
+      int idx = getNextIdx();
+      if (idx == -1)
+        return;
+
+      compute(idx);
+    }
+  }
+}
+
+class Main {
+  private static final int NTHREADS = 8;
+
+  public static void main(String args[]) {
+    int arr[] = {1, 2, 3, 4};
+    int sums[] = new int[arr.length];
+
+    Thread tds[] = new Thread[NTHREADS];
+    for (int i = 0; i < NTHREADS; i++) {
+      tds[i] = new Thread(new PrefixSum(arr, sums));
+      tds[i].start();
+    }
+    for (int i = 0; i < NTHREADS; i++) {
+      try {
+        tds[i].join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    for (int i = 0; i < sums.length; i++)
+      System.out.printf("%d ", sums[i]);
+    System.out.println("");
+  }
+}
+```
+
+## Zadanie 6
+
+:::warning
+Autor: Michał Błaszczyk
+:::
+## Zadanie 7
+
+:::warning
+Autor: Michał Błaszczyk
+:::
+
