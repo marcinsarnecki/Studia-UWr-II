@@ -1,0 +1,416 @@
+# Ćwiczenia 9, grupa cz. 12-14, 16. grudnia 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   x   |  x  |  x  |  x  |  x  |  x  | x    |   x  |
+Michał Błaszczyk         |   X   |  X  |  X  |     |     |  X  |     |     |
+Dawid Dudek              |   X   |==X==|  X  |  X  |  X  |  X  |  X  |   X |
+Krzysztof Juszczyk       |   X   |  X  |  X  |  X  |  X  |  X  |  X  |     |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Kacper Komenda           |   X   |  X  |     |  X  |  X  |   X |   X |     |
+Aleksandra Kosińska      | ==X== |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Łukasz Orawiec           |   X   |  X  | X   |  X  |  X  |     |  X  |  X  |
+Kamil Puchacz            |       |     |     |     |     |     |     |     |
+Paweł Sikora             |   X   |  X  |  X  |==X==|  X  |  X  |     |     |
+Michał Sobecki           |   X   |  X  |==X==|  X  |  X  |  X  |  X  |     |
+Cezary Stajszczyk        |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |     |  X  |     |     |
+Cezary Troska            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+:::
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Aleksandra Kosińska
+:::
+
+### Zdefiniuj zasadę lokalności odwołań.
+
+**Zasada lokalności:**
+- *temporal locality* - jeśli użyliśmy jakiegoś adresu to prawdopodobnie użyjemy go niedługo jeszcze raz
+- *spatial locality* - jeśli użyliśmy jakiegoś adresu to prawdopodobnie użyjemy nidługo adresu w pobliżu
+
+
+```c=
+for(int i = 0; i < 1000; i++){
+    x[i] = x[i] + s;
+}
+// odwołujemy się po kolei do adresów leżących koło siebie
+// oraz do zmiennej s w każdym obrocie pętli
+```
+
+### W jaki sposób tę zasadę wykorzystują pamięci podręczne?
+
+Gdy próbujemy odwołać się do jakiegoś miejsca w pamięci to sprawdzamy *pamięć podręczną*. Gdy wystąpi *miss* to do cache'u sprowadzany jest wiersz danych z pamięci. Następnym razem gdy będziemy chcieli użyć tego samego adresu lub leżącego w pobliżu to prawdopodobnie będzie on w *pamięci podręcznej*.
+
+### Dlaczego systemy wieloprocesorowe wymagają zastosowania protokołów spójności pamięci podręcznych?
+
+Ponieważ dane w pamięci podręcznej mogą być dzielone. Wtedy powstaje pytanie: *Gdy różne procesy mają daną w swoich pamięciach podręcznych i któryś z nich zmieni jej wartość to jak ma on powiadomić innych?*
+
+![](https://i.imgur.com/NwXeurj.png =500x)
+
+Bez *protokołów spójności* $T_2$ utknie w pętli na zawsze.
+
+
+### Jak działa protokół MESI?
+
+Wiersz pamieci podręcznej może być w jednym ze stanów:
+
+- Modified - wiersz został zmodyfikowany
+$\to$ jego wartość różni się od tej w pamięci głównej
+
+- Invalid - wiersz nie jest obecny w pamięci podręcznej lub został unieważniony (po zmianie jego wartości)
+$\to$ potrzeba sprowadzić go z pamięci lub z innego cache'u
+
+- Exclusive - wiersz jest obecny tylko w jednej pamięci podręcznej i nie został zmodyfikowany
+$\to$ dzięki temu gdy nastąpi zmiana wartości to nie trzeba wysyłać wiadomości, że ten wiersz jest *invalid*
+
+- Shared - blok jest obecny w więcej niż jednej pamięci podręcznej
+$\to$ jego wartość jest clean
+
+![](https://i.imgur.com/C6wDKSo.png =400x)
+## Zadanie 2
+
+:::success
+Autor Dawid Dudek
+:::
+
+![](https://i.imgur.com/TDw5Xgx.png)
+
+
+![](https://i.imgur.com/sW3A18Y.png)
+
+![](https://i.imgur.com/CTVNPM7.png)
+
+![](https://i.imgur.com/9VjnNPq.png)
+
+
+- Sprawdzamy ile czasu będzie się wykonywać jakaś prosta sekcja krytyczna typu podbicie licznika o 1
+
+- Wynika ona z tego, że TAS dużo częściej obciąża magistrale zapisem - przy każdym obrocie
+
+## Zadanie 3
+
+:::success
+Autor: Michał Sobecki
+:::
+
+![](https://i.imgur.com/s6pUJDX.png)
+
+W pierwszej implementacji wszystkie wątki współdzielą tą są linię w cachu, która zawiera licznik. Każda inkrementacja tego licznika inwaliduje tą linię w cachu dla wszystkich innych wątków, powodując duży ruch na szynie danych podczas każdej inkrementacji.
+
+W drugiej implementacji, zakładając, że elementy tablicy są przypisane do cachu, linia cachu jest inwalidowana tylko wtedy, gdy wątek `i-1` osiąga barierę, wtedy wątek `i` może zaaktualizować wartość swojej linii w cachu. W takim razie tylko jedna inwalidacja może wystąpić między wątkami, pomijając moment, gdy dojdziemy do ostatniego elementu.
+
+Druga implementacja jest bardziej "bus friendly" od pierwszej, ale wymaga więcej miejsca w pamięci i konroli. Dla wysokiego obciążenia druga implementacja powinna działać lepiej, a dla małego ta pierwsza.
+
+## Zadanie 4
+
+:::success
+Autor: Paweł Sikora
+:::
+
+![](https://i.imgur.com/9R24RGl.png)
+![](https://i.imgur.com/iDHSukO.png)
+
+**Unlock() w standardowym CLH:**
+![](https://i.imgur.com/K1HUrAW.png)
+
+**BadCLHLock:**
+Przez to, że w tej implementacji węzeł się nie zmienia przy unlock() na poprzednika mogą zajść następujące sytuacje:
+1. dla wątku A:
+- A zajmuje zamek:
+Tail -> A(locked=true)
+- A zwalnia zamek:
+Tail -> A(locked=false)
+- A ponownie zajmuje zamek:
+Tail -> A(locked=true) -> A(locked=true)
+
+2. dla wątków A i B:
+- A zajmuje zamek:
+Tail -> A(locked=true)
+- B zajmuje zamek:
+Tail -> B(locked=true) -> A(locked=true)
+- A zwalnia zamek:
+Tail -> B(locked=true) -> A(locked=false)
+- A ponownie zajmuje zamek:
+Tail -> A(locked=true) -> B(locked=true) -> A(locked=true)
+
+Obie te sytuacje tworzą zakleszczenie, więc jest to błędna implementacja.
+
+## Zadanie 5
+
+:::success
+Autor: Krzysztof Juszczyk
+:::
+
+```java=
+public class TOLock implements Lock {
+    static QNode AVAILABLE = new QNode();
+    AtomicReference<QNode> tail;
+    ThreadLocal<QNode> myNode;
+    public TOLock() {
+        tail = new AtomicReference<QNode>(null);
+        myNode = new ThreadLocal<QNode>() {
+            protected QNode initialValue() {
+                return new QNode();
+            }
+        };
+    }
+    
+    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+        long startTime = System.currentTimeMillis();
+        long patience = TimeUnit.MILLISECONDS.convert(time, unit);
+        QNode qnode = new QNode();
+        myNode.set(qnode);
+        qnode.pred = null;
+        QNode myPred = tail.getAndSet(qnode);
+        if (myPred == null || myPred.pred == AVAILABLE) {
+            return true;
+        }
+        while (System.currentTimeMillis() - startTime < patience) {
+            QNode predPred = myPred.pred;
+            if (predPred == AVAILABLE) {
+                return true;
+            } else if (predPred != null) {
+                myPred = predPred;
+            }
+        }
+        if (!tail.compareAndSet(qnode, myPred))
+            qnode.pred = myPred;
+        return false;
+    }
+    
+    public void unlock() {
+        QNode qnode = myNode.get();
+        if (!tail.compareAndSet(qnode, null))
+            qnode.pred = AVAILABLE;
+    }
+    
+    static class QNode {
+        public volatile QNode pred = null;
+    }
+}
+```
+W tej klasie mamy wyszczególnioną wartość wierzchołka`AVAILABLE`, kiedy wątek, który zwalnia zamek, widzi, że są jeszcze inne wątki ustawione w kolejce do zajęcia zamka zapisuje tą wartość do swojego wierzchołka `x.pred = AVAILABLE`, sygnalizując nastepnikowi, który obserwuje wierzchołek `x`, że zamek jest już dostepny.
+
+Na poczatku funckji `trylock()` wątek tworzy swój wierzchołek `x` i atomowo pobiera wierzchołek poprzednika i ustawia `tail` na `x`.
+Wątkowi udaje się zająć zamek odrazu gdy:
+* Kolejka była pusta (`tail = null`)
+* Wierzchołek `y` poprzednika pobrany z `tail` ma jako swój poprzednik ustawioną wartość`y.pred = AVAILABLE`.
+
+Jeśli wątek od razu nie zajmie zamka to zaczyna wirować i sprawdza swój timeout. Podczas wirowania są sprawdzane jeszcze 2 rzeczy:
+* czy `y.pred == AVAILABLE`, wtedy oznacza to, że poprzednik wykonał `unlock()` i jest nasza kolej na zajęcie zamka
+* wpp. czy wartość `y.pred != null`, jest to obsługa sytuacji, w której nasz poprzednik zrezygnował z czekania więc chcemy obserwować wierzchołek jego poprzednika.
+
+Jeśli jednak wątek czeka za długo to próbuje posprzątać po swojej obecności w kolejce. Jeśli akurat ten wątek był ostatni to wystarczy, że tylko atomowo przepnie wartość `tail` na wierzchołek swojego poprzednika. Wpp. ustawia w swoim wierzchołku wartość `pred` na wierzchołek swojego poprzednika (`x.pred = y`) aby następnik mógł zacząć obserwować właściwy wierzchołek, który jeszcze jest w grze.
+
+W funkcji `unlock()` wątek odczytuje swój wierzchołek `x`. Jeśli ten wątek był jedyny w kolejce, to możemy poprostu ustawić `tail = null`. Wpp. jeśli jeszcze ktoś chce zająć zamek to ustawiamy `x.pred = AVAILABLE`.
+
+## Zadanie 6
+
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/920332037985042522/unknown.png)
+
+### TAS
+
+```java=
+class TASlock {
+    AtomicBoolean state =
+    new AtomicBoolean(false);
+    void lock() {
+        while (state.getAndSet(true)) {}
+    }
+    void unlock() {
+        state.set(false);
+    }
+    
+    public boolean isLocked(){
+        return state.get();
+    }
+}
+```
+
+### CLH
+```java=
+class CLHLock implements Lock {
+    AtomicReference<QNode> tail;
+    ThreadLocal<QNode> myNode = new QNode();
+    public void lock() {
+        QNode pred = tail.getAndSet(myNode);
+        while (pred.locked) {}
+    }
+    public void unlock() {
+        myNode.locked.set(false);
+        myNode = pred;
+    }
+    public boolean isLocked(){
+        return tail.get().locked;
+    }
+}
+```
+
+### MCS
+```java=
+class QNode {
+volatile boolean locked = false;
+volatile qnode next = null;
+}
+class MCSLock implements Lock {
+    AtomicReference tail;
+    
+    public void lock() {
+        QNode qnode = new QNode();
+        QNode pred = tail.getAndSet(qnode);
+        if (pred != null) {
+            qnode.locked = true;
+            pred.next = qnode;
+            while (qnode.locked) {}
+        }
+    }
+    public void unlock() {
+        if (qnode.next == null) {
+            if (tail.CAS(qnode, null)
+                return;
+            while (qnode.next == null) {}
+        }
+        qnode.next.locked = false;
+        }
+    }
+    
+    public boolean isLocked(){
+        QNode pred = tail.get();
+        return pred != null;
+    }
+}
+```
+
+## Zadanie 7
+
+:::success
+Autor: Łukasz Orawiec
+:::
+
+Przyjmujemy, że procesory są podzielone na klastry. W obrębie klastra możliwa jest szybka komunikacja za pomocą współdzielonej pamięci cache. Komunikacja pomiędzy klastrami jest znacznie bardziej kosztowna. Każdy wątek jest przypisany do jednego klastra i nigdy go nie zmienia. 
+
+Problemy z wydajnością pojawiają się, gdy zamek naprzemiennie zajmują wątki z różnych klastrów. Narzut czasowy związany z przenoszeniem zamka między klastrami wynika m.in. z przeniesienia między klastrami danych chronionych przez zamek.
+
+Hierarchiczne zamki dbają o to, by zamek był częściej przekazywany pomiędzy wątkami z jednego klastra.
+
+HBOLock osiąga to poprzez stosowanie większego *back-off time* dla wątków z klastrów innych niż ten, który aktualnie zajmuje zamek. 
+
+```java=
+public class HBOLock implements Lock {
+    private static final int LOCAL_MIN_DELAY = ...;
+    private static final int LOCAL_MAX_DELAY = ...;
+    private static final int REMOTE_MIN_DELAY = ...;
+    private static final int REMOTE_MAX_DELAY = ...;
+    private static final int FREE = -1;
+    AtomicInteger state;
+    public HBOLock() {
+        state = new AtomicInteger(FREE);
+    }
+    public void lock() {
+        int myCluster = ThreadID.getCluster();
+        Backoff localBackoff =
+            new Backoff(LOCAL_MIN_DELAY, LOCAL_MAX_DELAY);
+        Backoff remoteBackoff =
+            new Backoff(REMOTE_MIN_DELAY, REMOTE_MAX_DELAY);
+        while (true) {
+            if (state.compareAndSet(FREE, myCluster)) {
+                return;
+            }
+            int lockState = state.get();
+            if (lockState == myCluster) {
+                localBackoff.backoff();
+            } else {
+                remoteBackoff.backoff();
+            }
+        }
+    }
+    public void unlock() {
+        state.set(FREE);
+    }
+}
+```
+
+## Zadanie 8
+
+:::success
+Autor: Cezary Stajszczyk
+:::
+
+Ideą zamków kohortowych jest to, aby wykorzystać dwa zamki:
+ - lokalny: rywalizują o niego wątki znajdujące się w tym samym klastrze
+ - globalny: rywalizują o niego całe klastry
+
+Aby wątek mógł wejść do sekcji krytycznej, musi zająć obydwa zamki.
+
+Gdy dany wątek wywołuje metodę `unlock()` sprawdza czy inne wątki w jego klastrze oczekują na założenie zamka lokalnego (metoda `alone()`). Jeżeli tak, to zwalnia on tylko zamek lokalny. W przeciwnym przypadku zwalnie również zamek globalny, pozwalając metodom z innego klastra wejść do swoich sekcji krytycznych.
+Aby uniknąć sytuacji, w której wykonują się wątki z tylko jednego klastra, a reszta jest głodzona, wporowadzona zostaje klasa `TurnArbiter`. Jeżeli zamek globalny zbyt długo trzymany jest przez jeden klaster, decyduje on o zwolnieniu go nawet jeśli metoda `alone()` zwraca `false`.
+
+```java=
+public class TurnArbiter {
+  private final int TURN_LIMIT;
+  private int turns = 0;
+  public LocalPassingArbiter(int limit) {
+    TURN_LIMIT = limit;
+  }
+  public boolean goAgain() {
+    return (turns < TURN_LIMIT);
+  }
+  public void wentAgain() {
+    turns++;
+  }
+  public void passed() {
+    turns = 0;
+  }
+}
+```
+```java=
+public class CohortLock implements Lock {
+  final Lock globalLock;
+  final ClusterLocal<CohortDetectionLock> clusterLock;
+  final TurnArbiter localPassArbiter;
+  ClusterLocal<Boolean> passedLocally;
+  public CohortLock(Lock gl, ClusterLocal<CohortDetectonLock> cl, int passLimit) {
+    globalLock = gl;
+    clusterLock = cl;
+    localPassArbiter = new TurnArbiter(passLimit);
+  }
+  public void lock() {
+    clusterLock.get().lock();
+    if (passedLocally.get()) return;
+    globalLock.lock();
+  }
+  public void unlock() {
+    CohortDetectionLock cl = clusterLock.get();
+    if (cl.alone() || !localPassArbiter.goAgain()) {
+      localPassArbiter.passed();
+      passedLocally.set(false);
+      globalLock.unlock();
+    } else {
+      localPassArbiter.wentAgain();
+      passedLocally.set(true);
+    }
+    cl.unlock();
+  }
+}
+```

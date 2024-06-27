@@ -1,0 +1,309 @@
+# Ćwiczenia 12, grupa cz. 10-12, 20. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Przemysław Hoszowski     |   X   |  X  |  X  | X   |     |     |  X  |  X  |
+Dominik Komła            |   X   |     |  X  |  X  |  X  |  X  |     |     |
+Tomasz Mróz              |       |     |     |     |     |     |     |     |
+Mateusz Opala            |   X    |     |  X   |   X  |   X  |     |     |     |
+Łukasz Pluta             |   X    |     |  X   |  X   |  X   |     |     |     |
+Antoni Pokusiński        |    X  |  X  |  ==X==  |  X  |     |     |     |     |
+Szymon Rysz              |   X   |  X  |  X  |==X==|  X  |  X  |     |     |
+Dominik Samorek          |       |     |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |     |  X  |  X  |  X  |     |     |     |
+Jan Wańkowicz            |   X   |     |  X  |  X  |  X  |  X  |  X   |     |
+Michał Zieliński         | ==X== |     |  X  | X   |  X  |  X  |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+
+:::success
+Autor: Michał Zieliński
+:::
+
+### Treść
+
+#### Polecenie
+Omów implementację niewstrzymywanej kolejki LockFreeQueue. Dla każdego wywołania metody compareAndSet() w kodzie enq() i deq() wymień wszystkie powody, dla których może ono zawieść. Dla wszystkich wywołań tej metody, których wartość zwracana nie jest sprawdzana wyjaśnij, dlaczego tak jest. Co to znaczy, że “szybsze” wątki pomagają w działaniu wątkom “wolniejszym”?
+
+#### Kod
+```java=
+public class Node 
+{
+    public T value;
+    public AtomicReference<Node> next; 
+    public Node(T value) 
+    {
+        value = value;
+        next = new AtomicReference<Node>(null);
+    }
+}
+```
+
+```java=
+public void enq(T value) 
+{ 
+    Node node = new Node(value);
+    while (true) 
+    {
+        Node last = tail.get();
+        Node next = last.next.get(); 
+        if (last == tail.get()) 
+        {
+            if (next == null) 
+            {
+                if (last.next.compareAndSet(next, node)) 
+                {
+                    tail.compareAndSet(last,node);
+                    return; 
+                }
+
+            } 
+            else 
+            {
+                tail.compareAndSet(last, next);
+            } 
+        }
+}
+```
+```java=
+public T deq() throws EmptyException 
+{ 
+    while (true) 
+    {
+        Node first = head.get();
+        Node last = tail.get();
+        Node next = first.next.get(); 
+        if (first == head.get()) 
+        {
+            if (first == last) 
+            { 
+                if (next == null) 
+                {
+                    throw new EmptyException(); 
+                }
+                tail.compareAndSet(last, next); 
+            } 
+            else 
+            {
+                T value = next.value;
+                if (head.compareAndSet(first, next))
+                    return value; 
+            }
+        }
+    }
+}
+```
+### Rozwiązanie
+#### enq
+12 last przestało być ostatnim nodem - usunięte albo wstawione elementy za nim
+14 last nie jest już ogonem (w strukturze, nie tylko w stanie pożądanym)- jako ogon został ustawiony element "za" last. Nie musimy sprawdzać, bo oznacza to, że ogon albo my zaktualizujemy albo ktoś już to zrobił - pomoc szybkich wątków dla wolnych.
+21 jak 14
+#### deq
+16 jak 14 i 21 w enq
+21 first został już zdjęty
+
+## Zadanie 2
+
+:::success 
+Antoni Pokusiński
+:::
+:::info
+1. Czy jako punkt linearyzacji metody ```deq()```, w przypadku gdy odnosi ona sukces, można wybrać instrukcję która odczytuje zwracaną wartość z węzła?
+:::
+~~Punkt linearyzacji jest miejscem, w którym efekt wykonania danej metody jest widoczny dla innych wątków. W momencie odczytu wartości nie wykonaliśmy jeszcze zmiany wskaźnika *head*, a więc inne wątki w tym momencie nie widzą wspomnianego efektu. Nie może to być więc punkt linearyzacji.~~ 
+
+Bierzemy pod uwagę tylko obecny kontekst, tj. zakładamy, że na kolejce wykonujemy tylko operacje ```enq()``` i ```deq()```. Korzystamy również z tego, że jest tylko 1 miejsce, w którym modyfikujemy wskaźnik *head*. 
+Załóżmy, że wątek A wykonuje się aż do ```T value = next.value``` i wiemy, że za chwilę ```head.compareAndSet``` zakończy się sukcesem (bo zakładamy, że jest to ostatnia iteracja ```while(true)```). Jeśli inny wątek B też wykonuje ```deq()```, to zgodnie z powyższym założeniem nie przejdzie if'a z lin.21 i wykona kolejną iterację pętli ```while(true)```. Wobec tego wiemy, że punkt linearyzacji został wybrany poprawnie - wątek B nie "wyprzedził" A, ponieważ ograniczył go ```head.compareAndSet()```. 
+
+
+
+:::info
+2. Czy jako punkt linearyzacji metody ```enq()``` można wybrać instrukcję (być może wykonywaną przez inny wątek), która z sukcesem aktualizuje pole *tail*?
+:::
+Tak, w tym momencie nastąpiło zarówno przepięcie wskaźnika, jak i zaktualizowanie *tail*, więc efekt działania metody jest już widoczny. Przy czym punktem linearyzacji jest jedno z wywołań ```tail.compareAndSet()```, w szczególności może być ono w metodzie ```deq()```.
+## Zadanie 3
+
+:::success
+Autor: Łukasz Pluta
+:::
+
+Problem ABA – rodzaj błędu w synchronizacji procesów wielowątkowych, polegający na tym, że w przypadku dwukrotnego odczytu lokacji pamięci, gdy odczytana wartość jest taka sama w obu odczytach, to „taka sama wartość” jest interpretowana jako „nic się nie zmieniło”.
+
+"This phenomenon is called the ABA problem. It shows up often, especially in dy-
+namic memory algorithms that use conditional synchronization operations such as
+compareAndSet(). Typically, a reference about to be modified by a compareAndSet()
+changes from a to b and back to a again. As a result, the compareAndSet() call suc-
+ceeds even though its effect on the data structure has changed, and no longer has the
+desired effect."
+
+![](https://i.imgur.com/5ghIVIy.png)
+
+
+## Zadanie 4
+
+:::success
+Autor: Szymon Rysz
+:::
+![](https://i.imgur.com/933M4yE.png)
+
+![](https://i.imgur.com/xWex1zj.png)
+
+Synchroniczne struktury polegają na tym, że jest np. wielu producentów i konsumentów, którzy się spotykają (rendezvous) i konsument odbiera od producento to, co ten wyprodukował. Producent czeka, aż transfer zostanie zakończony (konsument odbierze dane).
+
+Spotkanie jest momentem przekazania sobie danych.
+
+Wątek wstawiający do kolejki (producent) oczekuje, aż poprzedni element zostanie odebrany przez konsumenta (oczekując zwalnia blokadę), następnie wstawia element i budzi pozostałe wątki, które zaczynają walkę o zamek.
+
+Wątek odbierjący element (konsument) czeka, aż jakiś element się pojawi (oczekując zwalnia blokadę). Po odebraniu elementu budzi reszte wątków, które zaczynają walkę o zamek.
+
+## Zadanie 5
+
+:::success
+Autor: Mateusz Sidło
+:::
+
+:::info
+Jakie uzasadnienie stoi za pomysłem synchronicznych **dualnych** struktur danych? Omów implementację kolejki `SynchronousDualQueue`. Dla każdego wywołania metody `compareAndSet()` w kodzie `enq()` i `deq()` wymień wszystkie powody, dla których może ono zawieść. Dla wszystkich wywołań tej metody, których wartość zwracana nie jest sprawdzana wyjaśnij, dlaczego tak jest.
+:::
+
+![](https://i.imgur.com/X63DfdG.png)
+![](https://i.imgur.com/9y74lKZ.png)
+
+![](https://i.imgur.com/LNFGGPQ.png)
+![](https://i.imgur.com/hALGYXz.png)
+
+## Zadanie 6
+
+:::success
+Autor: Dominik Komła
+:::
+![](https://i.imgur.com/vMkXTef.png)
+```
+Co nie działa w tym algorytmie?
+```
+
+1) Po pierwsze może stać się tak, że nie będzie żadnego elementu w stosie,
+a size będzie równy 1
+
+2) Może być taka sytuacja, że zamiast zdejmować rzeczy ze stosu, to będziemy nadpisywać te, które już tam są
+
+```
+Czy da się to naprawić?
+```
+
+Moim zdaniem nie da się tego naprawić, a przynajmniej ja nie widzę takiej opcji.
+
+
+## Zadanie 7
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+![](https://i.imgur.com/WhaleJq.png)
+
+
+1. W powyższej implementacji może się psuć wiele rzeczy - np. możemy wejść do pusha, zdekrementować wartość top, a następnie dwa razy spushować wartość, co nadpisze element ściągany przez pop. Również np. w przypadku, kiedy w pushu top jest mniejszy od 0, nie przywracamy go do stanu początkowego.
+
+2. W celu naprwanienia powyższego kodu możemt użyć roomów:
+
+```java=
+private Rooms rooms
+
+public void push(T x) throws FullException{
+    rooms.enter(0);
+    int i = top.getAndIncrement();
+    if(i >= items.length){
+        top.getAndDecrement();
+        rooms.exit();
+        throw new FullException();
+    }
+    items[i] = x;
+    rooms.exit();
+}
+public T pop() throws EmptyException {
+    rooms.enter(1);
+    int i = top.getAndDecrement() - 1;
+    if (i < 0) { // stack is empty
+        top.getAndIncrement(); // restore state
+        rooms.exit();
+        throw new EmptyException();
+    }
+    T res = items[i];
+    rooms.exit();
+    return res;
+}
+```
+ 
+
+## Zadanie 8
+
+:::success
+Autor: Przemysław Hoszowski
+:::
+![](https://i.imgur.com/yW9ipvK.png)
+![](https://i.imgur.com/emClzkG.png)
+![](https://i.imgur.com/b8srZdN.png)
+
+```java=
+private Rooms rooms;
+private volatile boolean if_overflow = false;
+
+private function handle_exit(){
+    if(if_overflow){
+        zrob_wieksza_tablice();
+        if_overflow = false;
+    }
+}
+
+
+public void push(T x) throws FullException{
+    while(true){
+        while(if_overflow);
+        rooms.enter(0);
+        int i = top.getAndIncrement();
+        if(i >= items.length){
+            top.getAndDecrement();
+            if_overflow = true;
+            rooms.exit();
+            continue;
+        }
+        items[i] = x;
+        rooms.exit();
+        return;
+    }
+}
+public T pop() throws EmptyException {
+    rooms.enter(1);
+    int i = top.getAndDecrement() - 1;
+    if (i < 0) { // stack is empty
+        top.getAndIncrement(); // restore state
+        rooms.exit();
+        throw new EmptyException();
+    }
+    T res = items[i]; 
+    rooms.exit();
+    return res;
+}
+```
+Dodanie handlera nie ma wypływu na pop - nie dzieje się równolegle do niego i nie zmienia nic w danych na których on działa.
+W przypadku poprawnego wykonania iteracji push działanie jest takie samo jak w przypadku poprawego wykonania z wcześniejszego zadania.
+W przypadku overflow wątki zaczną opuszczać pokój 0 i będą czekać przed kolejnym wejściem, aż sytuacja ta nie zostanie rozwiązana przez onExitHandler.
+Zabezpieczenie przed wejściem do sekcji krytycznej stanowi implementacja rooms - nie dopuszcza ona do wejścia do sekcji krytycznej kiedy exit handler działa.

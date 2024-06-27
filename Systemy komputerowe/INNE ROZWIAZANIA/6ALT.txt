@@ -1,0 +1,247 @@
+# Ćwiczenia 6, grupa cz. 10-12, 25. listopada 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Dominik Budzki           |       |     |     |     |     |     |     |     |
+Przemysław Hoszowski     |   X   |  X  |  X  |  X  |     |  X  |     |     |
+Dominik Komła            |    X   |  X  |  X  |  X  |     |  X  |  X  |  X  |
+Tomasz Mróz              |       |     |     |     |     |     |     |     |
+Mateusz Opala            |   X    |  X   |  X   |   X  |   X  |  X   |  X   |  X   |
+Łukasz Pluta             |   X    |  X   |   ==X==  |   X  |     |  X   |   X  |  X   |
+Antoni Pokusiński        |   X   |  X  |     |     |     |    X |     |     |
+Szymon Rysz              |   X   |  X  |     |     |     |  X  |     |     |
+Dominik Samorek          |       |     |     |     |     |     |     |     |
+Mateusz Sidło            |    X  |  X  |  X  |  X  |     |     |     |     |
+Mateusz Szwelengreber    |       |     |     |     |     |     |     |     |
+Jan Wańkowicz            |    X   |  X  |  X  |  X  |     |  X  |  X  |  X  |
+Michał Zieliński         |    X  |==X==|     |     |     |   X |   X |     |
+:::
+
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+:::success
+Autor: Antoni Pokusiński
+:::
+### Bezpieczny
+```
+W1: --------<W.high><W.low.....>------
+W2: ------<W.high.....><W.low>--------
+```
+Do rejestru może zostać w powyższym przypadku zapisana górna połówka z W1 i dolna połówka z W2. Jeśli wykonamy późnej ```read()```, który nie przeplata się z innymi write'ami, to przeczytamy wartość, która nie pochodzi z ostatniego ```write()``` (dokładniej - górne bity pochodzą z W2, a dolne z W1), co jest niezgodne z definicją rejestru typu *safe*.
+### Regularny
+```
+W: ----<W.high><W.low>-------------------
+R: --------<R.high.....><R.low.....>-----
+```
+Jeśli *R.high* zwróci nam starą wartość górnego rejestru, a *R.low* zwróci nową wartość dolnego rejestru, to dostaniemy "mieszaną" wartość, która nie jest ani starą, ani nową wartością całego 64-bitowego rejestru.
+### Atomowy
+Skoro rejestr nie jest regularny, to nie jest też atomowy.
+## Zadanie 2
+:::success
+Autor: Michał Zieliński
+:::
+### Treść
+Algorytm Petersona spełnia warunki wzajemnego
+wykluczania i niezagłodzenia, jeśli zmienne flag[0], flag[1]
+oraz victim oznaczają rejestry atomowe. Czy te warunki zostaną
+zachowane, jeśli dla flag[0] i flag[1] użyjemy rejestrów
+regularnych?
+### Algorytm Petersona
+```= java
+public void lock() {
+ flag[i] = true; 
+ victim  = i; 
+ while (flag[j] && victim == i) {};
+}
+public void unlock() {
+ flag[i] = false;
+ }
+```
+### Rozwiązanie
+Zachowanie rejestrow atomowych i regularnych rozni sie w sytuacji, gdy na rejestrze jednoczesnie dokonywany jest zapis i odczyt. Sprawdzmy czy w takiej sytuacji wymienione wartosci zostaja zachowane. 
+Do odczytu dochodzi tylko w linii 4. Niech watkiem dokomujacym odczytu jest A, a jednoczesnie zapisu dokonywac bedzie B. 
+B zapisuje na linii 2
+A odczytuje stara wartosc flag[B] falsz i wchodzi do sekcji krytycznej. B czeka (wzajemne wykluczanie) az A zmieni swoja flage w unlock po sekcji krytycznej (co sie wydarzy) (niezaglodzenie)
+A odczytuje nowa wartosc i czeka. B ustawia jako ofiare siebie, wiec A przestaje czekac i wchodzi w sekcje krytyczna, a B czeka, bo flag[A] nie została zmienionia (wzajemne wykluczanie), dalszy przebieg jak wyzej (niezaglodzenie). 
+B zapisuje na linii 7
+A odczyta albo jedna iteracje wczesniej albo w takim samym momencie (jak przy rejestrach atomowych) flag[B] falsz i przejdzie do sekcji krytycznej (niezaglodzenie), ale B juz wyszlo z sekcji krytycznej (wzajemne wykluczanie).
+## Zadanie 3
+:::success
+Autor: Łukasz Pluta
+:::
+
+Wartość mapujemy na ciąg bitów długości O(log(m)) (tak jak zamieniamy liczbę na system binarny np.).
+
+Mamy dwie tablice bitów o wielkości O(log(m)) bitów, wpisujemy do nich wartości na przemian (bity od lewej do prawej) i pamietamy ile zapisów już się zakończyło całkowicie(modulo 2). Przy readzie odczytujemy wartość z komórki w której ostatnio zakończył się zapis (pierwszej lub drugiej zależnie od parzystości naszego licznika). Łatwo sprawdzić, że spełniamy w ten sposób 2 pierwsze warunki z zadania. 
+
+## Zadanie 4
+:::success
+Autor: Mateusz Sidło
+:::
+
+:::success
+**Twierdzenie**
+dobry rejestr MRSW jest **regularny** *wtedy i tylko wtedy*, gdy dla każdego ciągu dostępów:
+* dla każdego $i$ nie jest prawdą, że $𝑅^i \rightarrow W^i$ (\*), oraz
+* dla każdych $i$ oraz $j$ nie jest prawdą, że $𝑊^i \rightarrow W^j \rightarrow R^i$ (\*\*).
+:::
+
+:::info
+**Definicja**
+Rejestr nazwiemy **dobrym**, jeśli dla każdego ciągu współbieżnych dostępów do tego rejestru (zapisów i odczytów) każda wartość odczytana występuje wśród wartości zapisanych (tzn. wartości odczytane nie biorą się “z powietrza”).
+:::
+
+$\implies$
+
+Załóżmy, że mamy regularny rejestr MRSW. Weźmy dowolny ciąg dstępów.
+
+* **(\*)**
+
+Nie może zajść $R^i\rightarrow W^i$, bo rejestr jest regularny (w rejestrze nie znajduje się, nie jest do niego zapisywana $i$-ta wartość.).
+
+* **(\*\*)**
+
+Nie może zajść $W^i\rightarrow W^j \rightarrow R^i$, bo rejestr jest regularny (podczas gdy miałoby zajść $R^i$, $i$-tej wartości już w tym rejestrze nie ma).
+
+$\impliedby$
+
+Załóżmy, że mamy dobry rejestr MRSW, taki że dla każdego ciągu dostępów zachodz: 
+* dla każdego $i$ nie jest prawdą, że $𝑅^i \rightarrow W^i$ (\*), oraz
+* dla każdych $i$ oraz $j$ nie jest prawdą, że $𝑊^i \rightarrow W^j \rightarrow R^i$ (\*\*).
+
+1. read() ($R^k$) jest niewspółbieżny z żadnym write().
+
+    Z (\*):  $W^k \rightarrow R^k$.
+    Z (\*\*): nie istnieje takie $j$, że $𝑊^k \rightarrow W^j \rightarrow R^k$.
+    
+    A zatem, $W^k$ jest ostatnik zapisem poprzedzającym $R^k$.
+    
+    (jak reg dla sytuacji 1.)
+    
+2. read() ($R^x$) jest współbieżny z write()
+
+    ![](https://i.imgur.com/IA7333C.png)
+    
+    $$
+    x \leq k +l \text{, bo (*)}\\
+    x \geq k \text{, bo (**)}
+    $$
+    
+    (jak reg dla sytuacji 2.)
+    
+A zatem twierdzenie zachodzi.
+
+## Zadanie 5
+:::success
+Autor Mateusz Opala
+:::
+Rozszerzmy definicję ciągu W_i z zadania 4, wprowadzając porządek na zapisach w kolejności zmian zawartości komórki po wykonaniu zapisu (czyli moment, w którym i-ty write faktycznie coś zapisze do komórki). Innymi słowy bierzemy przedział odpowiedzialny za czas wywołania write i obcinamy końcówkę, w której wątek jest uśpiony albo nic nie robi. Za definicję atomowego rejestru MRMW przyjmiemy to, że jest on linearyzowalny. Pokażemy najpierw implikację z lineryzowalności w $*,**,***$:
+1. $*$ jest oczywista, bo jak przedziały są rozłączne to pierwszy przedział będzie mieć wcześniejszy punkt linearyzacji. Analogicznie $**$, bo jak przedziały są rozłączne to kolejnośc punktów linearyzacji jest taka sama jak przedziałów. $***$ wynikają natychmiastowo z tego, że W_i -> R_i i z $**$
+ 
+Pokażemy teraz implikację z $*,**,***$ w linearyzowalność:
+
+2. Skonstruujemy porządek na punktach linearyzacji pewnej historii H wywołań funkcji read,write. Spójrzmy najpierw na ciąg W_0,W_1,...,W_n i nazwijmy ten ciąg C. Będziemy teraz przechodzić po kolejnych readach i read oznaczony jako R_i wstawimy tuż przed writa $W_{i+1}$ lub na sam koniec do ciągu C w przypadku kiedy nie ma takiego writa. Pokażemy, że ciąg C odpowiada zlinearyzowanej historii H. Patrząc jedynie na podciągi W_i i R_i osobno widzimy, że możemy na nich wybrać porządek punktów linearyzacji wynikający z C odpowiednio z definicji W oraz z $***$. Wystarczy, więc pokazać, że możemy dobrać punkty linearyzacji tak, żeby dla punktów linearyzacji było spełnione a) W_i -> R_i i R_i->$W_{i+1}$.
+a) wynika bezpośrednio z $*$
+b) Załóżmy nie wprost, że $W_{i+1} -> R_i$ z a) mamy W_i -> R_i, czyli mamy W_i -> R_i -> $W_{i+1}$, ale z $**$ mamy natychmiastową sprzeczność.
+
+Stąd pokazaliśmy, że obie definicje są równoważne.
+
+## Zadanie 6
+:::success
+Autor: Przemysław Hoszowski
+:::
+```java=
+public class RegMRSWRegister implements Register{
+  RegBoolMRSWRegister[M] bit; // tutaj możemy chcieć zaznaczyć 0 na początku
+    
+  public void write(int x) {
+    this.bit[x].write(true);
+    for (int i=x-1; i>=0; i--) 
+      this.bit[i].write(false);
+  }
+    
+  public int read() {
+    for (int i=0; i < M; i++)
+      if (this.bit[i].read())
+        return i;
+   }
+}
+```
+Definicja regularnego rejestru:
+![](https://i.imgur.com/11rIAgx.png)
+Lemat: Read zawsze zwróci wartość
+Zauważmy, że usunięcie wartości poprzedza zapisanie większej. Oznacza to, że największa zapisana wartość zawsze jest zapalona.
+
+Jeśli podczas read nie występuje write:
+Wtedy wszystkie bity do ostatnio zapisanej wartości są zgaszone więc zostanie ona przeczytana.
+
+Jeśli read występuje podczas write:
+Jeśli zostanie zwrócona wartość mniejsza od x, to musiała ona zostać wprowadzona po ostatnim poprzedzającym write, ponieważ pola te zostały wyzerowane podczas jego zapisu. 
+Jeśli zwrócone zostanie coś większego od $v^i$ (w tym x) dla dow. $i \in 0..k$ to $v^i$ musiał zostać usunięty przez write - czyli wszystkie bity do $v^j$ - wartości wprowadzonej w między czasie przez write, zostały wyzerowane. Więc zostanie zwrócona wartość $v^l$ dla $l \in 1..k$
+## Zadanie 7
+:::success
+Autor: Jan Wańkowicz
+:::
+
+W celu udowodnienia poprawności naszego algorytmu udowodnijmy 3 podpunkty z zadania 5. 
+
+1) Nie jest możliwe, aby reader zwrócił wartość, która nie została jeszcze zapisana przez nikogo, więc punkt jest spełniony. 
+
+2) Jeśli $W^j$ znajduje się w całości po $W^i$, to wiemy, że na przekątnej nie znajduje się już żaden elemnt z $W^i$ (bo nadpisaliśmy je już jakimiś większymi). Stąd, jeśli szukamy maxa w kolumnie podczas reada, nawet jeśli znajdziemy gdzieś wartość z $W^i$, to będzie ona mniejsza od elementu na przekątnej i jej nie weźmiemy.
+
+3) Jeśli $R^i$ znajduje się przed $R^j$, znaleziony element w $R^i$ rozpropagowaliśmy już na cały wiersz, więc na pewno zostanie on (lub coś większego) znaleziony podczas przeszukiwania kolumny w $R^j$. Stąd $R^j >= R^i$.
+
+## Zadanie 8
+:::success
+Autor: Dominik Komła
+:::
+
+Nasz algorytm będzie działał w taki sposób, że stworzymy tablicę, która w każdej komórce ma atomowy rejestr MRSW, po jednej komórce na każdy wątek.
+
+Aby zapisać do rejestru, wątek A czyta całą tablicę, wybiera najwyższy timestamp, dodaje 1 i zapisuje wartość z takim timestampem do swojej komórki.
+
+Aby przeczytać rejestr, wątek czyta wszystkie komórki naszej tablicy i wybiera ten z najwiekszym timestampem. 
+
+Działa to podobnie jak algorytm piekarni i tak jak tam, remisy w timestampach rozwiązujemy na korzyść mniejszego THREAD.id().
+
+
+Dowód:
+
+($*$)
+![](https://i.imgur.com/Y0umtiD.png)
+
+Łatwo można zauważyć, że wywołanie read() nie może przeczytać wartości z naszej tablicy, dopóki nie zostanie ona tam zapisana. 
+
+($**$)
+![](https://i.imgur.com/a71Z6OF.png)
+
+Weźmy sobie 2 wątki A i B. Załóżmy, że wywołanie metody write() przez A zostało wykonane całkowicie przed wywołaniem metody write() przez B. Weźmy także wątek C, którego wywołanie metody read() zostaje wykonane całkowicie po wywołaniu write() przez B. Mamy dwa przypadki:
+1) Jeśli A = B:
+W takim przypadku zapis wykonany przez B po prostu nadpisze to, co wcześniej zapisał A i C przeczyta to co zapisał B
+2) Jeśli A $\neq$ B:
+W takim przypadku C widzi i to co zapisało A i B, ale B ma wyższy timestamp, więc C wybierze albo to co zapisało B, albo jeszcze coś poźniejszego. W każdym razie napewno nie wybierze tego co zapisało A
+
+($***$)
+![](https://i.imgur.com/MeXVYYy.png)
+
+Weźmy sobie dwa wątki A i B, takie, że $read_A()$ całkowicie poprzedza $read_B()$. Weźmy także dwa wątki C i D, takie, że $write_C()$ jest przed $write_D()$. Chcemy pokazać, że jeśli A zwróci wartość zapisaną przez D, to B napewno nie zwróci wartości zapisanej przez C.
+Mamy dwa przypadki:
+1) Jeśli $timestamp_C < timestamp_D$, wtedy A czyta po prostu D, a B przeczyta również D lub coś wyższego. Napewno nie zwraca wartości zapisanej przez C.
+2) Jeśli $timestamp_C = timestamp_D$, wtedy A i tak czyta D, ponieważ $C < D$, a B jak w powyższym punkcie zwróci to co zapisało D lub coś z jeszcze późniejszym timestampem. Tak jak poprzednio napewno nie zwróci wartości zapisanej przez C.
+

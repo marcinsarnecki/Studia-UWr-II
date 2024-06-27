@@ -1,0 +1,298 @@
+# Ćwiczenia 4, grupa cz. 10-12, 4. listopada 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Dominik Budzki           |       |     |     |     |     |     |     |
+Przemysław Hoszowski     |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Dominik Komła            |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |    X   |  X   |  X   |   X  |     |  X   |  X   |
+Łukasz Pluta             |   X    |  X   |   X  |   X  |     |  X   |  X   |
+Antoni Pokusiński        |   X   |  X  |  X  |  X  |     |   ==X== |  X   |
+Szymon Rysz              |   X   |  X  |  X  |  X  |     |    |   |
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Mateusz Szwelengreber    |       |     |     |     |     |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |     |  X  |  X  |
+Michał Zieliński         | ==X== |  X  |  X  |  X  |     |     |     |
+:::
+
+
+Tu proszę wpisać nazwiska osób deklarujących zad. 9 z listy 3:
+:::success
+
+
+:::
+
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Michał Zieliński	
+:::
+### Treść
+Pokaż, że poniższa implementacja zamka dla $n$ wątków spełnia warunek wzajemnego wykluczania. Uzasadnij i wykorzystaj następujący fakt: każdy wątek wykonujący metodę **lock()** znajduje się na jednym z $n$ poziomów, z których ostatni oznacza zajęcie zamka. Na poziomie $n - i$ znajduje się jednocześnie co najwyżej $i$ wątków.
+
+### Kod
+``` java
+class Filter implements Lock 
+{
+    int[] level;
+    int[] victim;
+    public Filter(int n) 
+    {
+        level = new int[n];
+        victim = new int[n]; // use 1..n-1
+        for (int i = 0; i < n; i++) 
+        {
+            level[i] = 0;
+        }
+    }
+    public void lock() 
+    {
+        int me = ThreadID.get(); // returns 0..n-1
+        for (int i = 1; i < n; i++) 
+        { // attempt to enter level i
+            level[me] = i;
+            victim[i] = me;
+            // spin while conflicts exist
+            while (( ∃ k != me) (level[k] >= i && victim[i] == me)) 
+            {};
+        }
+    }
+    public void unlock() 
+    {
+        int me = ThreadID.get();
+        level[me] = 0;
+    }
+}
+```
+### Rozwiązanie
+#### Fakt
+Na poziomie $n - i$ znajduje się jednocześnie co najwyżej $i$ wątków.
+##### Dowód
+###### Podstawa indukcji
+Na zerowym poziomie mogą być wszystkie wątki ($n$ ($n-0$) wątków). Wszystkie osiagają ten poziom przy inicjalizacji Filter.
+###### Krok indukcyjny
+Weźmy dowolny poziom $j$, t. że dla poziomów $0,...,j-1$ zachodzi rozważany fakt.
+Oznacza to, że na poziomie $j-1$ jest co najwyżej $n-j+1$ wątków.
+Załóżmy nie wprost, że wszytkie wątki z $j-1$ mogą być na $j$.
+Niech Z będzie ostatnim wątkiem, który wszedł na $j$. Wtedy dla każdego $T$, który wszedł na $j$ przed $Z$ mamy
+$w_T(victim[j]=T) \rightarrow w_Z(victim[j]=Z)$
+Z drugiej strony z kodu wiemy, że wcześniej
+$w_T(level[T]=j \rightarrow w_T(victim[j]=T)$
+Natomiast Z po ustawieniu $victim[j]=Z$ sprawdzi czy $∃ k \neq Z: level[k]>=j$ oraz $victim[j]=Z$
+więc mamy $w_Z(victim[j]=Z) \rightarrow r_Z(level[T]=j)$
+Czyli $A$ na pewno nie wejdzie na $j$, czyli na $j$ jest co najwyżej $n-j$ wątków.
+#### Wniosek
+Na najwyższym, $n-1$-szym poziomie może być co najwyżej jeden wątek. Bycie na tym poziomie oznacza zajęcie zamka. Jako że tylko jeden wątek może zajmować zamek, omawiana implementacja spełnia warunek wzajemnego wykluczania. 
+## Zadanie 2
+
+:::success
+Autor: Szymon Rysz	
+:::
+
+```java=
+class Filter implements Lock {
+    int[] level;
+    int[] victim;
+    public Filter(int n) {
+        level = new int[n];
+        victim = new int[n]; // use 1..n-1
+        for (int i = 0; i < n; i++) {
+            level[i] = 0;
+        }
+    }
+    public void lock() {
+        int me = ThreadID.get(); // returns 0..n-1
+        for (int i = 1; i < n; i++) { // attempt to enter level i
+            level[me] = i;
+            victim[i] = me;
+            // spin while conflicts exist
+            while (( ∃ k != me) (level[k] >= i && victim[i] == me)) {};
+        }
+    }
+    public void unlock() {
+        int me = ThreadID.get();
+        level[me] = 0;
+    }
+}
+
+```
+
+
+Jeśli któryś wątek miałby się zagłodzić, to musiałyby zajść następujące warunki:
+
+1. Żaden inny wątek nie mógłby wejść po nim na któryś z poziomów, na którym w danej chwili on jest.
+2. Jest jakiś inny wątek na tym samym poziomie lub wyżej.
+
+Czy jest możliwa sytuacja, że na którymś poziomie czekają 2 wątki?
+Nie, ponieważ victim na danym poziomie wskazuje tylko na 1 wątek. Gdy nowy wątek wejdzie na poziom, to on staje się victimem, więc poprzedni (który czekał na tym poziomie) może wejść wyżej.
+
+W takim razie zawsze conajmniej jeden wątek będzie wchodził na kolejne poziomy, jeśli jest sam, to poczeka na wątki, które są w wyższych poziomach (bo będzie victimem).
+
+Tak więc wątki na wyższych poziomach będą ciągle wchodzily na wyższe poziomy lub przekażą pierwszeństwo innym wątkom, które będą robiły to samo, aż wejdą na poziom $n-1$.
+
+Po wyjściu z sekcji krytycznej ustawiają swój poziom na 0. Wtedy gdy wszystkie wątki z poziomów wyżej to zrobią, czekający wątek może wejść dalej.
+
+Z tego warunku wywnioskować można również, że nie zachodzi zakleszczenie.
+
+## Zadanie 3
+
+:::success
+Autor: Jan Wańkowicz	
+:::
+
+Jeśli wątek $A$ czeka w pętli po wykonaniu sekcji wejściowej, to $victim = A$ oraz $flag[A] = true$. Następnie jeśli wątek $B$ chciałby do sekcji krytycznej, to najpierw ustawiłby $victim = B$. W tym przypadku $B$ będzie musiał czekać na wątek $A$ aż ten zwolni swoją flagę. Stąd nie wejdzie on do sekcji krytycznej przed $A$.
+
+
+## Zadanie 4
+
+:::success
+Autor: Mateusz Sidło	
+:::
+
+Załóżmy, że istnieje takie $r$, że operacja przejścia na kolejny poziom w metodzie lock() klasy Filter ma własność $r$-ograniczonego czekania.
+
+Rozważmy takie wykonanie programu:
+$$
+n = 3\\
+LV\text{ -przejście na wyższy poziom}\\
+D_0^0\rightarrow D_1^0 \rightarrow D_2^0 \rightarrow LV_1^{0} \rightarrow D_1^1 \rightarrow LV_2^{0} \rightarrow D_2^1 \rightarrow\dots\rightarrow D_1^{r}\rightarrow D_2^{r}\rightarrow LV_1^{r} \rightarrow LV_0^{0}
+$$
+A zatem zachodzi:
+$$
+D_0^0\rightarrow D_1^0\\
+LV_1^{r} \rightarrow LV_0^{0}
+$$
+
+## Zadanie 5
+
+:::danger
+Autor: ?
+:::
+
+## Zadanie 6
+
+:::success
+Autor: Antoni Pokusiński	
+:::
+![](https://i.imgur.com/dV6cPfD.png)
+![](https://i.imgur.com/lS9mwgY.png)
+![](https://i.imgur.com/yG4aggx.png)
+
+:::info
+1. Ciąg wywołania metod w programie współbieżnym powinien
+mieć taki efekt, jak gdyby te metody zostały wykonane w
+pewnym sekwencyjnym porządku, jedna po drugiej.
+2. Efekt każdej metody w programie współbieżnym powinien
+wystąpić w pewnym punkcie czasu pomiędzy jej wywołaniem a
+powrotem (punkt linearyzacji).
+:::
+
+### Nieformalnie
+#### Diagram 1
+Dobieramy punkty linearyzacji tak, aby $r.write_A(1) \rightarrow r.read_A(1) \rightarrow r.write_C(2) \rightarrow r.read_B(2)$
+
+#### Diagram 2
+Dobieramy punkty linearyzacji tak, aby $r.write_C(2) \rightarrow r.write_B(1) \rightarrow r.read_A(1) \rightarrow r.read_B(1)$
+
+#### Diagram 3
+Niezależnie od tego, jak dobierzemy punkty linearyzacji, mamy $p.enq(x) \rightarrow p.enq(y) \rightarrow p.deq(y)$. Jednak skoro jako pierwszy wstawony został *x*, to znaczy, że jako pierwszy nie mógł zostać ściągnięty *y*.
+
+#### Diagram 4
+Podobnie jak wyżej, mamy już ustaloną kolejność wykonywania operacji na kolejce. Popatrzmy na kolejkę *p*:
+$p.enq(x) \rightarrow p.enq(y) \rightarrow p.deq(y)$, czyli dokładnie jak w diagramie 3.
+
+### Formalnie
+![](https://i.imgur.com/2yAo4OG.png)
+* his. sekwencyjna - ciąg operacji wywołanie F, powrót F, wywołanie G, powrót G itd...
+* his. ekwiwalentne -  his. G jest ekwiwalentna do H jeśli w obrębie każdego wątku jest taka sama kolejność
+* his. legalna - projekcja każdego z obiektów, na których działa ten wątek jest zgodna z **sekwencyjną specyfikacją** (warunki *preconditions*, *postconditions* itp...) 
+
+
+W żadnej z rozważanych przez nas sytuacji nie ma niedokończonych wywołań funkcji, więc nie musimy rozszerzać H do G poprzez dodawanie powrotów do takich funkcji, albo pozbywać się ich.
+#### Diagram 1
+Historia H i legalna, sekwencyjna historia ekwiwalentna, w której zachowujemy $\rightarrow_H$:  
+```
+B r.write(1)    B r.write(1)
+A r.read()      B r: void
+C r.write(2)    A r.read()
+A r: 1          A r: 1
+C r: void       C r.write(2)
+B r: void       C r: void
+B r.read()      B r.read()
+B r: 2          B r: 2
+```
+
+#### Diagram 2
+Historia H i legalna, sekwencyjna historia ekwiwalentna, w której zachowujemy $\rightarrow_H$:
+```
+B r.write(1)    C r.write(2)
+A r.read()      C r: void
+C r.write(2)    B r.write(1)
+A r: 1          B r: void
+C r: void       A r.read()
+B r: void       A r: 1
+B r.read()      B r.read() 
+B r: 1          B r: 1
+```
+
+#### Diagram 3
+Historia H  (jest sekwencyjna):
+```
+A p.enq(x)
+A p:void
+B p.enq(y)
+B p:void
+A p.deq()
+A p:y
+```
+Musimy jednak zachować relację $\rightarrow_H$ - tutaj oznacza to, że nie możemy nic "poprzestawiać".
+
+#### Diagram 4
+Historia H (jest sekwencyjna):
+```
+A p.enq(x)
+A p: void
+B q.enq(y)
+B p: void
+A q.enq(x)
+A q: void
+B p.enq(y)
+B p: void
+A p.deq()
+A p: y
+B q.deq()
+B q: x
+```
+Podobnie jak poprzednio
+## Zadanie 7
+
+:::success
+Autor: Mateusz Opala	
+:::
+
+1. r.write(1)(B) -> r.read(1)(A) -> r.write(2)(C) -> r.read(2)(B)
+2. r.write(2)(C) -> r.write(1)(B) -> r.read(1)(A) -> r.read(1)(B)
+3. p.enq(y)(B) -> p.enq(x)(A) -> p.deq(y)(A)
+4. Spójrzmy na kolejkę p. Dla niej musi zachodzić: p.enq(y)(B) -> p.enq(x)(A). Natomiast dla kolejki q musi zachodzić q.enq(x)(A) -> q.enq(y)(B). Z drugiej strony mamy jednak p.enq(x) -> q.enq(x) oraz q.enq(y) -> p.enq(y). Z otrzymanej sprzeczności wnioskujemy, że diagram nie reprezentuje sekwencyjnie spójnych historii.

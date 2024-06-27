@@ -1,0 +1,373 @@
+# Ćwiczenia 11, grupa cz. 12-14, 13. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Błaszczyk         |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Dawid Dudek              |   X   |  X  |  X  |==X==|  X  |  X  |  X  |
+Krzysztof Juszczyk       |   X   |  X  |     |     |  X  |     |  X  |
+Kamil Kasprzak           |   X   |==X==|  X  |  X  |  X  |  X  |  X  |
+Kacper Komenda           |   X   |  X  | X   |     |==X==|  X  |  X  |
+Aleksandra Kosińska      |       |     |  X  |     |  X  |  X  |  X  |
+Łukasz Orawiec           |   X   |     |     |     |  X  |  X  |  X  |
+Kamil Puchacz            |       |     |     |     |     |     |     |
+Paweł Sikora             |   X   |     |  X  |  X  |     |     |  X  |
+Michał Sobecki           |   X   |  X  |  X  |  X  |  X  |  X  |==X==|
+Cezary Stajszczyk        |       |     |  X  |     |  X  |  X  |  X  |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |     |     |  X  |
+Cezary Troska            |   X   |  X  |  X  |     |  X  |  X  |  X  |
+:::
+
+
+
+
+Poniżej można do-deklarować zad. 6. i 7. z listy 10 (proszę wpisać personalia i numer zadania/zadań): 
+- Jacek Bizub: 6,7
+- Kacper Komenda: 7
+- Dawid Dudek 6, 7
+- Kamil Kasprzak: 6,7
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Łukasz Orawiec
+:::
+
+![](https://i.imgur.com/7Lru0Hg.png)
+
+
+a)
+
+Wątek A usuwa węzeł `a` i wątek B w tym samym czasie dodaje węzeł `b`:
+- `head.next.compareAndSet(a, a.next)`
+- `a.next.compareAndSet(b.next, b)`
+
+Oba przypisania się powiodą, ale węzeł `b` nie zostanie prawidłowo dodany.
+
+b)
+
+Wątek A usuwa węzeł `a` i wątek B w tym samym czasie usuwa węzeł `b`:
+- `head.next.compareAndSet(a, a.next)`
+- `a.next.compareAndSet(b, b.next) `
+
+Obie operacje się powiodą, ale tylko węzeł `a` będzie prawidłowo usunięty.
+
+<br/>
+
+Chcemy zapewnić, żeby pole `next` usuniętego węzła nie mogło być zmodyfikowane.
+
+W tym celu zmieniamy typ pola `next` na `AtomicMarkableReference<T>`, tak aby oprócz referencji zawierało flagę `marked`. Węzeł, którego pole `next` ma ustawioną flagę `marked` jest logicznie usunięty.
+
+Klasa `AtomicMarkableReference<T>` udostępnia metodę 
+
+```java=
+compareAndSet(T expectedReference, T newReference, boolean expectedMark, boolean newMark)
+``` 
+którą można wykorzystywać podczas dodawania i usuwania węzła, żeby upewnić się, że w międzyczasie nie została zmodyfikowana referencja do następnego węzła ani nie został on usunięty.
+
+## Zadanie 2
+
+:::success
+Autor: Kamil Kasprzak
+:::
+
+![](https://media.discordapp.net/attachments/895259310702088223/930505272789717033/unknown.png)
+
+### Opisz w dokładny sposób działania:
+W szczególności, dla każdego wywołania compareAndSet() występującego w treści tych metod wymień wszystkie powody, dla których może ono zawieść (zwrócić false).
+#### find() z klasy Window
+```java=
+class Window {
+    public Node pred, curr;
+    
+    Window(Node myPred, Node myCurr) {
+        pred = myPred; curr = myCurr;
+    }
+}
+    
+Window find(Node head, int key) {
+    Node pred = null, curr = null, succ = null;
+    boolean[] marked = {false};
+    boolean snip;
+
+    retry: while (true) {
+        pred = head;
+        curr = pred.next.getReference();
+        while (true) {
+            succ = curr.next.get(marked);
+            while (marked[0]) {
+                snip = pred.next.compareAndSet(curr, succ, false, false);
+                if (!snip) continue retry;
+                curr = succ;
+                succ = curr.next.get(marked);
+            }
+            if (curr.key >= key)
+                return new Window(pred, curr);
+            pred = curr;
+            curr = succ;
+        }
+    }
+}
+```
+
+curr i pred to wskaźniki wskazujące na poszukiwane węzły.
+
+Zadanie `find` polega na przejściu przez wszystkie węzły listy o kluczach mniejszych lub równych `key` i fizyczne usuwanie węzłów usuniętych logicznie.
+
+
+```java=
+snip = pred.next.compareAndSet(curr, succ, false, false);
+```
+Przypadki, gdy zwraca `false`
+1) pred.next wskazuje na element inny niż curr, oznacza, że został on usunięty lub został dodany nowy element.
+2) curr jest oznaczony `marked` oznacza, że element został usunięty (logicznie).
+#### add() z klasy LockFreeList
+```java=
+public boolean add(T item) {
+    int key = item.hashCode();
+    while (true) {
+        Window window = find(head, key);
+        Node pred = window.pred, curr = window.curr;
+        if (curr.key == key) {
+            return false;
+        } else {
+            Node node = new Node(item);
+            node.next = new AtomicMarkableReference(curr, false);
+            if (pred.next.compareAndSet(curr, node, false, false)) {
+                return true;
+            }
+        }
+    }
+}
+```
+Poszukiwane węzły uzyskujemy za pomocą metody `find`.
+
+Jeśli element znaleziony curr (jest równy `key`) to oznacza to że element w momencie znalezienia znajdował się w zbiorze.
+
+W przeciwnym przypadku tworzymy nowy węzeł i dodajemy go do zbioru.
+
+```java=
+pred.next.compareAndSet(curr, node, false, false)
+```
+Przypadki, gdy zwraca `false`
+1) pred.next wskazuje na element inny niż curr, oznacza, że został on usunięty lub został dodany nowy element.
+2) curr jest oznaczony `marked` oznacza, że element został usunięty (logicznie).
+#### remove() z klasy LockFreeList
+```java=
+public boolean remove(T item) {
+    int key = item.hashCode();
+    boolean snip;
+    while (true) {
+        Window window = find(head, key);
+        Node pred = window.pred, curr = window.curr;
+        if (curr.key != key) {
+            return false;
+        } else {
+            Node succ = curr.next.getReference();
+            snip = curr.next.compareAndSet(succ, succ, false, true);
+            if (!snip)
+                continue;
+            pred.next.compareAndSet(curr, succ, false, false);
+            return true;
+        }
+    }
+}
+```
+Poszukiwane węzły uzyskujemy za pomocą metody `find`.
+
+Jeśli znaleziony `key` jest inny, oznacza to, że w momencie dotarcia do `curr` w zbiorze nie było elementu `key`. Kończymy metodę.
+
+W przeciwnym przypadku logicznie usuwamy element (ustawiamy `merked`) i przepinamy element.
+ 
+```java=
+snip = curr.next.compareAndSet(succ, succ, false, true);
+```
+Przypadki, gdy zwraca `false`
+1) succ jest oznaczony `marked` oznacza, że element został usunięty (logicznie).
+ 
+ 
+```java=
+pred.next.compareAndSet(curr, succ, false, false);
+```
+Przypadki, gdy zwraca `false`
+1) pred.next wskazuje na element inny niż curr, oznacza, że został on usunięty lub został dodany nowy element.
+2) curr jest oznaczony `marked` oznacza, że element został usunięty (logicznie).
+
+
+Dlaczego rezultat drugiego wywołania compareAndSet() w metodzie remove() nie jest sprawdzany? 
+* Ponieważ w przypadku porażki `succ` zostanie usunięty w metodzie `find`
+
+Czy można je usunąć nie tracąc poprawności implementacji?
+* Tak
+#### contains() z klasy LockFreeList
+```java=
+public boolean contains(T item) {
+    int key = item.hashCode();
+    Node curr = head;
+    while (curr.key < key) {
+        curr = curr.next.getReference();
+    }
+    return (curr.key == key && !curr.next.isMarked())
+}
+```
+Przechodzimy przez listę w celu znalezienia elementu równemu `key` lub pierwszego większego (w przypadku braku `key`). Zbiór zawiera `key` gdy jest na liście i nie jest oznaczony.
+
+## Zadanie 3
+
+:::success
+Autor: Paweł Sikora
+:::
+![](https://i.imgur.com/6SrqmeK.png)
+
+![](https://i.imgur.com/MwQC8nI.png)
+
+Nie ma konieczności przeglądania całej listy, ponieważ pred nie zostało usunięte. W związku z tym, musimy przejrzeć fragment listy, zaczynając od pred do końca, ponieważ lista jest posortowana, a wcześniej wiedzieliśmy, że `pred.key < key`, a `curr.key >= key`.
+
+## Zadanie 4
+
+:::success
+Autor: Dawid Dudek
+:::
+![](https://i.imgur.com/Rm0Pmn9.png)
+![](https://i.imgur.com/WD8y3eg.png)
+![](https://i.imgur.com/sLWZv4F.png)
+![](https://i.imgur.com/oNWztjx.png)
+
+```contains``` iteruje się do znalezieniea elementu większego niż item. Widzimy, że nie możemy dodać niekończenie wiele takich elementów pomiędzy head a item więc w skończonej liczbie kroków metoda się skończy
+
+`add()` i `remove()` są lock-free, ponieważ ich wywołania mogą się zapętlić tylko wtedy, gdy dany `element.next` się zmienił w trakcie wywoływania lub bit element.marked został zapalony(czyli element ma zostać usunięty). Widzimy, że w każdyn z tych przypadków musiało dojść do jakiejś rywalizacji wielu wątków i conajmniej jednemu się udało zrobić postęp (wstawił element/oznaczył bit) 
+
+## Zadanie 5
+
+:::success
+Autor: Aleksandra Kosińska
+:::
+
+```java=
+public class BoundedQueue<T> {
+    ReentrantLock enqLock, deqLock;
+    Condition notEmptyCondition, notFullCondition;
+    AtomicInteger size;
+    Node head, tail;
+    int capacity;
+    
+    public BoundedQueue(int _capacity) {
+        capacity = _capacity;
+        head = new Node(null);
+        tail = head;
+        size = new AtomicInteger(0);
+        enqLock = new ReentrantLock();
+        notFullCondition = enqLock.newCondition();
+        deqLock = new ReentrantLock();
+        notEmptyCondition = deqLock.newCondition();
+    }
+    
+    public void enq(T x) {
+        boolean mustWakeDequeuers = false;
+        enqLock.lock();
+        try {
+            while (size.get() == capacity)
+                notFullCondition.await();
+            Node e = new Node(x);
+            tail.next = tail = e;
+            if (size.getAndIncrement() == 0)
+                mustWakeDequeuers = true;
+        } finally {
+            enqLock.unlock();
+        }
+        if (mustWakeDequeuers) {
+            deqLock.lock();
+            try {
+                notEmptyCondition.signalAll();
+            } finally {
+                deqLock.unlock();
+            }
+        }
+    }
+    
+    public T deq() {
+        T result;
+        boolean mustWakeEnqueuers = true;
+        deqLock.lock();
+        try {
+            while (size.get() == 0)
+                notEmptyCondition.await();
+            result = head.next.value;
+            head = head.next;
+            if (size.getAndDecrement() == capacity) {
+                mustWakeEnqueuers = true;
+            }
+        } finally {
+            deqLock.unlock();
+        }
+        if (mustWakeEnqueuers) {
+            enqLock.lock();
+            try {
+                notFullCondition.signalAll();
+            } finally {
+                enqLock.unlock();
+            }
+        }
+        return result;
+    }
+}
+```
+
+Zmienna `size` jest dekrementowana tylko w `51` lini. `getAndDecrement` może być wołane tylko przez jeden wątek (`deqLock.lock()` w lini `45`). Aby wątek mógł zdekrementować `size` to najpierw musi przejść przez `while (size.get() == 0)`, to nam daje pewność, że w momencie zmniejszania `size` jest ono większe od `0`.
+
+## Zadanie 6
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+**lost wakeup** - one or more threads wait forever
+without realizing that the condition for which they are waiting has become true.
+
+Dlaczego nie ma zaginionych pobudek w `BoundedQueue`:
+
+1. Warunek pętli jest sprawdzany trzemając locka.
+2. Lock jest trzymany aż do wywołania `await()` które atomicznie zwalnia locka i usypia wątek.
+3. Wywołanie `signalAll()` wykonywane jest wyłącznie z trzymanym lockiem.
+
+## Zadanie 7
+
+:::success
+Autor: Michał Sobecki
+:::
+
+![](https://i.imgur.com/dFKqdqJ.png)
+
+
+![](https://i.imgur.com/EktWzyf.png)
+
+Odpowiedź:
+Tak.
+Konieczne jest uzyskanie blokady, aby zapobiec wystąpieniu `NullPointerException`.
+Taka sytuacja może wystąpić, jeśli na liście znajduje się tylko 1 element i więcej niż jeden wątek próbuje go usunąć.
+
+Przykładowe wykonanie:
+1. Wątek A sprawdza, czy `head.next == null` i przechodzi dalej.
+2. Wątek B tak samo
+3. Wątek A usuwa ten jeden element i `head.next = null`.
+4. Wątek B wykonuje `result = head.next.value`, ale `head.next == null`, więc dostajemy `NullPointerException`.
+
+
+----
+
+Komentarz (Jacek Bizub):
+Jeżeli przewidujemy, że kolejka będzie często pusta to możemy robić "early-fail" bez locka. Sprawdzamy bez locka czy jest coś dostępne. Jeżeli pusta to rzucamy wyjątek. Jeżeli coś na niej jest to musimy zająć blokadę i sprawdzić jeszcze raz.

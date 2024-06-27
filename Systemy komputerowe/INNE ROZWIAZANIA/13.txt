@@ -1,0 +1,156 @@
+# Ćwiczenia 13, grupa cz. 10-12, 27. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Przemysław Hoszowski     |   X   |  X  |     |     |     |     |     |
+Dominik Komła            |   X   |  X  |  X  |  X  |     |     |     |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |   X    |  X   |   X  |     |     |     |     |
+Łukasz Pluta             |   X    |  X   |   X  |     |     |     |     |
+Antoni Pokusiński        |   X   |     |     |     |     |     |     |
+Szymon Rysz              |       |     |     |     |     |     |     |
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |       |     |     |     |     |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |     |     |     |
+Michał Zieliński         |  ==X==|  X  |  X  |  X  |     |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Michał Zieliński
+:::
+
+### Treść
+#### Polecenie
+Wyjaśnij, jak działa metoda exchange() z klasy LockFreeExchanger. Dla każdego wywołania metody compareAndSet() wymień wszystkie powody, dla których może ono zawieść i wyjaśnij, jakie akcje podejmuje exchange() w takim przypadku. Dlaczego w pewnych dwóch miejscach w kodzie ustawia się zmienną slot przy pomocy set() a nie compareAndSet()?
+#### Kod
+```java=
+public class LockFreeExchanger<T> 
+{
+    static final int EMPTY = ..., WAITING = ..., BUSY = ...; 
+    AtomicStampedReference<T> slot = new AtomicStampedReference<T>(null, 0); 
+    public T exchange(T myItem, long timeout, TimeUnit unit) throws TimeoutException 
+    {
+        long nanos = unit.toNanos(timeout);
+        long timeBound = System.nanoTime() + nanos; 
+        int[] stampHolder = {EMPTY};
+        while (true) 
+        {
+            if (System.nanoTime() > timeBound)
+                throw new TimeoutException();
+            T yrItem = slot.get(stampHolder); 
+            int stamp = stampHolder[0];
+            switch(stamp) 
+            {
+                case EMPTY:
+                    if (slot.compareAndSet(yrItem, myItem, EMPTY, WAITING)) 
+                    { 
+                        while (System.nanoTime() < timeBound) 
+                        {
+                            yrItem = slot.get(stampHolder); 
+                            if (stampHolder[0] == BUSY) 
+                            {
+                                slot.set(null, EMPTY);
+                                return yrItem; 
+                            }
+                        }
+                        if (slot.compareAndSet(myItem, null, WAITING, EMPTY)) 
+                        {
+                            throw new TimeoutException(); 
+                        }
+                        else
+                        {
+                            yrItem = slot.get(stampHolder); 
+                            slot.set(null, EMPTY);
+                            return yrItem;
+                        }
+                    }
+                    break;
+                case WAITING:
+                    if (slot.compareAndSet(yrItem, myItem, WAITING, BUSY))
+                        return yrItem;
+                    break; 
+                case BUSY: 
+                    break;
+                default: // impossible ...
+        } }
+} }
+```
+## Zadanie 2
+
+:::success
+Autor: Przemysław Hoszowski
+:::
+### Elimination Array
+Pokoje w których może dochodzić do "wymiany" elementów 
+![](https://i.imgur.com/J3oAhrI.png)
+### EliminationBackoffStack
+![](https://i.imgur.com/oZhuvgO.png)
+![](https://i.imgur.com/rTCDtLS.png)
+### Lockfree stack
+![](https://i.imgur.com/m38qDuG.png)
+![](https://i.imgur.com/LOLDy5c.png)
+
+Jeśli try{Pop, Push} się udało to punktem linearyzacji jest ich cAS.
+W p.p. punkami linearyzacji jest moment zawarcia wymiany. Wtedy Push jest bezpośrednio przed Pop.
+## Zadanie 3
+
+:::success
+Autor: Łukasz Pluta
+:::
+Każdy wątek robi co następuje:
+Idzie do góry, dopóki może.
+Potem przechodzi tą samą ścieżką zbierając wyniki wątków 'pobocznych' na tej ścieżce.
+Jeśli dojdzie do roota to odpowiednio zwiększa jego counter.
+Na koniec rozsyła informację w dół drzewa, do wątków które zebrał po drodze 'wysyłając' kazdemu unikalną wartość (tą która sie stworzyła po odpowiednim getAndIncrement()).
+
+## Zadanie 4
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+![](https://i.imgur.com/gClzJEn.png)
+
+
+1) W precombine() musimy się kręcić, bo może się zdarzyć taki przypadek, że wątek, który był już pierwszy w danym wierzchołku skończył już funkcję combine i nie chcemy już tam wchodzić naszym wątkiem. W combine() zaś musimy zaczekać z kolei na wątek, który przyszedł do naszego wierzchołka jaki drugi i musimy najpierw policzyć wynik dla niego, żeby kontynuować algorytm i mieć wartość secondValue.
+
+2) W op() nie musimy czekać, bo albo znajdujemy się w roocie, czyli nie może być tam oprócz nas żadnego wierzchołka, albo znajdujemy się w wierzchołku, w którym znaleźliśmy się jako drudzy. W tym przypadku nie musimy czekać, bo już znajduje się tam inny wierchołek, który czeka na nas (w funkcji combine()). 
+
+3) 26 - zakładamy locka, zebyśmy najpierw my policzyli wynik swojego poddrzewa 
+37 - żeby nikt nie wykonał teraz precombine (potem uwzględnilibyśmy go w fazie dustrybucji)
+56 - obliczyliśmy wynik naszego poddrzewa i zwalniamy blokadę, żeby ten co byl pierwszy mogl isc dalej
+59 - ten wierzchołek będzie już pusty, więc zdejmujemy z niego locka
+71 - ten wierzchołek będzie już pusty, więc zdejmujemy z niego locka
+
+## Zadanie 5
+
+:::danger
+Autor: do-deklarować
+:::
+
+## Zadanie 6
+
+:::danger
+Autor: do-deklarować
+:::
+
+## Zadanie 7
+
+:::danger
+Autor: do-deklarować
+:::

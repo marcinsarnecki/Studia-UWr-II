@@ -1,0 +1,373 @@
+# Ćwiczenia 3, grupa cz. 12-14, 28. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Błaszczyk         |   X   |  X  |  X  |     |  X  |     |     |     |     |
+Dawid Dudek              | ==X== |  X  |  X  |     |  X  |  X  | X   |  X  |     |
+Mateusz Gil              |       |     |     |     |     |     |     |     |     |
+Wiktor Hamberger         |       |     |     |     |     |     |     |     |     |
+Krzysztof Juszczyk       |   X   |  X  |  X  |     |  X  |==X==|  X  |     |     |
+Kamil Kasprzak           |   x   |  x  |  x  |     |  x  |  x  |  x  |     |     |
+Kacper Kingsford         |       |     |     |     |     |     |     |     |     |
+Kacper Komenda           |   X   |  X  |     |     |  X  |  X  |  X  |     |     |
+Aleksandra Kosińska      |   X   |  X  |     |     |  X  |==X==|  X  |     |     |
+Łukasz Orawiec           |   X   |  X  |  X  |     |  X  |  X  |     |     |     |
+Kamil Puchacz            |       |     |     |     |     |     |     |     |     |
+Paweł Sikora             |   X   |  X  |  X  |     |  X  |  X  |     |  X  |     |
+Michał Sobecki           |   X   |  X  |  X  |     |  X  |  X  |  X  |  X  |     |
+Cezary Stajszczyk        |   X   |  X  |     |     |  X  |  X  |==X==|     |     |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+Cezary Troska            |   X   |==X==|  X  |   X |  X  |  X  |  X  |     |     |
+Daniel Wiczołek          |       |     |     |     |     |     |     |     |     |
+Antoni Pokusiński | X | X | X |   | X | X | X |   |   |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Dawid Dudek
+:::
+
+## Zadanie 1
+:::info
+Zadanie 1. Poniższy algorytm ma w zamierzeniu implementować interfejs Lock dla dowolnej liczby n wątków. Czy ten algorytm spełnia warunek a) wzajemnego wykluczania, b) niezagłodzenia, c) niezakleszczenia? 
+```java=
+class Foo implements Lock {
+    private int turn;
+    private boolean busy = false;
+    public void lock() {
+        int me = ThreadID.get();
+        do {
+            do {
+                turn = me;
+            } while (busy);
+            busy = true;
+        } while (turn != me);
+    }
+    public void unlock() {
+        busy = false;
+    }
+}
+```
+
+:::
+
+### Wzajemne wykluczanie
+
+Załóżmy nie wprost, że dwa wątki(1 i 2) mogą przejść razem do sekcji krytycznej. Zobaczmy z kodu co musiało się zdażyć żeby do tego doszło
+
+Write$_1$(turn = 1) -> Read$_1$(busy == false) -> Write$_1$(busy = true) -> Read$_1$(turn == 1)
+
+Write$_2$(turn = 2) -> Read$_2$(busy == false) -> Write$_2$(busy = true) -> Read$_2$(turn == 2)
+
+Możemy z tego wywnioskować następującą rzecz
+
+Read$_1$(turn == 1) -> Write$_2$(turn = 2)
+Read$_2$(turn == 2) -> Write$_1$(turn = 1)
+
+
+Write$_1$(turn = 1) -> Read$_1$(turn == 1) -> Write$_2$(turn = 2) -> Read$_2$(busy == false) -> Write$_2$(busy = true) -> Read$_2$(turn == 2) -> Write$_1$(turn = 1) ->
+
+
+
+Read$_2$(turn == 2) -> Write$_1$(turn = 1)
+
+Widzimy, że w takim razie dochodzi do sprzeczności (bo jest pętla ) czyli dowiedliśmy, że zachodzi wzajemne wykluczanie
+
+
+### Zagłodzenie
+
+Może dojść do zagłodzenia, przykładowy przeplot:
+
+krok 1- 2: turn = 2, busy: true, wychodzi z obu pętli
+krok 2- 1: turn = 1, zapętla na wewnętrznym while
+krok 3- 1: idzie spać
+krok 4- 2: unlock(), busy = false
+krok 5- 2: powtórz krok 1
+
+
+```java=
+class Foo implements Lock {
+    private int turn;
+    private boolean busy = false;
+    public void lock() {
+        int me = ThreadID.get();
+        do {
+            do {
+                turn = me;
+            } while (busy);
+            busy = true;
+        } while (turn != me);
+    }
+    public void unlock() {
+        busy = false;
+    }
+}
+```
+
+### Zakleszczenie
+
+Może dojść do zakleszczenia, przykładowy przeplot:
+
+krok 1- 2: turn = 2, wychodzi z pętli na 8 (bo busy = false) busy: true, śpi
+krok 2- 1: turn = 1, zapętla na 8 (bo busy = true)
+krok 3- 2: budzi się i zapętla na 11 (bo turn = 1)
+
+## Zadanie 2
+
+:::success
+Autor: Cezary Troska
+:::
+
+```C=
+public void lock() {
+    flag[i] = true; 
+    victim = i;
+    while (flag[j] && victim == i) {};
+}
+
+// public void unlock() {
+//  int i = ThreadID.get(); /*returns 0 or 1*/
+//  flag[i] = false;
+// }
+
+public void unlock() {
+  int i = ThreadID.get(); /*returns 0 or 1*/
+  flag[i] = false;
+  int j = 1 - i;
+  while (flag[j] == true) {}
+}
+```
+
+**Zakleszczenie**
+Zmodyfikowana wersja różni się od algorytmu Petersena dwiema dodanymi linijkami, tutaj obecnymi w linijkach 15 i 16. Udowodniliśmy już, że algorytm Petersena nie ulegnie zakleszczeniu. To wraz z faktem, że w dodanych linijkach nie manipulujemy wartościami flag i victim, daje nam pewność, że w rozszerzonej wersji nie dojdzie do zakleszczenia przed dwiema ostatnimi linijkami funkcji *unlock*. Musimy więc rozważyć tylko możliwość zakleszczenia w tym miejscu. 
+
+Zakleszczenie w linijce 16 obu wątków jest również niemożliwe. Wiemy, że:
+$Write_0(flag[0]=false) -> Read_0(flag[1]=true)$
+$Write_1(flag[1]=false) -> Read_1(flag[0]=true)$
+
+Niezależnie od kolejności wykonania zdarzeń wątków 0 i 1 ustawienie flag z powrotem na wartość true wymagałoby wejścia w sekcję $lock$. Oznaczałoby to, że pewnien wątek może opóścić sekscję $unlock$ i nie mamy doczynienia z zakleszczeniem.
+
+**Głodzenie**
+
+Głodzenie jest możliwe. Rozważmy przypadek w którym wątek 0 właśnie skończyło sekcję krytyczną, ustawia flag[0]=false, zaczyna czekać w linijce 16 (wątek 1 czeka na wejście do sekcji krytycznej, więc flag[1]=true) i oddaje procesor wątkowi 1. Wątek 1 wchodzi do sekcji krytycznej, wykonuje ją i przechodzi do sekcji unlock. Przechodzi przez nią bez problemu, ponieważ flag[0]=false. Może więc wejść ponownie do funkcji *lock*, ustawić swoją flagę na true i wejść do sekcji krytycznej. Wtedy nawet jeśli procesor będzie oddany wątkowi 0, kontunuuje on czekanie. Wątek 1 może odtąd natychmiast przechodzić przez sekcję unlock i rozpoczynać kolejne blokowanie sekcji krytycznej, natomiast wątek 0 będzie wiczecznie czekać. 
+
+## Zadanie 3
+
+:::success
+Autor: Antoni Pokusiński
+:::
+
+
+:::success
+Rozważmy algorytm tree-lock będący generalizacją
+algorytmu Petersena dla dowolnej liczby n wątków, będącej
+potęgą 2. Tworzymy pełne drzewo binarne o n/2 liściach, w
+każdym węźle drzewa umieszczamy zamek obsługiwany zwykłym
+algorytmem Petersena. Wątki przydzielamy po dwa do każdego
+liścia drzewa. W metodzie lock() algorytmu tree-lock wątek
+musi zająć każdy zamek na drodze od swojego liścia do korzenia
+drzewa. W metodzie unlock() algorytm zwalnia wszystkie zajęte
+wcześniej zamki, w kolejności od korzenia do liścia. Czy ten
+algorytm spełnia warunek a) wzajemnego wykluczania, b)
+niezagłodzenia, c) niezakleszczenia? Każdy z zamków traktuje
+jeden z rywalizujących o niego wątków jako wątek o numerze 0 a
+drugi jako wątek 1.
+:::
+
+
+
+### wzajemne wykluczanie
+Dowodzimy indukcyjnie dla $i$ - kolejnych potęg dwójki:
+1. dla $i==1$ mamy po prostu algorytm Petersona
+2. niech $i > 1$; załóżmy, że algorytm zapewnia wzajemne wykluczanie $\forall k < i$. Z założenia wynika, że do korzenia drzewa "dojdą" tylko 2 wątki. Z własności wzajemnego wykluczania dla algorytmu Petersona wiemy zaś, że do CS wejdzie tylko 1 z nich.
+
+### zakleszczenie
+Podobnie jak wcześniej:
+1. dla $i==1$ nie nastąpi - zwykły algorytm Petersona
+2. niech $i > 1$; z założenia wiemy, że w lewym i prawym poddrzewie nigdy nie nastąpi zakleszczenie. Z własności algorytmu Petersona wiemy też, że nie nastąpi ono w korzeniu. Po wykonaniu sekcji krytycznej wątek zwalnia zajęte *Lock*'i, tak więc pozostałe wątki, które czekają na korzeniu i dalszych węzłach mogą poczynić postęp
+
+### zagłodzenie
+W żadnym węźle algorytm nie zostanie zagłodzony - jeśli dany wątek w danej turze "ustąpił miejsca" innemu, to w kolejnej zmienna ```victim``` zostanie ustawiona na drugi wątek, który właśnie wchodzi do węzła.
+## Zadanie 4
+
+:::success
+Autor: Piotr Stokłosa
+:::
+
+:::info
+1. Czy istnieje taka liczba r, być może zależna od n, że algorytm tree-lock spełnia własność r-ograniczonego czekania (ang. r-Bounded Waiting)? Jako sekcję wejściową (ang. doorway section) algorytmu przyjmij fragment kodu przed pętlą while zamka w odpowiednim liściu.
+:::
+Nie można ograniczyć.
+Przykładowo wątek skrajnie lewy, może wejśc x razy do sekcji krytycznej. Stanie się tak, kiedy wątek skrajnie prawy będzie działać na tyle wolno, że zanim wyrazi chęć wzięcia locka w korzeniu, wspomniany skrajnie lewy wątek wejdzie x (nieokreślony z góry) razy do sekcji krytycznej.
+
+:::info
+2. Pokaż, być może modyfikując nieco oryginalny algorytm, że założenie o numerach wątków w poprzednim zadaniu może być łatwo usunięte.
+:::
+Wystarczy w każdym węźle zapamiętać, czy jest on lewym synem rodzica czy prawym. Dzięki temu rodzic będzie wiedział, z którego syna przychodzi wątek.
+
+## Zadanie 5
+
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/902916422768922644/unknown.png)
+
+
+### Przebieg wątku
+Czyli relacja poprzedzania dla pojedynczego wątku (nazwanego wątkiem A) prezentuje się następująco
+* Funkcja lock:
+    * ${write_A(x=A) \rightarrow read_A(y)}$
+    * ${read_A(y) \rightarrow write_A(y=A)}$
+    * ${write_A(y=A) \rightarrow read_A(x)}$
+    * ${read_A(x) \rightarrow CS}$
+    * ${read_A(x) \rightarrow LOCK}$
+    * ${LOCK(jeśli\ jedyny\ w\ lock) \rightarrow CS}$
+* Funkcja unlock
+    * ${CS_A \rightarrow write_A(y=-1)}$
+    * ${write_A(y=-1)\rightarrow lock.unlock_A}$
+Będzie ona wykorzystywana do pokazania własności braku wzajemnego wykluczania oraz niezakleszczania.
+### Wzajemne wykluczanie
+Miejscami krytycznymi są trzy przypadki:
+1) Kilka wątki wchodzą do lock.lock()
+2) Tylko jeden wywołuje lock.lock(), pozostały go omija
+3) Obydwa wątki omijają lock.lock()
+
+W przypadku 1 wiele wątków zostaje obsłużonych przez lock. Wiemy że zapewnia on wzajemne wykluczanie zatem nie dojdzie tu do załamania tej reguły.
+
+Przypadek 2 (zakładamy, że A omija zamek):${read_A(x) \rightarrow CS}$
+${
+write_B(x=B) \rightarrow write_A(x=A) \rightarrow read_A(y) \rightarrow read_B(y) \rightarrow }$
+${write_A(y=A) \rightarrow write_B(y=B) \rightarrow read_A(x) \rightarrow CS_A \rightarrow
+read_B(x) \rightarrow LOCK \rightarrow CS_B}$
+
+Zatem istnieje sekwencja zdarzeń która doprowadzi to otrzymania dostępu do sekcji krytycznej wielu wątkom jednocześnie.
+
+Przypadek 3 pomijamy (znamy już odpowiedz na pytanie).
+
+### Niezagłodzenie
+Do zagłodzenia może dojść w sytuacji (przedstawiam jedną z wielu) w której wątek mimo żę zostaje często budzony na dłuższy okres czasu to są to sytuację bez kontynuacji. Przesypiając wszystkie momenty czasu w którym mógł dokonać nową akcję.
+
+W naszym kodzie może dojść do sytuacji  w której wątek A będzie wykonywał `CS ->unlock -> lock -> read(y) ->write(y)` i wątek B będzie zawsze zasypiał na moment pomiędzy zmianą `y=-1 -> y=A`. Wątek B będzie żył w iluzji w której sekcja krytyczna zawsze jest zajęta.
+### Zakleszczenie
+By doszło do zakleszczenia, musi zajść `y!=-1` oraz dodatkowo żaden wątek nie może znajdować się pomiędzy `y=i` a `y=-1`. Co jest niemożliwe, ponieważ po zapisie do `y=i` zachodzi
+${write_A(y=A) \rightarrow read_A(x) \rightarrow CS \rightarrow write_A(y=-1) \rightarrow lock.unlock_A}$
+czyli ustawiamy y=-1.
+
+
+## Zadanie 6
+
+:::success
+Autor: Aleksandra Kosińska
+:::
+
+```java=
+class Bouncer {
+  public static final int DOWN = 0;
+  public static final int RIGHT = 1;
+  public static final int STOP = 2;
+  private boolean goRight = false;
+  private int last = -1;
+  int visit() {
+    int i = ThreadID.get();
+    last = i;
+    if (goRight)
+      return RIGHT;
+    goRight = true;
+    if (last == i)
+      return STOP;
+    else
+      return DOWN;
+  }
+}
+```
+
+**a) co najwyżej jeden wątek otrzyma jako wartość zwracaną STOP**
+
+Bez straty ogólności załóżmy, że $m$ wątków przejdzie do linii `12` wtedy mamy przypadki:
+1. $last$ nie jest równe żadnemu z `id` wątków $\to$ 0 wątków zwróci $STOP$
+2. $last$ jest ustawione na `id` jednego z nich, wtedy on zwróci $STOP$ a pozostałe wątki $DOWN$, ponieważ są one już w linii `12`, czyli nie mogą zmienić $last$
+
+Pozostałe $n-m$ wątków które nie przeszło do linii `12` zwróci $RIGHT$, ponieważ zmienna $goRight$ została ustawiona na $true$
+
+**b) co najwyżej n-1 wątków otrzyma wartość DOWN**
+
+Bez straty ogólności załóżmy, że wszystkie $n$ wątków przeszło do linii `12`. Wtedy $last$ będzie ustawione na jednego z nich, czyli zwróci on $STOP$ a reszta, czyli $n-1$ zwróci $DOWN$
+
+**c) co najwyżej n-1 wątków otrzyma wartość RIGHT**
+
+Wiemy, że conajmniej jeden wątek musi dojść do linii `12`, ponieważ $goRight$ jest ustawione na początku na $false$. Wątek ten zwróci $STOP$ lub $DOWN$.
+
+## Zadanie 7
+
+:::success
+Autor: Michał Sobecki
+:::
+
+![](https://i.imgur.com/mafxLUS.png)
+
+$(i, j)$ - współrzędne obiektu
+
+Wzór: $n - i - j$ max wątków dla $(i, j)$
+
+Dla obiektu o współrzędnych $(i, j)$ otrzymamy max tyle wątków ile we wzorze z tego powodu, że obiekty, przez które przechodziły wątki chcące dojść do niego, gubiły część po drodze. 
+Conajmniej $i$ razy któryś z wątków musiał wykonać STOP lub pójść w dół, co wynika z zad6. 
+Analogicznie dla $j$ tyle razy któryś z wątków musiał wykonać STOP lub pójść w prawo.
+To wszystko jest spowodowane faktem, że z danego obiektu tylko max $n-1$ wątków może pójść w jedną ze stron.
+
+Stąd wynika, że nasza "plansza" obiektów musi mieć wzór taki jak na obrazku, czyli pól będziemy mieli $n(n+1)/2$.
+
+
+## Zadanie 8
+
+:::success
+Autor: Paweł Sikora
+:::
+![](https://i.imgur.com/Pg9CbmD.png)
+
+### Niezakleszczenie
+W pętli do-while wszystkie wątki sprawdzają czy są jakieś wątki mniejsze, które mają podniesioną flagę. Jeśli tak to opuszczają swoją flagę i czekają, aż ten mniejszy opuści swoją flagę. Wówczas widzimy, że najmniejszy wątek na pewno przejdzie do dalszej pętli.
+
+W pętli for wszystkie wątki sprawdzają czy są jakieś wątki większe, które mają podniesioną flagę, jeśli tak to czekają, aż te większe opuszczą swoją flagę.
+Załóżmy, że w tej pętli znajdzie się jakiś wątek i jest on tam największy, wówczas na pewno wyjdzie on z tej pętli, bo jest on tutaj największy, a jeśli w do-while są jakieś większe to one opuszczą swoją flagę czekając na mniejsze.
+
+### Wykluczanie
+Zakładamy, że $A < B$.
+*From the code:*
+==1==Write$_A$(flag[a] = true) -> Read$_A$(flag[A]==true) ->
+Read$_A$(flag[B]==false) ==2==
+
+==3==Write$_B$(flag[B] = true) -> Read$_B$(flag[A]==false) ->
+Read$_B$(flag[B]==true)==4==
+
+*Assumptions:*
+==2==Read$_A$(flag[B]==false) -> Write$_B$(flag[B] = true) ==3==
+
+==4== Read$_B$(flag[A]==false) -> Write$_A$(flag[A] = true) ==1==
+
+## Zadanie 9
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![](https://i.imgur.com/TUHZ6gh.png)
+![](https://i.imgur.com/gJTyv57.png)
+![](https://i.imgur.com/6mkyH8b.png)

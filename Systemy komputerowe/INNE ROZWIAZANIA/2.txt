@@ -1,0 +1,933 @@
+# Ćwiczenia 2, grupa cz. 10-12, 21. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Dominik Budzki           |   X   |     |  X  |     |     |     |     |
+Przemysław Hoszowski     |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |
+Tomasz Mróz              |       |     |     |     |     |     |     |
+Mateusz Opala            |    X   |   X  |   X  |    X |   X  |   X  |    X |
+Łukasz Pluta             |    X   |   X  |  X  |   X  |   X  | X    |   X  |
+Antoni Pokusiński        |   X   |  X  |  X  |  X  |     |     |     |
+Szymon Rysz              |   X   |  X  |  X  |     |     |  X  |  X  |
+Dominik Samorek          |       |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |     |  X  |  X  |  X  |  X  |  X  |
+Mateusz Szwelengreber    |       |     |     |     |     |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |     X |   X  |
+Michał Zieliński         |  X    |  X  |  X  |     |     |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Dominik Budzki
+:::
+```java=
+class MergeSort implements Runnable {
+    protected int arr[];
+    protected int l, r;
+    private static int[] temp;
+
+    MergeSort(int arr[], int l, int r) {
+        this.arr = arr;
+        if(MergeSort.temp == null){
+            MergeSort.temp = new int[arr.length];
+        }
+        this.l = l;
+        this.r = r;
+    }
+
+    private void merge(int l, int m, int r) {
+        for (int i = l; i <= r; i++) {
+            MergeSort.temp[i] = arr[i];
+        }
+        int i = l, j = m+1;
+        int index = l;
+
+        while (i <= m && j <= r) {
+            if (MergeSort.temp[i] <= MergeSort.temp[j]) {
+                arr[index] = MergeSort.temp[i];
+                i += 1;
+            } else {
+                arr[index] = MergeSort.temp[j];
+                j += 1;
+            }
+            index += 1;
+        }
+        while (i <= m) {
+            arr[index] = MergeSort.temp[i];
+            index += 1;
+            i += 1;
+        }
+        while (j <= r) {
+            arr[index] = MergeSort.temp[j];
+            index += 1;
+            j += 1;
+        }
+    }
+
+    public void sort(int l, int r) {
+        if (l < r) {
+            int m = (l + r) / 2;
+            sort(l, m);
+            sort(m + 1, r);
+            merge(l, m, r);
+        }
+    }
+
+    public void threadedSort(int l, int r){
+        int m = (this.l + this.r) / 2;
+        MergeSort left = new MergeSort(arr, this.l, m);
+        MergeSort right = new MergeSort(arr, m + 1, this.r);
+        Thread t1 = new Thread(left);
+        Thread t2 = new Thread(right);
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        this.merge(this.l, m, this.r);
+    }
+    
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            threadedSort(this.l, this.r);
+        }
+        else{
+            sort(this.l, this.r);
+        }
+    }
+}
+
+```
+
+## Zadanie 2
+
+:::success
+Autor: Antoni Pokusiński
+:::
+* małe podtablice chcemy sortować w jednym wątku - nie rozbijamy go na podproblemy
+```java=
+@Override
+public void run() {
+    if (this.l < this.r) {
+        if (this.r - this.l < 100) {
+            sort(this.l, this.r);
+        }
+        else {
+            int m = (this.l + this.r) / 2;
+            MergeSort left = new MergeSort(arr, this.l, m);
+                ...
+```
+
+* nie trzeba koniecznie startować 2 wątków - wystarczy stworzyć 1 nowy (np. do posortowania lewej podtablicy), a drugą część posortować w obecnym wątku
+```java=
+if (this.l < this.r) {
+    int m = (this.l + this.r) / 2;
+    MergeSort left = new MergeSort(arr, this.l, m);
+    MergeSort right = new MergeSort(arr, m + 1, this.r);
+    Thread t1 = new Thread(left);
+    // Thread t2 = new Thread(right);
+    t1.start();
+    right.run();
+    // t2.start();
+    // sort(m + 1, this.r);
+    try {
+        t1.join();
+        // t2.join();
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    this.merge(this.l, m, this.r);
+}
+```
+## Zadanie 3
+
+:::success
+Autor: Szymon Rysz
+:::
+
+#### RookieMergeSort
+
+```java=
+public class RookieMergeSort {
+    public static final int MAX_THREADS = 4;
+
+    public static void main(String[] args) {
+        int arr[] = {4, 3, 2, 1, 5, 32, 6, 45, 3, 12, 564};
+        int[] helper = new int[arr.length];
+        var counter = new Counter(0, MAX_THREADS);
+        MergeSort w = new MergeSort(arr, 0, arr.length - 1, helper, counter);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < arr.length; i++)
+            System.out.printf("%d ", arr[i]);
+
+        System.out.println("\n");
+        System.out.println(counter.getValue());
+    }
+
+}
+```
+
+#### MergeSort
+```java=
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] helper;
+    protected int begin,  end;
+    protected Counter counter;
+
+    MergeSort(int[] arr,
+              int begin,
+              int end,
+              int[] helper,
+              Counter counter) {
+        this.arr = arr;
+        this.begin = begin;
+        this.end = end;
+        this.helper = helper;
+        this.counter = counter;
+    }
+
+    private void merge(int begin, int middle, int  end) {
+
+        for( int i= 0;i < end - begin +1 ; i++){
+            helper[begin+i] = arr[begin+i];
+        }
+
+        int i = begin, j = middle + 1;
+        int k = begin;
+        while (i < middle + 1 && j <= end) {
+            if (helper[i] <= helper[j]) {
+                arr[k] = helper[i];
+                i += 1;
+            } else {
+                arr[k] = helper[j];
+                j += 1;
+            }
+            k += 1;
+        }
+
+        while (i < middle+1) {
+            arr[k] = helper[i];
+            k += 1;
+            i += 1;
+        }
+
+        while (j <= end) {
+            arr[k] = helper[j];
+            k += 1;
+            j += 1;
+        }
+    }
+
+
+    public void sort(int begin, int end) {
+        if (begin < end) {
+            int middle = (begin + end) / 2;
+            sort(begin, middle);
+            sort(middle + 1,  end);
+            merge(begin, middle,  end);
+        }
+    }
+
+    @Override
+    public void run() {
+        var size = end-begin;
+        System.out.println(size);
+        System.out.println(Thread.currentThread().getName());
+        if (begin < end) {
+            int middle = (begin + end) / 2;
+            MergeSort left = new MergeSort(arr, begin, middle, helper,counter);
+            MergeSort right = new MergeSort(arr, middle + 1, end, helper,counter);
+            Thread t1 = null;
+            Thread t2 = null;
+            var f1 = false;
+            var f2 = false;
+            try{
+                if (counter.getAndIncrementIfUnderMax() < RookieMergeSort.MAX_THREADS-1){
+                    t1 = new Thread(left);
+                    t1.start();
+                    f1 = true;
+                }
+                else {
+                    sort(begin,middle);
+                }
+                if (counter.getAndIncrementIfUnderMax() < RookieMergeSort.MAX_THREADS-1) {
+                    t2 = new Thread(right);
+                    t2.start();
+                    f2 = true;
+                }
+                else {
+                    sort(middle +1 ,end);
+                }
+                if (f1) {
+                    t1.join();
+                }
+                if (f2) {
+                    t2.join();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.merge(begin, middle, end);
+        }
+    }
+}
+```
+
+#### Counter
+```java=
+class Counter {
+    private long value;
+    private long max;
+
+    public Counter(long value,
+                   long max) {
+        this.value = value;
+        this.max = max;
+    }
+
+    public synchronized long getValue() {
+        return value;
+    }
+
+    public synchronized long getAndIncrementIfUnderMax() {
+        if (value < max){
+            long temp;
+            temp  = value;
+            value = temp + 1;
+            return temp;
+        }
+        return value;
+    }
+}
+```
+
+## Zadanie 4
+
+:::success
+Autor: Mateusz Sidło
+:::
+
+```java=
+import java.util.Arrays;
+
+class LongestSubsequence implements Runnable{
+    int[] array;
+    int beginning, end;
+    int[] result;
+
+    LongestSubsequence(int[] array, int beg, int end){
+        this.array = array;
+        this.beginning = beg;
+        this.end = end;
+    }
+
+    @Override
+    public void run() {
+        if(beginning == end){
+            result = new int[]{array[beginning]};
+        }
+        else{
+            int middle = (beginning + end) / 2;
+            int partition = middle;
+
+            if(array[middle] == array[middle + 1]){
+                while(partition <= end && array[middle] == array[partition]){
+                    partition += 1;
+                }
+                if(partition > end){
+                    partition = middle;
+                    while(partition >= beginning && array[middle] == array[partition]){
+                        partition -= 1;
+                    }
+                }
+
+                if(partition < middle){
+                    result = Arrays.copyOfRange(array, partition + 1, end + 1);
+                    return;
+                }
+            }
+            if(partition == middle){
+                partition = middle + 1;
+            }
+            LongestSubsequence l1 = new LongestSubsequence(array, beginning, partition - 1);
+            LongestSubsequence l2 = new LongestSubsequence(array, partition, end);
+
+            Thread t1 = new Thread(l1);
+            Thread t2 = new Thread(l2);
+
+            t1.start();
+            t2.start();
+
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            if(l1.result.length > l2.result.length){
+                result = l1.result;
+            }
+            else{
+                result = l2.result;
+            }
+        }
+    }
+}
+
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        int[] array2 = {1,2,1,2,1,2,1,2,3,3,3};
+        int[] array = {1 ,1 ,2 ,3 ,1 ,1 ,2 ,2 ,1 ,3 ,1 ,1 ,1 ,2 ,3 ,2 ,3 ,3 ,1 ,3 ,3 ,1 ,1 ,1 ,2 ,1 ,3 ,1 ,1 ,2 ,3 ,1 ,2 ,3 ,2 ,1 ,1 ,3 ,2 ,2 ,3 ,2 ,2 ,2 ,2 ,3 ,1 ,2 ,1 ,2};
+        LongestSubsequence longestSubsequence1 = new LongestSubsequence(array, 0 , array.length - 1);
+
+        Thread T1 = new Thread(longestSubsequence1);
+
+        T1.start();
+
+        try {
+            T1.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.print(Arrays.toString(longestSubsequence1.result));
+
+    }
+}
+
+```
+
+```java=
+class MergeSort implements Runnable {
+    protected int arr[];
+    protected int l, r;
+    int prefix, prefixValue, sufix, sufixValue, best, bestValue;
+
+    MergeSort(int arr[], int l, int r) {
+        this.arr = arr;
+        this.l = l;
+        this.r = r;
+    }
+
+
+    @Override
+    public void run() {
+        if (this.l < this.r) {
+            int mid = (this.l + this.r) / 2;
+            MergeSort left = new MergeSort(arr, this.l, mid);
+            MergeSort right = new MergeSort(arr, mid + 1, this.r);
+            Thread t1 = new Thread(left);
+            Thread t2 = new Thread(right);
+            t1.start();
+            t2.start();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            int leftLen = mid - l + 1;
+            int rightLen = r - mid;
+			int m=mid;
+            prefix = left.prefix;
+            if(left.prefix == leftLen && arr[l] == arr[m + 1]) prefix = left.prefix + right.prefix;
+            prefixValue = arr[l];
+
+            sufix = right.sufix;
+            if(right.sufix == rightLen && arr[r] == arr[m]) sufix = right.sufix + left.sufix;
+            sufixValue = arr[r];
+
+            best = left.best;
+            bestValue = left.bestValue;
+
+            if(right.best > best){
+                best = right.best;
+                bestValue = right.bestValue;
+            }
+
+            if(left.sufix + right.prefix > best && arr[m] == arr[m + 1]){
+                best = left.sufix + right.prefix;
+                bestValue = arr[m];
+            }
+
+        }
+        else{
+            prefix = 1;
+            sufix = 1;
+            best = 1;
+            prefixValue = arr[l];
+            sufixValue = arr[l];
+            bestValue = arr[l];
+        }
+    }
+}
+
+public class zad4 {
+
+    public static void main(String[] args) {
+        int arr[] = {5,3,1,5,1, 3, 3, 1};
+        MergeSort w = new MergeSort(arr, 0, 7);
+
+        Thread t = new Thread(w);
+
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.printf("%d %d", w.best,w.bestValue);
+
+
+    }
+}
+```
+
+
+## Zadanie 5
+
+:::success
+Autor: Przemysław Hoszowski
+:::
+```java=
+class ParallelPrefSum implements Runnable {
+
+    protected int[] arr;
+    protected int[] arrNew;
+    protected int id;
+    protected static final int THREADS = 3;
+    protected int currentTwoPower;
+
+    public ParallelPrefSum(int[] arr, int[] arrNew, int id, int currentTwoPower) {
+        this.arr = arr;
+        this.id = id;
+        this.arrNew = arrNew;
+        this.currentTwoPower = currentTwoPower;
+    }
+
+    @Override
+    public void run() {
+        for (int i = id; i < arr.length; i += THREADS) {
+            if (i < (1 << currentTwoPower)) arrNew[i] = arr[i];
+            else {
+                if (currentTwoPower!=-1) arrNew[i] = arr[i] + arr[i - (1 << currentTwoPower)];
+                else if (i!=0) arrNew[i] = arr[i-1];
+                // powyższa linia jest odpowiedzialna za przesunięcie tablicy w prawo w pierwszym obrocie pętli z 38 lini
+            }
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+
+        int[] arr = new int[]{5, 2, 3, 4, 5, 6, 7, 8, 9};
+        int[] newArr = new int[arr.length];
+        boolean flag = true;
+        Thread[] threads = new Thread[ParallelPrefSum.THREADS];
+
+
+        for (int i = -1; (1 << i) <= arr.length; i++) {
+            flag = !flag;
+            for (int j = 0; j < ParallelPrefSum.THREADS; j++) {
+                ParallelPrefSum parallelPrefSum;
+                if(!flag) // tu lepszym rozwiązaniem byłaby blokada
+                    parallelPrefSum = new ParallelPrefSum(arr, newArr, j, i);
+                else
+                    parallelPrefSum = new ParallelPrefSum(newArr, arr, j, i);
+                threads[j] = new Thread(parallelPrefSum);
+                threads[j].start();
+            }
+            for (int j = 0; j < ParallelPrefSum.THREADS; j++) {
+                try {
+                    threads[j].join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (!flag)
+            for (int i : newArr)
+                System.out.print(i + " ");
+        else
+            for (int i : arr)
+                System.out.print(i + " ");
+    }
+}
+//        5 2 3  4  5  6  7  8  9 przesunięcie
+//        0 5 2  3  4 |5 6| |7 8| obliczenie dwójek
+//        0 |5 7  5 7||(9 11) (13 15)| czwórek
+//        0 |5 7 10 14 14 18 22 26| ósemek
+//        |0 5 7 10 14 19 25 32 40| szesnastek
+//        0 5 7 10 14 19 25 32 40 Wynik
+```
+
+## Zadanie 6
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+```java=
+import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import static java.lang.Thread.sleep;
+
+class Task{
+    public Task(int l, int r, int task, Task parent, SynchronizedCounter counter) {
+        this.l = l;
+        this.r = r;
+        this.task = task;
+        this.parent = parent;
+        this.counter = counter;
+    }
+
+    public Task(int task){
+        this.task = task;
+    }
+
+    public int l;
+    public int r;
+    public int task; // 0 - sort 1 - merge 2 - exit
+    public Task parent;
+    public SynchronizedCounter counter;
+}
+
+class SynchronizedCounter {
+    private int c = 0;
+    public synchronized int increment() { return ++c;}
+}
+
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] help_arr;
+    protected ConcurrentLinkedQueue<Task> queue;
+    protected int threadsNumber;
+    boolean exit = false;
+
+    MergeSort(int[] arr, int[] help_arr, ConcurrentLinkedQueue<Task> queue, int threadsNumber) {
+        this.arr = arr;
+        this.help_arr = help_arr;
+        this.queue = queue;
+        this.threadsNumber = threadsNumber;
+    }
+
+    private void merge(Task task) {
+        
+        int m = (task.l + task.r) / 2;
+        int l = task.l;
+        int r = task.r;
+        int leftArraySize = m - l + 1;
+        int rightArraySize = r - m;
+        
+        
+        
+        
+        if (r + 1 - l >= 0) System.arraycopy(arr, l, help_arr, l, r + 1 - l);
+
+        
+        int leftCurrent = 0, rightCurrent = 0, resCurrent = l;
+        while (leftCurrent < leftArraySize && rightCurrent < rightArraySize) {
+            if (help_arr[l + leftCurrent] <= help_arr[m + 1 + rightCurrent]) {
+                arr[resCurrent] = help_arr[l + leftCurrent];
+                leftCurrent += 1;
+            } else {
+                arr[resCurrent] = help_arr[m + 1 + rightCurrent];
+                rightCurrent += 1;
+            }
+            resCurrent += 1;
+        }
+        
+        int begin = leftCurrent < leftArraySize ? l + leftCurrent : m + 1 + rightCurrent;
+        int size = leftCurrent < leftArraySize ? leftArraySize - leftCurrent : rightArraySize - rightCurrent;
+        System.arraycopy(help_arr, begin, arr, resCurrent, size);
+        
+        
+        if (task.parent == null) {
+            killThreads();
+            return;
+        }
+
+        if (task.parent.counter.increment() == 2){
+            task.parent.task = 1;
+            queue.offer(task.parent);
+        }
+        
+    }
+
+    void killThreads(){
+        while(threadsNumber-- > 0) queue.offer(new Task(2));
+        exit = true;
+    }
+
+    public void sort(Task task) {
+        if (task.l < task.r) {
+            int m = (task.l + task.r) / 2;
+            queue.offer(new Task(task.l, m, 0, task, new SynchronizedCounter()));
+            queue.offer(new Task(m+1, task.r, 0, task, new SynchronizedCounter()));
+        }
+        else {
+            if(task.parent == null){ killThreads();}
+            if (task.parent.counter.increment() == 2){
+                task.parent.task = 1;
+                queue.offer(task.parent);
+            }
+        }
+
+    }
+
+    @Override
+    public void run() {
+        while(!exit){
+            Task task = queue.poll();
+            if (task == null){
+                try {sleep(5);}
+                catch (Exception ex) {ex.printStackTrace();}
+            }
+            else {
+                    if(task.task == 0)
+                    {
+                        sort(task);
+                    }
+                    if(task.task == 1)
+                    {
+                        merge(task);
+                    }
+                    if(task.task == 2)
+                    {
+                        exit = true;
+                    }
+                }
+        }
+    }
+}
+
+public class RookieMergeSort {
+
+    static boolean isSorted(int[] array) { 
+        for (int i = 0; i < array.length - 1; i++) {
+            if (array[i] > array[i + 1])
+               return false;
+        }
+        return true;
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        int THREADS = 8;
+        int[] arr = new int[100000];
+        Random rd = new Random();
+        for (int i = 0; i < arr.length; i++) arr[i] = rd.nextInt(); 
+        ConcurrentLinkedQueue<Task> queue = new ConcurrentLinkedQueue<>();
+        queue.offer(new Task(0, arr.length-1, 0, null, new SynchronizedCounter()));
+        int[] help_arr = new int[arr.length];
+
+        Thread[] threads = new Thread[THREADS];
+
+        for (int i = 0; i < THREADS; i++) threads[i] = new Thread(new MergeSort(arr, help_arr, queue, THREADS));
+        for (Thread thread:threads) thread.start();
+        for (Thread thread:threads) thread.join();
+
+        System.out.println(isSorted(arr));
+    }
+}
+```
+
+## Zadanie 7
+
+:::success
+Autor: Łukasz Pluta
+:::
+
+```java=
+import java.util.Random;
+import java.util.concurrent.LinkedBlockingQueue;
+
+class Task{
+    public Task(int l, int r, int task, Task parent, SynchronizedCounter counter) {
+        this.l = l;
+        this.r = r;
+        this.task = task;
+        this.parent = parent;
+        this.counter = counter;
+    }
+
+    public Task(int task){
+        this.task = task;
+    }
+
+    public int l;
+    public int r;
+    public int task; // 0 - sort 1 - merge 2 - exit
+    public Task parent;
+    public SynchronizedCounter counter;
+}
+
+class SynchronizedCounter {
+    private int c = 0;
+    public synchronized int increment() { return ++c;}
+}
+
+class MergeSort implements Runnable {
+    protected int[] arr;
+    protected int[] help_arr;
+    protected LinkedBlockingQueue<Task> queue;
+    protected int threadsNumber;
+    boolean exit = false;
+
+    MergeSort(int[] arr, int[] help_arr, LinkedBlockingQueue<Task> queue, int threadsNumber) {
+        this.arr = arr;
+        this.help_arr = help_arr;
+        this.queue = queue;
+        this.threadsNumber = threadsNumber;
+    }
+
+    private void merge(Task task) throws InterruptedException {
+        int m = (task.l + task.r) / 2;
+        int l = task.l;
+        int r = task.r;
+        int leftArraySize = m - l + 1;
+        int rightArraySize = r - m;
+
+        
+        if (r + 1 - l >= 0) System.arraycopy(arr, l, help_arr, l, r + 1 - l);
+
+        
+        int leftCurrent = 0, rightCurrent = 0, resCurrent = l;
+        while (leftCurrent < leftArraySize && rightCurrent < rightArraySize) {
+            if (help_arr[l + leftCurrent] <= help_arr[m + 1 + rightCurrent]) {
+                arr[resCurrent] = help_arr[l + leftCurrent];
+                leftCurrent += 1;
+            } else {
+                arr[resCurrent] = help_arr[m + 1 + rightCurrent];
+                rightCurrent += 1;
+            }
+            resCurrent += 1;
+        }
+        
+        int begin = leftCurrent < leftArraySize ? l + leftCurrent : m + 1 + rightCurrent;
+        int size = leftCurrent < leftArraySize ? leftArraySize - leftCurrent : rightArraySize - rightCurrent;
+        System.arraycopy(help_arr, begin, arr, resCurrent, size);
+
+        
+        if (task.parent == null) {
+            killThreads();
+            return;
+        }
+
+        
+        if (task.parent.counter.increment() == 2){
+            task.parent.task = 1;
+            queue.put(task.parent);
+        }
+    }
+
+    void killThreads(){
+        while(threadsNumber-- > 0) queue.offer(new Task(2)); 
+        exit = true;
+    }
+
+    public void sort(Task task) throws InterruptedException {
+        if (task.l < task.r) {
+            int m = (task.l + task.r) / 2;
+            queue.put(new Task(task.l, m, 0, task, new SynchronizedCounter()));
+            queue.put(new Task(m+1, task.r, 0, task, new SynchronizedCounter()));
+        }
+        else {
+            if(task.parent == null){ killThreads();}
+            if (task.parent.counter.increment() == 2){
+                task.parent.task = 1;
+                queue.put(task.parent);
+            }
+        }
+    }
+
+    @Override
+    public void run() {
+        while(!exit){
+            try {
+                Task task = queue.take();
+                if(task.task == 0){
+                    sort(task);
+                }
+                else if(task.task == 1){
+                    merge(task);
+                }
+                else{
+                    exit = true;
+                }
+            } catch(Exception ex) {ex.printStackTrace();}
+        }
+    }
+}
+
+public class Main {
+
+    static boolean isSorted(int[] array) { 
+        for (int i = 0; i < array.length - 1; i++) {
+            if (array[i] > array[i + 1])
+                return false;
+        }
+        return true;
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        int THREADS = 10;
+        int[] arr = new int[1000000];
+        Random rd = new Random();
+        for (int i = 0; i < arr.length; i++) arr[i] = rd.nextInt(); 
+
+        System.out.println(isSorted(arr));
+
+        LinkedBlockingQueue<Task> queue = new LinkedBlockingQueue<>();
+        queue.offer(new Task(0, arr.length-1, 0, null, new SynchronizedCounter()));
+        int[] help_arr = new int[arr.length];
+
+        Thread[] threads = new Thread[THREADS];
+
+        for (int i = 0; i < THREADS; i++) threads[i] = new Thread(new MergeSort(arr, help_arr, queue, THREADS));
+        for (Thread thread:threads) thread.start();
+        for (Thread thread:threads) thread.join();
+
+        System.out.println(isSorted(arr));
+    }
+}
+```

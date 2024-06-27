@@ -1,0 +1,342 @@
+# Ćwiczenia 3, grupa cz. 10-12, 28. października 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie
+X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane
+zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem
+==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- | --- |
+Dominik Budzki           |       |     |     |     |     |     |     |     |     |
+Przemysław Hoszowski     |    X  |  X  |  X  |     | X   | X   |     |  X  |     |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+Tomasz Mróz              |       |     |     |     |     |     |     |     |     |
+Mateusz Opala            |   X    |  X   |  X   | X    |  X   |  X   |  X   |  X   |     |
+Łukasz Pluta             |   X    |  X   |    X |   X  |   X  | X    |   X  |   X  |     |
+Antoni Pokusiński        |       |     |     |     |     |     |     |     |     |
+Szymon Rysz              | ==X== |  X  |  X  |     |  X  |  X  |     |     |     |
+Dominik Samorek          |       |     |     |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |  X  |     |     |  X  |  X  |  X  |  X  |     |
+Mateusz Szwelengreber    |       |     |     |     |     |     |     |     |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+Michał Zieliński         |  X    |  X  |  X  |     |  X  |     |     |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Szymon Rysz
+:::
+
+### a) wzajemne wykluczanie
+
+From the code:
+
+ ==1== Write$_A$(turn = A) -> Read$_A$(busy == false) -> Write$_A$(busy = true) -> Read$_A$(turn == A) ==2==
+
+==3== Write$_B$(turn = B) -> Read$_B$(busy == false) -> Write$_B$(busy = true) -> Read$_B$(turn == B) ==4==
+
+Assumptions:
+
+==2== Read$_A$(turn == A) -> Write$_B$(turn = B) ==3==
+==4== Read$_B$(turn == B) -> Write$_A$(turn = A) ==1==
+
+Czyli zakładając nie wprost, że 2 wątki znajdą się w sekcji krytycznej, zapętlimy się, co jest sprzeczne z tym, że nieprawda, że $A \rightarrow A$ w partial order.
+
+### b) zagłodzenie
+
+Może dojść do zagłodzenia, przykładowy przeplot:
+
+krok 1 - B: turn = B, busy: true, wychodzi z pętli w linijce 11
+krok 2 - A: turn = A, zapętla się w wewntętrznej pętli
+krok 3 - A: idzie spać
+krok 4 - B: unlock(), busy = false
+krok 5 - B: powtórz krok 1
+
+### c) zakleszczenie
+
+Może dojść do zakleszczenia, przykładowy przeplot:
+
+krok 1 - B: turn = B, wychodzi z wewnętrznej pętli (bo busy = false), busy = true, zasypia
+krok 2 - A: turn = A, zapętla się w wewnętrznej pętli (bo busy = true)
+krok 3 - B: budzi się i zapętla na zewnętrznej pętli (bo turn = A)
+
+```java=
+class Foo implements Lock {
+    private int turn;
+    private boolean busy = false;
+    public void lock() {
+        int me = ThreadID.get();
+        do {
+            do {
+                turn = me;
+            } while (busy);
+            busy = true;
+        } while (turn != me);
+    }
+    public void unlock() {
+        busy = false;
+    }
+}
+```
+
+## Zadanie 2
+
+:::success
+Autor: Mateusz Sidło
+:::
+
+
+#### Algorytm Petersena
+```java=
+public void lock() {
+    flag[i] = true; 
+    victim = i;
+    while (flag[j] && victim == i) {};
+}
+
+public void unlock() {
+    flag[i] = false;
+}
+```
+
+
+#### Zmieniony Algorytm Petersena
+```java=
+public void lock() {
+    flag[i] = true; 
+    victim = i;
+    while (flag[j] && victim == i) {}; //(0)
+}
+
+public void unlock() {
+    flag[i] = false;
+    while (flag[j] == true) {}  //(1)
+}
+```
+
+#### Niezakleszczenie
+
+Jak się zakleszczyć?
+```
+0 i 1 -> w sekcji (1)
+0 i 1 -> w sekcji (0)
+0 -> w sekcji (0) 1 -> w sekcji (1)
+```
+
+
+**1. `0 i 1 -> w sekcji (1)`**
+
+`flag[0] == flag[1] == false`, a warunek w pętli (1) to `flag[j] == true`
+
+**2. `0 i 1 -> w sekcji (0)`**
+
+Jeżeli $Write_0(victim = 0) \rightarrow Write_1(victim = 1)$, to 0 wychodzi z pętli (0).
+
+
+Jeżeli $Write_1(victim = 1) \rightarrow Write_0(victim = 0)$, to 1 wychodzi z pętli (0).
+
+**3. `0 -> w sekcji (0) 1 -> w sekcji (1)`**
+
+$$
+Read_0(flag[1] == True)\rightarrow Read_0(victim == 0)\rightarrow\\
+Write_1(flag[1] == False) \rightarrow Read_1(flag[0] == True) \rightarrow \\
+Read_0(flag[1] == False)
+$$
+
+#### Głodzenie
+
+$$
+Read_0(flag[1] == true) \rightarrow Write_1(flag[1] = false) \rightarrow \\  Read_1(flag[0] == false)\rightarrow  
+Write_1(flag[1] = true)\rightarrow
+\\Read_0(flag[1] == true)\rightarrow\dots
+$$
+
+## Zadanie 3
+
+:::success
+Autor: Michał Zieliński
+:::
+
+a) wzajemne wykluczanie
+Wiemy, że na poziomie każdego wierzchołka występuje wzajemne wykluczanie. Z każdego wierzchołka (poza korzeniem) "przepuszczony" do rodzica zostanie tylko jeden wątek. Także korzeń "przepuści" tylko jeden wątek - to on będzie jako jedyny wykonywał swoją sekcję krytyczną.
+b) niezagłodzenie
+Żeby nie zostać zagłodzonym, wątek musi zając każdy zamek na drodze od swojego liścia do korzenia. Pierwszy zamek (liść) jest obsługiwany przez algorytm Petersena, czyli wiemy, że nie dojdzie do zagłodzenia wątku w jego ramach. Oznacza to, że wątek zdobędzie ten zamek i przejdzie do następnego. Ta sama obserwacja tyczy się kolejnych zamków na ścieżce do korzenia. Wątek w korzeniu z tego samego powodu nie zostanie zagłodzony, więc przejdzie do wykonywania swojej sekcji krytycznej.
+c) niezakleszczenie
+Aby doszło do zakleszczenia dwa watki musiałyby być w zamku-korzeniu i nie móc go skutecznie zająć (zakleszczenia w innych wierzchołkach nie powodują zakleszczenia całości - wątki z podrzewa, które otrzymalibyśmy po "odcięciu" poddrzewa zakorzenionego w wierzchołku z zakleszczeniem, mogą wykonać swoją sekcję krytyczną)(gdy zajmą korzeń i wykonają sekcję krytyczną, zwolnią wszystkie zamki, które zajęły). Tak jak pozostałe zamki, korzeń jest obsługiwany algorytmem Petersena, a więc wiemy, że nie dojdzie w nim do zakleszczenia, czyli w drzewie również do niego nie dojdzie.
+
+
+## Zadanie 4
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+a) Taką liczbą jest $n - 2$. W najgorszym przypadku możemy wpuszczać wątki w takiej kolejności:
+
+![](https://i.imgur.com/23nQtpe.png)
+
+
+Kontrprzykład:
+
+    r
+  /   \ 
+ l1    l2
+ 
+ 
+ wątki: w1, w2, w3, w4
+ 
+ w1, w2 -- przypsane do l1
+ w3, w4 -- przypisane do l2
+ 
+ 
+ w1 bierze zamek z l1 i idzie spać (jest usypiany przez system)
+ w3 bierze zamek z l2 i bierze zamek z r, wykonuje sekcję krytyczną i zwalnia te zamki
+ w3 może wykonać procedurę z poprzedniego punktu dowolną liczbę razy (jak długo w1 śpi)
+ 
+ zatem: taka liczba r nie istnieje
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+b) Przy tworzeniu kolejnych wątków możemy zapamiętać na którym miejscu jest nasz wątek w drzewie. W związku z tym, jeśli wiemy na którym liściu od lewej on się znajduje, możemy jednoznacznie określić od której strony przyjdziemy po $i$ krokach. Stąd możemy traktować wątek, który przyszedł od prawej jako jeden, a ten który przyszedł z lewej jako 2.
+
+
+
+## Zadanie 5
+
+:::success
+Autor: Przemysław Hoszowski
+:::
+![](https://i.imgur.com/VdLVnQG.png)
+```java=
+class FastPath implements Lock {
+    private `Lock lock;
+    private int x, y = -1;
+    
+    public void lock() {
+        int i = ThreadID.get();
+        x = i; // I’m here
+        while (y != -1) {} // is the lock free?
+        y = i; // me again?
+        if (x != i) // Am I still here?
+        lock.lock(); // slow path
+        }
+    
+    public void unlock() {
+        y = -1;
+        lock.unlock();
+    }`
+}
+```
+### a) nie spełnia wzajemnego wykluczenia
+A,B przechodzą przez while. x = A.
+B wchodzi do lock.lock i do sekcji krytycznej
+A wchodzi do sekcji krytycznej
+
+### b) głodzenie B
+1. A wywołuje lock i wchodzi do sekcji krytycznej.
+2. B wywołuje lock i zatrzymuje się na while
+3. A wychodzi z sekcji krytycznej.
+4. Powtórz 1-4
+
+### c) Nie ma zakleszczenia
+
+Istnieje wątek w sekcji krytycznej - wtedy może z niej wyjść i przejść do poniższego stanu.
+
+Nie istnieje wątek w sekcji krytycznej:
+Wtedy wątki musiałby się zablokować na while lub innej komendzie - ale te się nie blokują. Oznacza to, że y!= -1, więc jakiś wątek musiał wejść do sekcji krytycznej i nie odblokować zamka po wyjściu co jest sprzeczne z założeniem, że po wejściu do sekcji odblokujemy zamek.
+
+## Zadanie 6
+
+:::success
+Autor: Dominik Komła
+:::
+
+![](https://i.imgur.com/cemrBVg.png)
+1) ***Co najwyżej jeden wątek otrzyma wartość STOP***
+Jeżeli chcemy, aby co najmniej $2$ wątki otrzymały $STOP$, to żaden z nich nie mógł pójść w prawo. I właśnie dlatego tylko jeden z nich otrzyma $STOP$, ponieważ, żeby dostali obaj to musiał być taki przeplot:
+$read_A(last == A) -> write_B(last = B) -> read_A(last == B)$
+Ale jeżeli jeden wątek doszedł już do tego if-a gdzie sprawdza się, czy on jest ostatni, to musiał ustawić $goRight = true$. A więc nasz drugi wątek, który dopiero teraz ustawia last na swój numer na pewno pójdzie w prawo, gdyż $goRight == true$.
+2) ***Co najwyżej $n - 1$ wątków otrzyma wartość DOWN***
+Gdyby $n$ wątków miałoby otrzymać wartość $DOWN$, to żaden nie dostałby
+wartości $RIGHT$. Skoro tak to wszystkie wejdą do ostaniego wyrażenia if-else. Ale dla jednego z nich ten if bedzie prawdziwy i tylko co najwyzej $n-1$ wejdzie do else i otrzyma wartość $DOWN$
+3) ***Co najwyżej $n - 1$ wątków otrzyma wartość RIGHT***
+Na pewno $n$ wątków nie otrzyma wartości $RIGHT$, bo co najmniej jeden musi 'zmienić przełącznik' $goRight$.
+
+## Zadanie 7
+
+:::success
+Autor: Mateusz Opala
+:::
+1) Przez i-ty trójkąt nazwijmy kolejne pary - wiersz, kolumna. Dla przykładu pierwszy trójkąt tworzą liczby - 0,2,5,9, ... i 1,3,6 ... , drugi trójkąt 4,8 ..., 7 ... . Pokażemy, że w każdym takim trójkącie jeśli dojdzie do niego przynajmniej jeden wątek, to również przynajmniej jeden wątek się na nim zatrzyma (w skończonym wierszu/kolumnie). W oczywisty sposób wątek z i-tego trójkąta może albo zostać w i-tym trójkącie albo przejść do i+1-szego trójkąta. Załóżmy, że do i-tego trójkąta doszło x>0 wątków, gdzie zakładamy, że nie ma już wątku, który nie utknął na STOP na trójkącie o mniejszym numerze. BSO istnieje przynajmniej jeden wątek w wierszu (dla tego trójkąta). Popatrzmy na wątek, który znajduje się w najdalszej kolumnie w tym wierszu. BSO ogółu może on poczekać aż wątki w kolumnach po lewej do niego dojdą lub się zatrzymają bądź przejdą do kolejnego trójkąta. Niech liczność wątków w tej ostatniej kolumnie będzie równa x. W jednym kroku możemy teraz przejść w prawo z maksymalnie x-1 wątkami i w dół z x-1 wątkami (z zadania 6). Stąd wniosek, że nigdy nie przejdziemy ze wszystkimi wątkami w dół, a skoro zmniejsza się liczba wątków idących w prawo, to po maksymalnie x krokach się również zakończy, co dowodzi skończoności i powyższego twierdzenia.
+2) Pokażemy, że wątek może dojść do maksymalnie n-i tej kolumny dla i-tego trójkąta. Dowód dla wierszy będzie symetryczny. Będziemy przeprowadzać indukcję po trójkątach. Pokażemy, że funkcja f(i) zdefiniowa na i-tego trójkąta jako maksymalna suma liczby wątków w i-tym trójkącie + pole w drugiej kolumnie, oraz numeru najdalszej kolumny, do której doszły w i-tym trójkącie ma wartość n-i+1. Podstawa: dla i=1 to jest oczywiste. Załóżmy więc, że twierdzenie jest prawdziwe dla pewnego i, pokażemy, że jest też prawdziwe dla i+1. Niech x oznacza, ile jest wątków w kolumnie dla i-tego trójkąta (takich, które nie są w wierszu), a y oznacza najdalszą kolumnę do której mogły dojść wątki w i-tym trójkącie. Wiemy, że do wiersza w i+1 trójkącie mogło dojść maksymalnie x-1 wątków (z poprzedniej kolumny). Zapłatą za jeden dodatkowy krok w prawo jest "poświęcenie" jednego wątku, więc idąc w prawo z tymi wątkami, nie jesteśmy w stanie zwiększyć wartości funkcji f, czyli nie opłaca nam się z nimi iść w prawo. Dalej nie dojdziemy w i+1 trójkącie z wątkami niż y-1, bo doszliśmy by też w oczywisty sposób w i-tym trójkącie dalej. Stąd f jest malejące. Stąd na mocy indukcji mamy tezę. Stąd ograniczenie na liczbę wątków to n*(n+1)/2.
+
+
+## Zadanie 8
+
+:::success
+Autor: Łukasz Pluta
+:::
+
+```java=
+class OneBit implements Lock {
+    private boolean[] flag;
+    public OneBit (int n) {
+        flag = new boolean[n]; // all initially false
+    }
+    public void lock() {
+    int i = ThreadID.get(); // ThreadID.get() returns 0,1,..,n-1
+    do {
+        flag[i] = true;
+        for (int j = 0; j < i; j++) {
+            if (flag[j] == true) {
+            flag[i] = false;
+            while (flag[j] == true) {} // wait until flag[j] == false
+            break;
+        }
+    }
+    } while (flag[i] == false);
+    for (int j = i+1; j < n; j++) {
+        while (flag[j] == true) {} // wait until flag[j] == false
+    }
+    }
+    public void unlock() {
+    flag[ThreadID.get()] = false;
+    }
+}
+
+```
+Załóżmy że implementacja z zadania się zakleszcza.
+Niech X oznacza największy numer wątku zakleszczającego się na dolnym whilu (taki istnieje bo 0 zawsze tylko tam się może zakleszczyć). Niech Y oznacza numer wątku który blokuje działanie wątku X. Wątek Y musiał zakleszczyć się w pierwszym whilu. Ale jeśli zakleszczyłby się tam to flag[Y] = false -> sprzeczność.
+
+
+
+
+## Zadanie 9
+
+:::danger
+Autor: ?
+:::
+

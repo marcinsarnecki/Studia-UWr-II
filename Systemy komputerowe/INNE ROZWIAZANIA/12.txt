@@ -1,0 +1,341 @@
+# Ćwiczenia 12, grupa cz. 12-14, 20. stycznia 2022
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Błaszczyk         |   X   |  X  |  X  |  X  |     |     |     |     |
+Dawid Dudek              |   X   |==X==|  X  |  X  |  X  |  X  |  X  |  X  |
+Krzysztof Juszczyk       |   X   |  X  |     |     |     |     |     |     |
+Kamil Kasprzak           |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Kacper Komenda           |   X   |    | X    |    |     |     |     |     |
+Aleksandra Kosińska      |   X   |  X  |  X  |     |  X  |     |     |     |
+Łukasz Orawiec           |   X   |     |  X  |  X  |     |     |  X  |     |
+Kamil Puchacz            |       |     |     |     |     |     |     |     |
+Paweł Sikora             |       |     |     |     |     |     |     |     |
+Michał Sobecki           | ==X== |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Cezary Stajszczyk        |   X   |  X  |  X  |     |  X  |     |     |     |
+Piotr Stokłosa           |   X   |  X  |  X  |  X  |     |  X  |==X==|  X  |
+Cezary Troska            |   X   |  X  |  X  |  X  |  X  |     |     |     |
+:::
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+
+## Zadanie 1
+
+:::success
+Autor: Michał Sobecki
+:::
+
+![](https://i.imgur.com/Ontz0mx.png)
+
+![](https://i.imgur.com/Xsu2GQg.png)
+![](https://i.imgur.com/5JRqyP4.png)
+
+`compareAndSet()` w linijce 25 może zawieść, jeśli inny wątek zdążył wcześniej dodać element na koniec kolejki.
+
+W linijce 26 może zawieść, jeśli już jakiś inny wątek pomógł ustawić dany węzeł jako `tail`. Dlatego właśnie nie sprawdzamy, czy wywołanie się powiodło.
+
+W linijce 30 może zawieść, jeśli jakiś inny wątek zmienił `tail` na inny węzeł. To wywołanie służy naprawie zmiennej `tail` tak, żeby wskazywała na poprawny wątek. Dlatego właśnie nie sprawdzamy, czy wywołanie się powiodło.
+
+![](https://i.imgur.com/WHemruw.png)
+
+`compareAndSet` w linijce 45 może zawieść, jeśli inny wątek już naprawił `tail`, tak, żeby wskazywał na kolejny węzeł. Dlatego właśnie nie sprawdzamy, czy wywołanie się powiodło.
+
+W linijce 48 może zawieść, jeśli inny wątek wyciągnął ten sam element z kolejki szybciej.
+
+"Szybsze" wątki pomagają "wolniejszym", poprzez ustawienie zmiennej `tail` na kolejny węzeł, jeśli `tail.next != null`.
+
+## Zadanie 2
+
+:::success
+Autor: Dawid Dudek
+:::
+
+![](https://i.imgur.com/Y6SGmMi.png)
+
+a) 
+![](https://i.imgur.com/WHemruw.png)
+
+![](https://i.imgur.com/ZfOPNe3.png)
+![](https://i.imgur.com/erQGEZz.png)
+
+### Podejście w którym za sukces uważamy zwrócenie wartości w aktualnym obrocie pętli
+
+1. Wiemy, że jest to nasz ostatni obrót pętli (zakończymy się sukcesem) czyli nasz CAS zwróci true. Skoro CAS zwróci true to nic złego się już nie wydarzy -> nikt inny nie zmodyfikuje head w tym czasie. Zatem równie dobrze możemy się zlinearyzować na pobraniu wartości linijkę wcześniej (47)
+
+### Podejście w którym za sukces uważamy zwrócenie wartości kiedyś - niekoniecznie w tym obrocie pętli
+1. Interesuje nas linijka 47. Czemu nie możemy się tutaj zlinearyzować? ponieważ dwa wątki mogły przeczytać tam wartość ale tylko CAS jednego się powiedzie. Zatem tylko jeden wątek zwróci wartość a drugi powie światu, że jego efekt już jest widoczny ale będzie to nieprawda. 
+
+
+b)
+![](https://i.imgur.com/5JRqyP4.png)
+![](https://i.imgur.com/iUzuMPy.png)
+
+Interesuje nas tylko enq który zakończył swoje działanie. W takim przypadku jest to dobre miejsce linearyzacji. 
+
+Rozpatrzmy dwa przypadki:
+
+1. My zmieniliśmy tail -> tutaj wszystko jest jasne, że jest to dobre miejsce na linearyzacje.
+
+2. Inny wątek nas popchnął czyli naprawił za nas. Też jest to dobre miejsce aby się zlinearyzować -> nasz wątek A linearyzuje się od razu po tym jak wątek B naprawił nam tail. 
+![](https://i.imgur.com/bpk5Dxc.png)
+
+
+Trzeba sobie zadać jednak pytanie - czy rysunek nie jest stronniczy. Wiemy, że punkt linearyzacji musi być w obrębie wykonania naszej metody. Czy na pewno poprawa tail w B nie jest po wykonaniu A? Odpowiedź to: A musi jeszcze trwać
+
+Zastanówmy się dlaczego. Skoro wątek B naprawił nam tail to znaczy, że my go nie naprawiliśmy. Czemu go nie naprawiliśmy? Bo nie wywołaliśmy jeszcze CAS/dostaliśmy false w jego wywołania.
+
+Jeśli go nie wywołaliśmy to oczywiście nasza metoda jeszcze trwa.
+
+Jeśli dostaliśmy false to znaczy, że tail został już naprawiony przez inny wątek ponownie, przed wykonaniem naszego CASa
+
+## Zadanie 3
+
+:::success
+Autor: Kacper Komenda 
+:::
+
+![](https://i.imgur.com/P4gwd0Q.png)
+
+
+**ABA problem** rodzaj błędu w synchronizacji, powstaje gdy dana lokalizacja odczytywana jest dwukrotnie. Wtedy może zostać to błędnie odczytane jako "nic się nie zmieniło", podczas gdy inny wątek mógł zmienić wartość tej lokacji, zrobić jakieś zadania a potem ponownie zmienić wartość do wartości pierwotnej, oszukując tym samym wątek. 
+
+Na przykładzie naszej kolejki: może zdarzyć się następująca sytuacja
+-Wątek A próbuje zmienić head z a na b (za pomocą CompareAndSet)
+-w tym czasie wątek B wyjmuje z kolejki b oraz a. 
+-Jeszcze inny wątek ponownie przywraca w to miejsce a
+-Teraz wątek A kończy działanie, za pomocą CompareAndSet() zmienia poprzednika, tak, że node usunięty przez niego wskazuje na b zamiast na c (konsekwencja wywołania CompareAndSet())
+-Tutaj się wszystko załamuje, bo b jest usunięte
+
+Jak to naprawić?: 
+Można użyć
+```java=
+AtomicStampedReference<T>
+```
+klasa ta przechowuje nie tylko referencję do następnego obiektu, ale również stamp, który służy do zidentyfikowania czy nastąpił problem opisany wyżej. Wtedy CompareAndSet() jednocześnie sprawdza referencję i stamp, a gdy usuwamy(gdy używamy CompareAndSet, zwiększamy stamp), to modyfikujemy stamp, więc w przypadku ponownego umieszczenia w kolejce CompareAndSet() zawiedzie przez zmieniony stamp. 
+
+
+## Zadanie 4
+
+:::success
+Autor: Łukasz Orawiec
+:::
+
+W synchronicznej kolejce wątki synchronizują się, czekając na siebie nawzajem:
+- producent po dodaniu elementu czeka, aż konsument go usunie,
+- konsument czeka, aż jakiś element zostanie dodany do kolejki.
+
+Jest to synchronizacja poprzez **spotkania**.
+
+![](https://i.imgur.com/u90FGUb.png)
+
+## Zadanie 5
+
+:::success
+Autor: Cezary Troska
+:::
+
+```java=
+
+ public SynchronousDualQueue() {
+     Node sentinel = new Node(null, NodeType.ITEM);
+     head = new AtomicReference<Node>(sentinel);
+     tail = new AtomicReference<Node>(sentinel);
+ }
+ public void enq(T e) {
+     Node offer = new Node(e, NodeType.ITEM);
+     while (true) {
+         Node t = tail.get(), h = head.get();
+         if (h == t || t.type == NodeType.ITEM) {
+             Node n = t.next.get();
+             if (t == tail.get()) {
+                 if (n != null) {
+                     tail.compareAndSet(t, n); # Dokończenie pracy innego enq. Sytuacja zdarza się, gdy inne enq zdąży wykonać compareAndSet w linii 16, ale jeszcze nie wykona linii 17. Rezultat nie jest sprawdzany - porażka oznacza, że inne enq poprawiło tail przed nami
+                 } else if (t.next.compareAndSet(n, offer)) { # dodanie node tego enq na koniec kolejki. Może zawieść, jeśli inne inne enq zdąży wstawić tam node przed nami. Porażka wymaga kolejnego przejścia pętli.
+                     tail.compareAndSet(t, offer); # aktualizacja taila. Wynik nie jest sprawdzany - w przypadku porażki inne enq wykonało tę pracę.
+                     while (offer.item.get() == e);
+                     h = head.get();
+                     if (offer == h.next.get())
+                     head.compareAndSet(h, offer); # przesunięcie wykorzystanego node na nowy head. W przypadku porażki inny proces musiał już się tym zająć.
+                     return;
+                 }
+             }
+         } else {
+         Node n = h.next.get();
+         if (t != tail.get() || h != head.get() || n == null) {
+             continue;
+         }
+         boolean success = n.item.compareAndSet(null, e); # wstawiamy nasz element do node czekającego na zawartość
+         head.compareAndSet(h, n); # przestawiamy obsłużony node na head. W przypadku porażki inny wątek musiał już zaktualizować head. 
+         if (success)
+         return;
+         }
+     }
+ }
+
+```
+
+Struktury dualne umożliwiają dodawanie dwóch typów obiektów. Jeden z tych obiektów odpowiada sytuacji, gdy producent czeka na odebranie produktu przez konsumenta, drugi - konsumentowi czekającemu na obsłużenie przez producenta. Takie podejście skraca czasy czekania na drugą ze stron. W SynchronousDualQueue te obiekty to ITEM i RESERVATION.
+
+## Zadanie 6
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![](https://i.imgur.com/N57Le59.png)
+![](https://i.imgur.com/2R879DK.png)
+![](https://i.imgur.com/RGUuEt4.png)
+![](https://i.imgur.com/g3w7wDD.png)
+
+Pomijając nawet czeskie błędy...
+
+```java=
+int i = top.getAndDecrement();
+if (i < 0) { // is stack empty?
+    top.getAndDecrement();
+    throw new EmptyException();
+}
+```
+
+... ten algorytm jest po prostu jednym wielkim wyścigiem.
+
+Przykład:
+- mamy pełny stos
+- przychodzi N pusherów
+- każdy pusher robi `getAndIncrement` ale zostaje wywłaszczony przed "przywróceniem" indexu
+- przychodzi N poperów
+- każdy poper robi `getAndDecrement` i zostaje wywłaszczony
+- pusherzy zostają wybudzeni i każdy z nich robi znowu dekrementacje
+- mimo, że nie zdjęliśmy nic ze stosu to jego index wskazuje gdzieś w jego środek
+- przychodzi jakiś pusher i widzi, że `0 <= i < capacity`
+- teoretycznie może więc wrzucić coś na stos, robi to
+- nadpisaliśmy jakiś element ze stosu
+- no i w ogólności jest wielki bałagan
+
+
+## Zadanie 7
+
+:::success
+Autor: Piotr Stokłosa
+:::
+:::info
+![](https://i.imgur.com/5KD49Zy.png)
+![](https://i.imgur.com/M2KTdwP.png)
+![](https://i.imgur.com/SY6atAV.png)
+:::
+**Dlaczego stos nie jest współbieżny?**
+```
+A wykonuje pop i po 17 linii zasypia
+top = - 1
+B wykonuje push otrzymuje i = -1 i rzuca ArrayOutOfBoundsException
+```
+
+
+
+```java=
+private Rooms rooms
+
+public void push(T x) throws FullException{
+    rooms.enter(0);
+    int i = top.getAndIncrement();
+    if(i >= items.length){
+        top.getAndDecrement();
+        rooms.exit();
+        throw new FullException();
+    }
+    rooms.exit();
+    items[i] = x;
+}
+public T pop() throws EmptyException {
+    rooms.enter(1);
+    int i = top.getAndDecrement() - 1;
+    if (i < 0) { // stack is empty
+        top.getAndIncrement(); // restore state
+        rooms.exit();
+        throw new EmptyException();
+    }
+    T res = items[i];
+    rooms.exit();
+    return res;
+}
+```
+
+## Zadanie 8
+
+:::success
+Autor: Kamil Kasprzak
+:::
+
+![](https://media.discordapp.net/attachments/895259310702088223/933115676858667028/unknown.png)
+
+![](https://media.discordapp.net/attachments/895259310702088223/933115874364244078/unknown.png)
+![](https://media.discordapp.net/attachments/895259310702088223/933115989606948894/unknown.png)
+
+```java=
+public class Stack<T> implements Rooms.Handler{
+    private AtomicInteger top;
+    private T[] items;
+    private Rooms rooms;
+    private boolean isFull = false;
+    
+    void onEmpty(int i){
+        if(!isFull) return;
+        T[] newArrayItems = (T[]) new Object[items.length *2];
+        System.arraycopy(items, 0, newArrayItems, 0, items.length);
+        items = newArrayItems;
+        isFull = false;
+    }
+    
+    public Stack(int capacity) {
+        top = new AtomicInteger();
+        items = (T[]) new Object[capacity];
+        rooms = new Rooms(2);
+        rooms.setExitHandler(0,onEmpty);
+    }
+    
+    public void push(T x) throws FullException {
+        while(true){
+            if(isFull) continue;
+            rooms.enter(0);
+            int i = top.getAndIncrement();
+            if (i >= items.length) { // stack is full
+                top.getAndDecrement(); // restore state
+                isFull=true;
+                rooms.exit();
+                continue;
+            }
+            items[i] = x;
+            rooms.exit();
+            return;
+        }
+    }
+    
+    public T pop() throws EmptyException {
+        rooms.enter(1);
+        int i = top.getAndDecrement() - 1;
+        if (i < 0) {
+        // stack is empty
+            top.getAndIncrement(); // restore state
+            throw new EmptyException();
+        }
+        T item = items[i];
+        rooms.exit();
+        return item;
+    }
+}
+```
+

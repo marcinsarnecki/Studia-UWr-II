@@ -1,0 +1,292 @@
+# Ćwiczenia 6, grupa cz. 12-14, 25. listopada 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+Michał Błaszczyk         |   X   |  X  |  X  |     |     |  X  |     |     |
+Dawid Dudek              |   X   |==X==|  X  |     |     | X   |  X  |  X  |
+Mateusz Gil              |       |     |     |     |     |     |     |     |
+Wiktor Hamberger         |       |     |     |     |     |     |     |     |
+Krzysztof Juszczyk       |   X   |  X  |  X  |     |     |  X  |  X  |  X  |
+Kamil Kasprzak           |  X    |  X  |==X==| X   |     |  X  |  X  |  X  |
+Kacper Kingsford         |       |     |     |     |     |     |     |     |
+Kacper Komenda           |       |     |     |     |     |     |     |     |
+Aleksandra Kosińska      |   X   |  X  |     |     |     |  X  |     |     |
+Łukasz Orawiec           |   X   |     |     |  X  |     |  X  |     |     |
+Kamil Puchacz            |       |     |     |     |     |     |     |     |
+Paweł Sikora             |   X   |  X  |     |     |     |  X  |     |     |
+Michał Sobecki           |   X   |  X  |  X  |     |     |  X  |  X  |     |
+Cezary Stajszczyk        |   X   |  X  |     |     |     |  X  |     |     |
+Piotr Stokłosa           |   X   |  X  |  X  |     |     |  X  |  X  |     |
+Cezary Troska            |   X   |  X  |     |     |     |  X  |  X  |  X  |
+Daniel Wiczołek          |       |     |     |     |     |     |     |     |
+:::
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+:::success
+Autor: Aleksandra Kosińska
+:::
+
+:::info
+W 32-bitowym systemie komputerowym wszystkie komórki pamięci są atomowymi 32-bitowymi rejestrami MRMW. Chcesz w tym systemie zasymulować programowo 64-bitowy rejestr za pomocą dwóch rejestrów 32-bitowych. W tym celu implementujesz metody read() i write(), które odczytują i zapisują te dwa rejestry po kolei. Czy otrzymany 64-bitowy rejestr jest bezpieczny, regularny, atomowy czy też nie spełnia żadnego z tych warunków?
+:::
+
+1. **Bezpieczny**
+
+Ponieważ komórki pamięci są rejestrami MRMW to może wystąpić sytuacja, że będą sie pokrywać dwa *write*
+
+![](https://i.imgur.com/OmkEazt.png =500x)
+
+
+W tym przypadku do naszego 64-bitowego (złożonego z dwóch 32-bitowych) rejestru może zostać zapisana górna połowa bitów rejestru `w1` z jednego *write* i dolna połowa bitów rejestru `w2` z drugiego *write*. Gdy następnie zrobimy *read*, który się nie nakłada z nimi to oczekujemy, że dostaniemy dobrą wartość całego 64-bitowego rejestu ale zamiast tego czytamy połowę rejestu `w1` i połowę rejestru `w2`. Czyli warunek **bezpiecznego** rejestru jest **niespełniony**.
+
+2. **Regularny**
+
+Gdy rejestr nie jest bezpieczny to nie jest też regularny.
+
+3. **Atomowy**
+
+Gdy rejestr nie jest regularny to nie jest też atomowy.
+
+## Zadanie 2
+:::success
+Autor: Dawid Dudek
+:::
+![](https://i.imgur.com/aFpHgnV.png)
+
+
+![](https://i.imgur.com/0iDh4Tj.png)
+
+![](https://i.imgur.com/dAXXamG.png)
+
+
+![](https://i.imgur.com/Z5ufE8d.png)
+
+Intuicja: regularny od atomowego różni się tym, że wywołanie nie musi być linearyzowalne.  Jednak jak mamy dwa wątki to nie powinno to mieć znaczenia. 
+
+Wiemy, że jeśli zapis i odczyt się nie nakładają to rejest atomowy i regularny zachowa się tak samo.
+
+Zobaczmy zatem co się wydarzy jeśli nałożą nam wykonania read i write. Wiemy, że Peterson jest algorytmem dwuwątkowych.  
+
+Zobaczmy zatem co stanie się gdy wątek A będzie zapisywać Flag[A] = true a wątek B będzie czytać Flag[A] (czyli będzie w while)
+
+Wiemy, że poprzednią wartością flag[A] było false. Zatem B przeczyta false albo true
+
+Rozrysujsmy to na osi czasu
+
+![](https://i.imgur.com/MBjtfrR.png)
+
+Zauważmy jednak, że obojętnie co wtawimy w znak zapytania to wywołanie to będzie linearyzowalne.
+
+Zatem w przypadku tego algorytmu rejest regularny zachowuje się tak samo jak rejest atomowy. 
+
+Zatem można zastąpić rejest atomowy rejestrem regularnym.
+
+
+## Zadanie 3
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/913184943998386196/unknown.png?width=747&height=499)
+
+Idea:
+* Wykorzystujemy 2 $\lceil \log M+1\rceil$ boolowskich rejestrów do przechowywania wartości w zapisie dwójkowym (nazwane DATA[0] oraz DATA[1]).
+* Wykorzystujemy 1 boolowski rejestr do przechowania informacji o porządku zapisu danych (nazwany INDEX).
+
+### Funkcja write(x)
+* Odczyta stan INDEX
+* Wyznaczy NEWINDEX równy NOT(INDEX)
+* Zapisze wartość x do DATA[NEWINDEX]
+* Zapisze NEWINDEX do INDEX
+
+### Funkcja read()
+* Odczytuje wartość INDEX
+* Odczytuje wartość DATA[INDEX]
+
+### Uzasadnienie 
+#### Wywołanie read bez współbieżnych wywołań write
+W takim przypadku nie zmieni się zawartość INDEX i DATA[INDEX].Oznacza to, że będziemy odczytywać ostatnią zapisaną wartość.
+
+#### Wywołanie read ze współbieżnym wywołaniem write
+Możliwe przypadki:
+1) read odczyta wartość sprzed współbieżnego write (przeczyta wartość zmiennej INDEX, zanim zmieni ją write)
+2) Przeczyta zmienioną wartość INDEX i oznacza to, że wczyta wartość nowego i gotowego do odczytu rejestru DATA.
+
+#### Wiele współbieżnych wywołan write
+W takim przypadku przeczytana wartość może być dowolna. Podczas próby odczyty bufory zmienią się wielokrotnie, w wyniku read może odczytać fragment z każdego write.
+
+## Zadanie 4
+:::success
+Autor: Łukasz Orawiec
+:::
+
+![](https://i.imgur.com/NnvoU3u.png)
+![](https://i.imgur.com/yZcscdj.png)
+
+1) Załóżmy, że rejestr MRSW jest regularny. Wtedy dla każdego ciągu współbieżnych dostępów:
+    - jeśli odczyt nie był współbieżny z żadnym zapisem, zwrócił ostatnią zapisaną wartość
+    - jeśli odczyt był współbieżny z jednym lub większą liczbą zapisów, zwrócił ostatnią zapisaną wartość lub którąś z wartości zapisanych przez te zapisy
+
+    Dla każdego $i$ nie jest prawdą, że $R^i \rightarrow W^i$, bo wartość zapisana przez $W^i$ nie była ostatnią zapisaną wartością w momencie odczytu $R^i$ oraz $R^i$ i $W^i$ nie są współbieżne.
+
+    Dla każdych $i$ oraz $j$ nie jest prawdą, że $W^i \rightarrow W^j \rightarrow R^i$, ponieważ wartość zapisana przez $W^i$ nie była ostatnią zapisaną wartością w momencie odczytu $R^i$ oraz $R^i$ i $W^i$ nie są ze sobą współbieżne.
+    
+    
+2) Załóżmy, że rejestr MRSW jest dobry i spełnia następujące warunki:
+    - dla każdego $i$ nie jest prawdą, że $R^i \rightarrow W^i$ (*),
+    - dla każdych $i$ oraz $j$ nie jest prawdą, że $W^i \rightarrow W^j \rightarrow R^i$ (**).
+
+    Weźmy dowolny ciąg współbieżnych dostępów i rozważmy dowolny odczyt z tego ciągu.
+    
+    a) Odczyt nie jest współbieżny z żadnym zapisem.
+    
+    Załóżmy, że odczytana wartość jest różna od ostatniej zapisanej wartości. Ponieważ rejestr jest dobry, odczytana wartość musiała występować wśród wartości zapisanych. Z warunku (*) zapis tej wartości musiał mieć miejsce przed jej odczytem (albo współbieżnie z nim, ale ten odczyt nie jest współbieżny z żadnym zapisem). W takim razie wystąpiła sytuacja:
+    $$
+    W^i \rightarrow W^j \rightarrow R^i,
+    $$
+    
+    gdzie $W^j$ to ostatnia niewspółbieżnie zapisana wartość (w momencie odczytu $R^i$). Jest to sprzeczne z warunkiem (**).
+    
+    Jeśli odczyt nie jest współbieżny z żadnym zapisem, to odczytana wartość jest ostatnią zapisaną wartością.
+    
+    b) Odczyt jest współbieżny z zapisami.
+    
+    Załóżmy, że odczytana wartość jest różna od ostatniej zapisanej wartości i od wartości zapisywanych przez te współbieżne zapisy.
+    
+    Rejestr jest dobry i spełniony jest warunek (*), więc odczytana wartość musiała być wartością zapisaną przed odczytem lub współbieżnie z nim. Z założenia nie mogła być zapisana współbieżnie z odczytem, więc otrzymujemy sytuację
+    $$
+    W^i \rightarrow W^j \rightarrow R^i
+    $$
+    
+    gdzie $W^j$ to ostatnia niewspółbieżnie zapisana wartość (w momencie odczytu $R^i$).
+    
+    Jeśli odczyt jest współbieżny z zapisami, to odczytana wartość jest ostatnią zapisaną wartością lub wartością zapisaną przez te współbieżne zapisy.
+
+
+## Zadanie 5
+:::success
+Autor:Jacek Bizub
+:::
+
+![image alt](https://i.imgur.com/pWa5BOx.png)
+
+Rejestr **atomowy** musi też być **regularny**, więc (\*) oraz (\*\*) mamy z poprzedniego zadania.
+
+Teraz (\*\*\*):
+
+Załóżmy, że rejestr jest atomowy. Implikuje to, że dla każdego i, j $$ R^i -> R^j \implies i \leq j $$
+Dowód: jeżeli i > j to nie mamy poprawnej linearyzacji. A rejestr atomowy jest linearyzowalny.
+
+Załóżmy, że rejestr jest regularny oraz dla każdego i, j $$ R^i -> R^j \implies i \leq j $$
+Jest to wtedy rejestr atomowy.
+
+Dowód: Jedyną różnicą między rejestrem atomowym a regularnym jest to, że dla rejestru regularnego może wystąpić sytuacja: $$ R^i -> R^j, i > j $$
+
+-----------------
+
+![image alt](https://i.imgur.com/jS1IZly.png)
+
+## Zadanie 6
+:::success
+Autor: Paweł Sikora
+:::
+![](https://i.imgur.com/exsERoa.png)
+![](https://i.imgur.com/9ABNeAe.png)
+Załóżmy, że w tej implementacji jest podobnie jak w podręczniku, czyli na początku zapalony jest zerowy bit.
+
+![](https://i.imgur.com/FHfl5zS.png)
+
+Lemat: Wywołanie read() zawsze zwróci wartość odpowiadającą bitowi ze zbioru 0...M-1, ustawioną przez jakieś wywołanie write().
+Na początku write() zapalany jest najpierw nowy bit, dopiero później wszystkie wcześniejesze wartości są gaszone, czyli zawsze jakiś bit jest zapalony.
+
+Załóżmy, że x jest poprzednio ustawioną wartością przez jakieś write(), czyli dla dowolnego *i<x*, wszystkie bity *i* są zgaszone.
+Niech jakiś wątek wykonuje operację read(). Wówczas jeśli ten wątek odczyta wartość *bit[j] == true*, gdzie *j<x* to oznacza to, że jakiś współbieżny wątek wykonał write(), co jest zgodne z lematem i dowodzi twierdzeniom 4.1.1 i 4.1.2.
+
+## Zadanie 7
+:::success
+Autor: Piotr Stokłosa
+:::
+
+![](https://i.imgur.com/dfigHme.png)
+![](https://i.imgur.com/ENUAmhE.png)
+![](https://i.imgur.com/EE9yhYw.png)
+![](https://i.imgur.com/u7wQoAU.png)
+![](https://i.imgur.com/QuXfbza.png)
+
+## Zadanie 8
+:::success
+Autor: Krzysztof Juszczyk
+:::
+
+![](https://i.imgur.com/2VtPGHG.png)
+
+
+```java= 
+public class AtomicMRMWRegister<T> implements Register<T>{
+    private StampedValue<T>[] a_table; // array of atomic MRSW registers
+    public AtomicMRMWRegister(int capacity, T init) {
+        a_table = (StampedValue<T>[]) new StampedValue[capacity];
+        StampedValue<T> value = new StampedValue<T>(init);
+        for (int j = 0; j < a_table.length; j++) {
+            a_table[j] = value;
+        }
+    }
+    public void write(T value) {
+        int me = ThreadID.get();
+        StampedValue<T> max = StampedValue.MIN_VALUE;
+        for (int i = 0; i < a_table.length; i++) {
+            max = StampedValue.max(max, a_table[i]);
+        }
+        a_table[me] = new StampedValue(max.stamp + 1, value);
+    }
+    public T read() {
+        StampedValue<T> max = StampedValue.MIN_VALUE;
+        for (int i = 0; i < a_table.length; i++) {
+            max = StampedValue.max(max, a_table[i]);
+        }
+        return max.value;
+    }
+}
+```
+
+Każdy wątek posiada swój atomowy rejestr MRSW w tablicy `a_table[]`.
+
+Zapis do rejestru `AtomicMRMWRegister` wygląda następująco: wątek znajduje w tablicy `a_table[]` największy znacznik czasu $t$ i w swoim rejestrze `a_table[me]` zapisuje wartość skojarzoną ze znacznikiem czasu `t+1`.
+
+Aby odczytać wartość rejestru `AtomicMRMWRegister` wątek skanuje tablice `a_table[]` i wybiera wartość skojarzoną z najwyższym znacznikiem czasu. Kiedy w `a_table[]` znajduje się kilka wartości skojarzonych z tym samym maksymalnym znacznikiem czasu to wtedy wątek wybiera wartość zapisaną przez wątek o najwyższym id. Czyli kolejności współbieżnych zapisów są wykonywane zgodnie z porządkiem leksykograficznym krotek `(TimeStamp, ThreadID)`.
+
+Pokażmy, że `AtomicMRMWRegister` wykazuje własności (\*), (\*\*), (\*\*\*)
+
+#### (\*)
+Nasz algorytm nie zwraca wartości z przyszłości.
+
+#### (\*\*)
+Załóżmy, że dla wątków $A,B,C$ następuje `A.write(x)` $\rightarrow$ `B.write(y)` $\rightarrow$ `C.read()`i pokażmy, że $C$ nie może zwrócić $x$.
+* Jeśli $A=B$ czyli wykonany zostaje zapis sekwencyjny to $A$ wykona `a_table[A] = x` po czym nadpisze `a_table[A] = y`.
+* Wpp. $A \neq B$ to znacznik czasu zapisany przez $A$ jest mniejszy niż znacznik zapisany przez $B$, a $C$ odczyta wartość skojarzoną z największym znacznikiem.
+
+#### (\*\*\*)
+Załóżmy, że:
+* `A.read()` $\rightarrow$ `B.read()`.
+* `C.write(x)` został wykonany w kolejności przed `D.write(y)`.
+
+Pokażmy, że jeśli $A$ zwrócił $y$ to $B$ nie będzie mógł zwrócić wartości $x$.
+* Jeśli $t_C < t_D$ to $A$ odczyta i zwróci wartość zapisaną w `a_table[D] = y`. Natomiast $B$ również zwróci wartość `a_table[D]` lub wartość skojarzoną ze znacznikiem $t \geq t_D > t_C$, czyli nie zwróci $x$.
+* Wpp. $t_C = t_D$ czyli wątki $C, D$ wykonywały zapis współbieżnie. Ale jeśli $A$ odczyta wartość $y$ to $B$ również odczyta wartość zapisaną w `a_table[D]` skojarzoną ze znacznikiem $t_D$ (lub skojarzoną z większym znacznikiem czasu) nawet jeśli odczytał `a_table[C]` skojarzoną z $t_C$ ponieważ $C<D$.

@@ -1,0 +1,221 @@
+# Ćwiczenia 9, grupa cz. 10-12, 16. grudnia 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez  postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- | --- |
+Przemysław Hoszowski     |   X   |  X  |  X  |  X  |     |  X  |     |     |
+Dominik Komła            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |     |
+Tomasz Mróz              |       |     |     |     |     |     |     |     |
+Mateusz Opala            |   X    |  X   |  X   |  X   |  X   |  X   |  X   |     |
+Łukasz Pluta             |  X     |  X   |  X   |  X   |   X  |   X  |  X   |     |
+Antoni Pokusiński        | ==X== |   X |  X  |  X  |  X  | X   |  X  |   |
+Szymon Rysz              |   X   | ==X== |  X  |  X  |  X  |  X  |  X  |     |
+Dominik Samorek          |       |     |     |     |     |     |     |     |
+Mateusz Sidło            |   X   |  X  |  X  |  X  |     |  X  |  X  |     |
+Jan Wańkowicz            |   X   |  X  |  X  |  X  |  X  |  X  |  X  |     |
+Michał Zieliński         |       |  X  |  X  |==X==|  X  |  X  |  X  |     |
+:::
+
+
+Tu można zadeklarować zadanie 4 z listy 8 (proszę wpisać imię i nazwisko):
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+## Zadanie 1
+
+:::success
+Autor: Antoni Pokusiński
+:::
+:::info
+Zdefiniuj zasadę lokalności odwołań. W jaki sposób tę zasadę wykorzystują pamięci podręczne?
+:::
+
+**Zasada lokalności odwołań** -  w danym czasie jest bardzo prawdopodobne, że procesor będzie wykonywał wiele dostępów do tej samej komórki pamięci, albo pobliskich komórek. Wykorzystanie tej zasady - wykonując odczyt/zapis do pamięci operacyjnej, ściągamy blok danych do pamięci podręcznej (*cache*). Ze slajdów:
+![](https://i.imgur.com/lhpTvId.png =490x300)
+
+:::info
+Dlaczego systemy wieloprocesorowe wymagają zastosowania protokołów spójności pamięci podręcznych?
+:::
+Mamy wiele procesorów, z których każdy ma swoją własną pamięć podręczną, w których być może są kopie tej samej zmiennej $x$. Jeśli np. jeden procesor zapisuje do $x$ nową wartość, to inne procesory muszą się jakoś o tym dowiedzieć.  Ze slajdów:
+![](https://i.imgur.com/ErUFr15.png =490x300)
+
+:::info
+Jak działa protokół **MESI**?
+:::
+Mamy model jak wyżej, tj. wiele procesorów, *cache* dla każdego z nich i wspólną pamięć. Każda linia pamięci podręcznej ma pewien stan:
+* **M** (modified) - linia jest obecna tylko w tej pamięci podręcznej i została zmodyfikowana. Musi więc zostać kiedyś zapisana do pamięci głównej.
+* **E** (exclusive) - linia jest obecna tylko w tej pamięci podręcznej, ale nie została jeszcze zmodyfikowana.
+* **S** (shared) - linia nie została zmodyfikowana (jest zgodna z główną pamięcią), być może mają ją też inne procesory
+* **I** (invalid) - linia nie zawiera wiarygodnych informacji - np. inny procesor zmodyfikował pewną zmienną z tej linii.
+
+Z książki (18.4.1):
+"A full description of a cache coherence protocol can be complex, but here are
+the principal transitions of interest to us:
+* When a processor requests to load a line in exclusive mode, the other processors invalidate any copies of that line. Any processor with a modiﬁed copy of that line must write the line back to memory before the load can be fulﬁlled.
+* When a processor requests to load a line into its cache in shared mode, any processor with an exclusive copy must change its state to shared, and any processor with a modiﬁed copy must write that line back to memory before the load can be fulﬁlled.
+* If the cache becomes full, it may be necessary to evict a line. If the line is shared or exclusive, it can simply be discarded, but if it is modiﬁed, it must be written back to memory."
+
+## Zadanie 2
+
+:::success
+Autor: Szymon Rysz
+:::
+![](https://i.imgur.com/n8dZM1W.png)
+
+Wydajność mierzy się poprzez wykonanie krótkiej sekcji krytycznej dla `n` wątków.
+
+![](https://i.imgur.com/kL17d44.png)
+
+![](https://i.imgur.com/otvdBq9.png)
+
+Każdy procesor (wątek) ma swoją pamięć cache. Jest ona aktualizowana tylko wtedy, gdy zmienna jest oznaczona jako invalid. TAS oznacza zmienną jako invalid kiedykolwiek jest ona wywoływana, niezważając na to, czy ustawienie wartości było pomyślne (czy wartość się zmieniła). To powoduje duży koszt czasowy.
+
+Przez to wszystkie wątki kontynuują "unieważnianie" pamięci podręcznej cały czas. W TTAS z kolei, unika się wywoływania TAS tak często, przez co "unieważnia" się pamięć podręczną rzadziej(tylko podczas wywołania TAS oraz zwolnieniu blokady).
+
+## Zadanie 3
+
+:::success
+Autor: Jan Wańkowicz
+:::
+
+W pierwszej implementacji wszystkie wątki korzystają z tej samej linii cache'u, w której znajduje się licznik. Z tego powodu każde jego zwiększenie powoduje, że każdy z wątków musi wtedy zaktualizować tę linię keszu, co obniża wydajność naszego algorytmu.
+
+W drugiej wersji zaś każdy wątek czeka na różny element w pamięci, przez co linie cache'u nie będą tak często uaktualniane, co powoduje lepszą wydajność niż w pierwszej wersji.
+
+## Zadanie 4
+
+:::success
+Autor: Michał Zieliński
+:::
+
+### Treść
+Poniżej znajduje się alternatywna implementacja zamka CLHLock, w której wątek ponownie wykorzystuje nie węzeł swojego poprzednika, ale własny. Wyjaśnij, dlaczego ta implementacja jest błędna.
+
+```java=
+public class BadCLHLock implements Lock 
+{
+    AtomicReference<Qnode> tail = new AtomicReference<QNode>(new QNode());
+    ThreadLocal<Qnode> myNode = new ThreadLocal<QNode> 
+    {
+        protected QNode initialValue() 
+        {return new QNode();}
+    };
+    
+    public void lock() 
+    {
+        Qnode qnode = myNode.get();
+        qnode.locked = true; // I’m not done
+// Make me the new tail, and find my predecessor
+        Qnode pred = tail.getAndSet(qnode);
+        while (pred.locked) {}
+    }
+    public void unlock() 
+    {
+        // reuse my node next time
+        myNode.get().locked = false;
+    }
+    static class Qnode 
+    { // Queue node inner class
+        volatile boolean locked = false;
+    }
+}
+```
+### Rozwiązanie
+Implementacja ta jest błędna, ponieważ może dojść do zakleszczenia.
+#### Przypadek, w którym dochodzi do zakleszczenia
+Weźmy wątki $A$ i $B$ oraz ich qnode'y, odpowiednio $q_a$ i $q_b$.
+Rozważmy następujący ciąg zdarzeń:
+##### 1
+$A$ zajmuje zamek 
+$q_a.locked = true$, $tail=q_a$
+##### 2
+$B$ próbuje zająć zamek, ale jest on dalej zajęty przez A, więc B czeka
+$q_b.locked = true$, $tail=q_b$
+##### 3
+$A$ zwalnia zamek
+$q_a.locked=false$
+##### 4
+**Zanim** $B$ odczyta $q_a.locked=false$ $A$ ponownie próbuje zająć zamek
+$A$ zapisuje $q_a.locked=true$. 
+
+Żaden z wątków nigdy nie zajmie zamka, gdyż A i B odczytują "zablokowanie" swoich poprzedników.
+
+## Zadanie 5
+
+:::success
+Autor: Mateusz Opala
+:::
+![](https://i.imgur.com/jg78r51.png)
+
+![](https://i.imgur.com/xbngeeX.png)
+![](https://i.imgur.com/1kUQYxV.png)
+![](https://i.imgur.com/OW3t14q.png)
+
+
+## Zadanie 6
+
+:::success
+Autor: Dominik Komła
+:::
+
+```
+Metoda isLocked() wywołana na zamku zwraca wartość
+true wtedy i tylko wtedy, gdy zamek jest zajęty przez pewien
+wątek. Podaj implementację metody isLocked() dla następujących
+zamków: a) TAS, b) CLH, c) MCS.
+```
+
+a) TAS
+```java=
+public boolean isLocked(){
+    return state.get();
+}
+```
+
+b) CLH
+![](https://i.imgur.com/V3fggZI.png)
+
+
+```java=
+public boolean isLocked(){
+    node = tail.get();
+    return node != null && node.locked;
+}
+```
+
+c) MCS
+![](https://i.imgur.com/vlaqF4s.png)
+![](https://i.imgur.com/QqrJ3MP.png)
+
+```java=
+public boolean isLocked(){
+    node = tail.get();
+    return node != null;
+}
+```
+
+## Zadanie 7
+
+:::success
+Autor: Łukasz Pluta
+:::
+
+W systemach z archietkturą NUMA problemem z wydajnością pojawia się gdy przekazujemy zamek pomiędzy wątkami z różnych klastrów. HBOlock stara się rzadziej skakać pomiędzy klastrami, obsługując wątki "seriami" w obrębie klastra, dzięki temu mniej skaczemy po niezaelżnych obszarach pamięci i implementacja jest bardziej wydajna.
+
+
+## Zadanie 8
+
+:::danger
+Autor: PWit
+:::

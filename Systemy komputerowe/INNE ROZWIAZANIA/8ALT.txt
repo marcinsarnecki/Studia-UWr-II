@@ -1,0 +1,337 @@
+# Ćwiczenia 8, grupa cz. 12-14, 9. grudnia 2021
+
+###### tags: `PRW21` `ćwiczenia` `pwit`
+
+## Deklaracje
+
+Gotowość rozwiązania zadania należy wyrazić poprzez postawienie X w odpowiedniej kolumnie! Jeśli pożądasz zreferować dane zadanie (co najwyżej jedno!) w trakcie dyskusji oznacz je znakiem ==X== na żółtym tle.
+
+**UWAGA: Tabelkę wolno edytować tylko wtedy, gdy jest na zielonym tle!**
+
+:::danger
+|                        | 1     | 2   | 3   | 4   | 5   | 6   | 7   |
+| ----------------------:| ----- | --- | --- | --- | --- | --- | --- |
+Jacek Bizub              |   X   |  X  |  X  |  X  |  X? |     |  X  |
+Michał Błaszczyk         |       |  X  | X?  |     |     |  X  |  X  |
+Dawid Dudek              |       |  X  |  X  |==X==?|  X  |  X  |  X  |
+Krzysztof Juszczyk       |       |     |  X  |     |  X  |     |     |
+Kamil Kasprzak           |       |==X==|  X  |  X  | X  |  X  |  X  |
+Kacper Komenda           |   X? |  X  |     |  X  |  X  |     |  X  |
+Aleksandra Kosińska      |       |     |     |     |     |     |  X  |
+Łukasz Orawiec           |       |     |     |     |     |     |     |
+Kamil Puchacz            |       |     |     |     |     |     |     |
+Paweł Sikora             |       |  X  |  X  |     |     |     |  X  |
+Michał Sobecki           |       |     |     |     |     |     |     |
+Cezary Stajszczyk        |       |     |  X  |     |  X  |     |  X  |
+Piotr Stokłosa           |       |  X  |  X  |     |     |     |  X  |
+Cezary Troska            |       |     |  X  |     |  X  |     |  X  |
+:::
+
+
+Tutaj można do-deklarować zadanie 6 z listy 7. (proszę wpisać imię i nazwisko): Kacper Komenda
+
+
+
+:::info
+**Uwaga:** Po rozwiązaniu zadania należy zmienić kolor nagłówka na zielony.
+:::
+
+
+## Zadanie 1
+
+:::success
+Autor: Jacek Bizub
+:::
+
+![image alt](https://i.imgur.com/CbdD5rd.png)
+
+To zadanie jest bardzo podobne do nieczekającego konsensusu na rejestrach atomowych. Dostajemy dodatkowe rejestry RAB, RBC, RAC z operacją **compareAndSet**.
+
+(\*) drzewo konsensusu musi mieć w korzeniu wierzchołek 3-waletny
+(\*\*) po drodze od korzenia do liścia istnieje taki wierzchołek 3-waletny, że jego dzieci są już 1/2(?)-waletne
+
+Weźmy taki wierzchołek (\*\*). Wiemy już, że operacje odczytu/zapisu na rejestrach atomowych nie dadzą nam nic konkretnego. Skupmy się na dodatkowych możliwościach wynikających z rejestrów RAB, RBC, RAC.
+
+Tak samo jak poprzednio, operacja odczytu (get) nie zmienia stanu obiektu konsensusu więc nie może być szukaną operacją.
+
+- Niech A i B dokonają compareAndSet na rejestrach RBC, RAC. Okazuje się, że niezależnie od tego kto był pierwszy (A czy B) to stan obiektu z punktu widzenia C jest dokładnie taki sam. Możemy uznać, że C przegrał zarówno z A jak i z B. Jednocześnie C nie wie kto wygrał pojedynek A-B.
+
+- Niech A i B dokonają compareAndSet na rejestre RAB. Tak jak powyżej, niezależnie który był pierwszy (A czy B) to z punktu widzenia C stan jest taki sam (ponieważ C w ogóle nie widzi RAB)
+
+
+## Zadanie 2
+
+:::success
+Autor: Kamil Kasprzak
+:::
+![](https://media.discordapp.net/attachments/895259310702088223/918469984127176794/unknown.png)
+```java=
+
+/*W tym kodzie wątek A ma numer 0, B ma 1, C ma 2. Indeksujemy tablice MRSW i r numerami wątków*/
+public class Consensus{
+    boolean MRSW[] = new boolean[3];
+    CompareObj r = new CompareObj[3]{-1,-1,-1} /*RAC RAB RBC*/
+    public boolean decide(boolean x){
+        MRSW[ID] = x; /* tablica wartości zaproponowanych 
+                       * przez wątki (wartości na wejściu wątków)*/
+        double_cAS(r[ID],r[(ID+1)%3],-1,ID) /*tu próbujemy ustawić wartości obydwu rejestów RMW przypisanych do wątku (np RAB i RAC dla wątku A)*/
+        if(r[ID].get() != -1) /* (*) */
+            return MRSW[r[ID].get()];
+        else 
+            return MRSW[r[(ID+1)%3]].get()];
+    }
+}
+```
+Spostrzeżenie: Tablica jest złożona z trzech elementów. Zapisujemy atomowo 2 z nich. To oznacza żę jesteśmy w stanie dobrać wartość `expected` tak, by zapis był możliwy tylko przez jeden (pierwszy) wątek.
+### 1
+`MRSW[ID] = x;`
+Zapisujemy własną propozycję wartości do tablicy.
+
+### 2
+Po wykonaniu `double_cAS(r[ID],r[(ID+1)%3],-1,ID)` wiemy że w tablicy pewien wątek zdołał zapisać dane (możlie że był to wątek inny niż obecnie rozpatrywany)
+![](https://media.discordapp.net/attachments/895259310702088223/918484900783480893/unknown.png)
+### 3
+Skoro niezapisana jest max jedna komórka. To oznacza że jeden z indexów (ID, (ID+1)%3) na pewno nie będzie pusty (możliwe żę dwa z nich są niepuste). Wykorzystujemy wartość z niepustej komórki, by odczytać prawidłową wartość proponowaną.
+```java=
+if(r[ID].get() != -1) 
+    return MRSW[r[ID].get()];
+else 
+    return MRSW[r[(ID+1)%3]].get()];
+```
+
+## Zadanie 3
+
+:::success
+Autor: Paweł Sikora
+:::
+![](https://i.imgur.com/5Q9KLz8.png)
+
+```java=
+public class CASConsensus extends ConsensusProtocol {
+   private AtomicInteger r = new AtomicInteger(-1);
+       
+   public T decide(T value) {
+       propose(value);
+       r.compareAndSet(-1, i);
+       return proposed[r.get()];
+   }
+}
+```
+
+
+
+
+
+
+Jak widać, n-ograniczona funkcja ma co najmniej n, ponieważ każdy wątek wywołuje tą metodę raz więc zadziała poprawnie.
+
+Pokażmy teraz, że to nie zadziała jak mamy n+1 wątków.
+Widzimy, że jeśli ta funkcja zostanie jeszcze raz wywołana (przez jakiś kolejny wątek) to nasza implementacja protokołu konsensusu przestanie działać poprawnie - wątki mogą zwrócić różne wartości/wyrzucić błąd przez to, że r.get() zwróci błąd. Zatem zawsze jakiś wątek nie będzie mógł skorzystać z wartości r.compareAndSet().
+
+Weźmy taki ciąg wywołań:
+- mamy n+1 wątków i wszystkie wywołują r.compareAndSet(-1, i)
+- umierają wszystkie wątki oprócz jednego. Nie jest on w stanie zwrócić żadnej wartości proponowanej przez którykolwiek z wątków ponieważ rejestr do którego chciały tą wartość przekazać został uszkodzony.
+
+
+> [name=Piotr Witkowski] Dowód niemożliwości naśladuje dowód niemożliwości implementacji binarnego konsensusu za pomocą rejestrów atomowych. Istotny przypadek: Stan krytyczny, z tego stanu wychodzi n+1 akcji będących operacjami na wspólnym rejestrze RMW (to są operacje n-ograniczonego cas). Powiedzmy, że akcja wątku A prowadzi do stanu 0-walentnego a akcja wątku B do 1-walentnego. Wykonujemy najpierw akcję wątku A, później akcje pozostałych wątków, w tym wątku Z jako ostatniego. Wywołanie cas przez Z zwraca pinezkę, wtedy puszczamy go solo i wartością zdecydowaną jest 0. Z drugiej strony uruchamiamy wątek B najpierw, później pozostałe (dalej na jedną akcję), w tym wątek Z jako ostatni. Wywołanie cas przez Z zwraca pinezkę i puszczamy do solo, a wartością zdecydowaną jest 1. Ale stan po wykonaniu Z w obydwu przypadkach jest taki sam z punktu widzenia Z. Sprzeczność.
+
+
+
+## Zadanie 4
+
+:::success
+Autor: Dawid Dudek
+:::
+![](https://i.imgur.com/tqh1S88.png)
+
+
+```java=
+class Assign2/3{
+    private RegisterWithCompare R01 = new RegisterWithCompare(-1)
+    private RegisterWithCompare R02 = new RegisterWithCompare(-1)
+    private RegisterWithCompare R12 = new RegisterWithCompare(-1)
+
+    
+    public void assign(index1, index2, value1, value2, arrayToFill){
+        var register = getRegister(index1,index2);
+        register.compareAndSet(-1,getThreadId());
+        
+        if register.get == getThreadId(){
+            arrayToFill[index1] = value1;
+            arrayToFill[index2] = value2;
+            register.set(-1);
+        }
+    }
+
+    private RegisterWithCompare getRegister(index1, index2){
+        if sort(index1,index2) == [0,1]:
+           return R01
+        }
+        
+        if sort(index1,index2) == [0,2]:
+            return R02
+        }
+    
+        if sort(index1,index2) == [1,2]:
+            return R12
+        }
+    }
+}
+```
+
+Przypadek 1: -> udało się zapisać (i indexy są rozłączne)
+- widać że działa bo zapisaliśmy atomow
+
+Przypadek 2: -> udało się zapisać (i 1 index się nakłada)
+- To znaczy, że dwa wątki próbują zapisać coś do tablicy i mają jeden wspólny index. Problemem może być pole, które jest wspólne. Jednak w nim będzie jedna z dwóch wartości (wątku A lub B) -> możemy to więc zlinearyzować tak, że ten któremu udało się zapisać to był "drugi" czyli nadpisał przeciwnika
+
+Przypadek 3: -> nie udało się zapisać
+- to znaczy, że jakiś inny wątek chciał wpisać pod tą samą parę indexów wpisać. Mówimy, że wątek, któremu się nie udało wpisał jako 1 i został nadpisany.
+
+
+
+Inne rozwiązanie zad 4:
+
+```java=
+public class Assign23<T> {
+    AtomicReference<T> [] r  = (AtomicReference <T> []) new Object [3];
+    
+    public Assign23(T init) {
+        for(int i =0; i < r.length; i++)
+            r[i] =  new AtomicRefernce<T>(init);
+        
+    }
+    
+    public void assign (T v0, T v1, int ind0, int ind1) {
+        
+        T t0 = r[ind0].get(); /*pierwszy etap*/
+        T t1 = r[ind1].get();
+ 
+        r[ind0].compareAndSet(t0,v0); /*drugi etap*/
+        r[ind1].compareandSet(t1,v1);
+        
+    }
+    
+    public T read(int index) {
+        return r[index].get()
+    }    
+    
+}
+
+```
+
+Analiza funkcji ``assign``. Są trzy przypadki:
+
+* obydwa wywołania `compareAndSet` powiodły się. Wątek wołający `assign` atomowo zmienił zawartość obydwu pól tablicy.
+* obydwa wywołania `compareandSet` zawiodły. To oznacza, że wartości zapisane w tablicy pod indeksami ind0 i ind1 zmieniły się pomiędzy etapem pierwszym a drugim. Czyli współbieżnie z obecnym wywołaniem assign dziaało wywołanie tej metody przez drugi wątek. Można zatem zlinearyzować te wywołania tak, by wywłołanie tej metody przez wątek drugi było późniejsze niż wywołanie obecnie analizowane. Obecne wywołanie assign działa tak, jak gdyby atomowo zmieniło obydwa rejestry, ale zostało od razu nadpisane przez assign drugiego wątku.
+* jedno z wywołań `compareAndSet` powiodło się a drugie zawiodło. To oznacza, że obydwa wątki mają tylko jeden wspólnie modyfikowany indeks w tablicy. Podobnie jak w punkcie poprzednim to oznacza, że dwa wywołania `assign` działają współbieżnie. Wybieramy punkt linearyzacji tego drugiego tak, by był późniejszy niż punkt linearyzacji obecnego wywołania. W efekcie `assign` działa tak, jak gdyby atomowo zmieniło wartość pól o indeksach ind0 i ind1 i było zaraz nadpisane przez to drugie współbieżne wywołanie. 
+
+
+
+
+
+
+## Zadanie 5
+
+:::success
+Autor: Krzysztof Juszczyk
+:::
+
+![](https://i.imgur.com/eiAQnIO.png)
+
+Pokażmy, że poziom konsensusu obiektu `QuasiConsensus` nie wynosi 2.
+
+Załóżmy, że jesteśmy w stanie krytycznym i wątki $A$, $B$ wykonają w następnym kroku `decide()`. Rozważmy przypadki w zależnosci od tego jakie wartości zostały zaproponowane przez oba wątki.
+*  Wykonując `A: decide(0) ; B: decide(0)`  znajddziemy się w stanie nieodróżnialnym od stanu osiągniętego przez wywołanie `B: decide(0), A: decide(0)`. Jeden z tych stanów jest w poddrzewie 1-walentnym a drugi w poddrzewie 0-walentnym. Sprzeczność.
+* `A: decide(1), B: decide(1)` - to samo co w punkcie wyżej
+* `A: decide(1), B: decide(0)` - W tym wypadku `QuasiConsensus` może zarówno zwrócić w wątkach tą samą wartość lub zadecydować `A = 1`, `B = 0`. Te wartości wątki otrzymją niezależnie od kolejlności wykonania decide. To oznacza, że znów znajedziemy się w stanach nieodróżnialnych wykonując `A: decide(1), B: decide(0)` lub `B: decide(1), A: decide(0)`. Sprzeczność, bo jeden z tych stanów jest 1-walentny a drugi 0-walentny.
+
+*  `A: decide(0), B: decide(1)` - tak samo jak powyżej.
+
+
+
+## Zadanie 6
+
+:::success
+Autor: Michał Błaszczyk
+:::
+
+Współbieżna metoda jest **niewstrzymywana**
+jeśli w sytuacji gdy wątki znajdują się w jej wnętrzu
+dostatecznie długo, to wykonanie przynajmniej jednego z nich
+postępuje. W szczególności, jeśli niektóre wątki są uśpione
+dostatecznie długo, to któryś z pozostałych postępuje.
+
+Kluczowe obserwacje:
+1. Startujemy z biwalentnego stanu.
+2. Osiągniemy **stan krytyczny**:
+    W przeciwnym razie musielibyśmy utknąć w jakimś tanie w nieskończoność, ale
+    własność niwstrzymywania gwarantuje nam że schodzimy w dół drzewa stanu programu.
+3. Argumentacja wykluczająca wszystkie możliwe interakcjie dwóch wątków jest identyczna
+   jak w przypadku dowodu prowadzonego na wykładzie.
+
+## Zadanie 7
+
+:::success
+Autor: Cezary Troska
+:::
+
+```java=
+public class ConsensusProposal {
+    Boolean proposed[] = new Boolean[2];
+    Integer[] speed = new Integer[2];
+    Integer[] position = new Integer[2]];
+    public ConsensusProposal(){
+        position[0] = 0;
+        position[1] = 0;
+        speed[0] = 3;
+        speed[1] = 1;
+    }
+    
+    public Boolean decide(Boolean value) {
+        int i = ThreadID.get(); //0 or 1
+        int j = 1 - i;
+        proposed[i] = value;
+        while (true) {
+            position[i] = position[i] + speed[i];
+            if (position[i] > position[j] + speed[j]) // I am far ahead of you
+                return proposed[i];
+            else if (position[i] < position[j]) // I am behind you
+                return proposed[j];
+        }
+    }
+}
+```
+
+*Współbieżna metoda jest niehamowana (ang.obstruction-free) jeśli każdy wątek który od pewnego momentu wykonuje metodę przez cały czas w izolacji, zakończy ją.*
+
+W znanym nam z zadania 4 listy 7 algorytmie dla dwóch wątków od pewnego momentu możemy znaleźć się w sytuacji, że jeden z wątków (A) zakończył wykonywanie funkcji decide, a drugi (B) jeszcze nie. 
+Od tego momentu ten wątek B będzie znajdować się w ciągłej izolacji. Pozostaje nam pokazać, że wątek B zakończy funkcję decide. Mamy dwie możliwości:
+* position[B] < position[A]: wtedy w kolejnym okrążeniu pętli wątek B zakończy działanie za pomocą returna w linijce 21.
+* position[B] >= position[A]: Wartość position[A] już nie urośnie, ponieważ A nie wykonuje już funkcji decide. Różnica pozycji między A i B jest skończona, więc B wykona jeszcze pętlę pewną skończoną liczbę razy, aż do spełnienia warunku w linijce 18. Następnie skończy działanie w linijce 19. 
+
+Przypadki pokrywają wszystkie możliwości, więc mamy pewność, że wątek B zakończy działanie.
+
+
+
+```java=
+public class ConsensusProposal {
+    Boolean proposed[] = new Boolean[2];
+    public ConsensusProposal(){
+    }
+    
+    public Boolean decide(Boolean value) {
+        int i = ThreadID.get(); //0 or 1
+        int j = 1 - i;
+        proposed[i] = value;
+        while (true) {
+            
+            if (proposed[i] == proposed[j])
+                return proposed[i];
+            
+            proposed[j] = proposed[i];
+            
+        }
+    }
+}
+```
