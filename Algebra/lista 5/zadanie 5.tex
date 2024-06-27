@@ -1,0 +1,187 @@
+documentclass[a4paper]{article}
+
+usepackage[T1]{fontenc}
+usepackage[utf8]{inputenc}
+
+usepackage[polish]{babel}
+
+usepackage{amsmath, amsfonts}
+usepackage{indentfirst}
+usepackage[nofoot,hdivide={2cm,,2cm},vdivide={2cm,,2cm}]{geometry}
+frenchspacing
+pagestyle{empty}
+setlengthparindent{0pt}
+
+begin{document}
+
+Large {textbf{Marcin Sarnecki 323034}}
+large
+vspace{0.5cm}
+
+Large{Lista 5, zadanie 5}
+large
+vspace{0.5cm}
+
+Wygrana jest zawsze możliwa dla n postaci $3a$ oraz $3a+1$, gdzie $ain N_+$ newline
+O dostępnych ruchach możemy myśleć jak o wektorach nad ciałem $Z_2$
+vspace{1cm}
+
+begin{bmatrix}
+1 & 1 &   &   &   &   &  
+1 & 1 & 1 &   &   &   &  
+  & 1 & 1 & 1 &   &   &  
+  &   & 1 & 1 & 1 &   &  
+  &   &   & 1 & 1 & 1 &  
+  &   &   &   & 1 & 1 & 1
+  &   &   &   &   & 1 & 1
+end{bmatrix}
+hspace{0.7cm}xrightarrow{}hspace{0.7cm}
+begin{bmatrix}
+1 & 1 &   &   &   &   &  
+  & 1 & 0 & 1 &   &   &  
+  &   & 1 &   &   &   &  
+  &   &   & 1 & 1 &   &  
+  &   &   & 1 & 1 & 1 &  
+  &   &   &   & 1 & 1 & 1
+  &   &   &   &   & 1 & 1
+end{bmatrix}
+
+vspace{0.4cm}
+hspace{3cm}(2 - 1, 2 + 3, 3 - 2, 4 - 3)
+
+vspace{0.2cm}
+
+Operacjami elementarnymi doprowadzam pierwsze 3 wiersze do postaci schodkowej, reszta wierszy wygląda tak samo jak początek macierzy, więc mogę wykonywać te same operacje elementarne dla każdych kolejnych trzech wierszy
+
+vspace{0.6cm}
+
+W przypadkach $n=3a$ oraz $n=3a+1$ na końcu otrzymamy postać schodkową
+
+vspace{0.1cm}
+
+hspace{3.2cm} $n=3a$ hspace{7.8cm} $n=3a+1$
+
+vspace{0.1cm}
+
+begin{bmatrix}
+1 &   &   &   &   &  
+  & 1 &   &   &   &  
+  &   & 1 &   &   &  
+  &   &   & 1 & 1 &  
+  &   &   & 1 & 1 & 1
+  &   &   &   & 1 & 1
+end{bmatrix}
+hspace{0.1cm}xrightarrow{}hspace{0.1cm}
+begin{bmatrix}
+1 &   &   &   &   &  
+  & 1 &   &   &   &  
+  &   & 1 &   &   &  
+  &   &   & 1 &   &  
+  &   &   &   & 1 &  
+  &   &   &   &   & 1
+end{bmatrix}
+hspace{1cm}
+begin{bmatrix}
+1 &   &   &   &   &   &  
+  & 1 &   &   &   &   &  
+  &   & 1 &   &   &   &  
+  &   &   & 1 & 1 &   &  
+  &   &   & 1 & 1 & 1 &  
+  &   &   &   & 1 & 1 & 1
+  &   &   &   &   & 1 & 1
+end{bmatrix}
+hspace{0.1cm}xrightarrow{}hspace{0.1cm}
+begin{bmatrix}
+1 &   &   &   &   &   &  
+  & 1 &   &   &   &   &  
+  &   & 1 &   &   &   &  
+  &   &   & 1 &   &   &  
+  &   &   &   & 1 &   &  
+  &   &   &   &   & 1 &  
+  &   &   &   &   &   & 1
+end{bmatrix}
+
+vspace{0.5cm}
+
+Zatem w przypadkach $n=3a$ oraz $n=3a+1$ za pomocą dostępnych ruchów możemy uzyskać dowolną kombinację 0 i 1
+
+vspace{0.5cm}
+
+Przypadek $n=3a+2$ jest inny
+vspace{0.3cm}
+
+
+begin{bmatrix}
+1 &   &   &   &   &   &   & 
+  & 1 &   &   &   &   &   & 
+  &   & 1 &   &   &   &   & 
+  &   &   & 1 & 1 &   &   & 
+  &   &   & 1 & 1 & 1 &   & 
+  &   &   &   & 1 & 1 & 1 & 
+  &   &   &   &   & 1 & 1 & 1
+  &   &   &   &   &   & 1 & 1
+end{bmatrix}
+hspace{0.1cm}xrightarrow{}hspace{0.1cm}
+begin{bmatrix}
+1 &   &   &   &   &   &   & 
+  & 1 &   &   &   &   &   & 
+  &   & 1 &   &   &   &   & 
+  &   &   & 1 &   &   &   & 
+  &   &   &   & 1 &   &   & 
+  &   &   &   &   & 1 &   & 
+  &   &   &   &   & 1 & 1 & 1
+  &   &   &   &   &   & 1 & 1
+end{bmatrix}
+hspace{0.1cm}xrightarrow{}hspace{0.1cm}
+begin{bmatrix}
+1 &   &   &   &   &   &   & 
+  & 1 &   &   &   &   &   & 
+  &   & 1 &   &   &   &   & 
+  &   &   & 1 &   &   &   & 
+  &   &   &   & 1 &   &   & 
+  &   &   &   &   & 1 &   & 
+  &   &   &   &   & 0 & 0 & 0 
+  &   &   &   &   &   & 1 & 1
+end{bmatrix}
+
+vspace{0.5cm}
+
+Pojawił się wiersz zerowy, nie uzyskamy wszystkich kombinacji 0 i 1. Zatem w niektórych przypadkach $n=3a+1$ wygrana nie jest mozliwa, np. $00001$
+
+vspace{0.5cm}
+
+} {
+
+Prosty algorytm zachłanny (dla przypadków $3a$ oraz $3a+1$)
+begin{itemize}
+  item Po kolei wykonujemy ruchy tak, aby wszystko z lewej strony było zapalone aż do ostatnich 3 pól
+  item Pole underline{$n-2$} możemy zmieniać niezależnie od innych pól poprzez operacje na polach  underline{$n$} oraz  underline{$n-1$}
+  item Jedno z pól {underline{$n-1$}, underline{$n$}} możemy zmienić niezależnie od innych pól w następujący sposób
+  begin{itemize}
+  item ustawiamy pole underline{$3$} operacjami na pozycjach underline{$1$} i underline{$2$}
+  item zmianę na polu 3 przesuwamy dalej co 3 pola za pomocą 2 ruchów 
+  
+  vspace{0.5cm}
+  
+  begin{matrix}
+   &   &   & 1 & 1 & 1 &   &   
+   &   & 1 & 1 & 1 &   &   &   
+ 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 
+(1)&(2)&(3)&(4)&(5)&(6)&(7)&(8)
+end{matrix}
+hspace{0.1cm}xrightarrow{}hspace{0.1cm}
+begin{matrix}
+   &   &   &   &   &   &   &   
+   &   &   &   &   &   &   &   
+ 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 
+(1)&(2)&(3)&(4)&(5)&(6)&(7)&(8)
+  end{matrix}
+  end{itemize}
+  vspace{0.2cm}
+  
+  Na końcu trafimy na pole underline{$n-1$} (w przypadku $3a+1$) lub na pole underline{$n$} (w przypadku $3a$)
+  Zatem jeśli możemy niezależnie od innych pól zmienić dwa pola spośród ostatnich 3 pól, dokładając do tego operację na polu underline{$n-1$} uzyskujemy możliwość dowolnego ustawienia 3 ostatnich pól, zatem jesteśmy w stanie zapalić wszystkie pola niezależnie od początkowego ustawienia
+  
+ 
+end{itemize}
+end{document}
