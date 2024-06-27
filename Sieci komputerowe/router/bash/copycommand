@@ -1,0 +1,3 @@
+cp ../win/p2/* .
+cd ../p2
+make
