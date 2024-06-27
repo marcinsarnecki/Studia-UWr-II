@@ -1,0 +1,100 @@
+html {
+    font-family: 'Times New Roman', Times, serif;
+}
+
+#first-section .box{
+    color: white;
+    height: 150px;
+    width: 250px;
+    padding: 20px;
+    margin: 15px;
+    box-sizing: border-box;
+}
+
+#first-section .first-box, #first-section .third-box {
+    background-color: #00FF0F;
+}
+
+#first-section .second-box {
+    border-style: dashed;
+    border-color: blue;
+    border-width: 10px;
+}
+
+#second-section ul.animal-list {
+    list-style: none;
+}
+
+#second-section ul.animal-list li::before {
+    content: "\2022";  
+    color: red; 
+    margin-left: -16px; 
+}
+
+#second-section ul.animal-list li ol li {
+    counter-increment: list;
+    list-style-type: none;
+}
+
+#second-section ul.animal-list li ol li::before {
+    color: green;
+    content: counter(list) ".";
+    left: -8px;
+    position: relative;
+    margin-left: -20px;
+}
+
+#second-section ul.animal-list li ul{
+    list-style: none;
+}
+
+#second-section ul.animal-list li ul li::before {
+    color: blue;
+    content: "\25E6";  
+    left: -8px;
+    position: relative;
+    margin-left: -20px; 
+}
+
+#second-section ul.animal-list li ol li:first-child, #second-section ul.animal-list li ul li:first-child {
+    color: turquoise;
+} 
+
+
+
+#third-section a.link {
+    text-decoration: none;
+    color: #437bc4;
+
+}
+
+#third-section a.link:hover {
+    text-decoration: underline;
+    color: red;
+
+}
+
+#third-section a.link::before {
+    content: '🔗';
+    display: inline-block;
+}
+
+#third-section a.link:visited {
+    text-decoration: none;
+    color: violet;
+}
+
+#forth-section img {
+    width: 50vw;
+    max-width: 1000px;
+    min-width: 400px;
+    height: auto;
+  }
+
+* {
+    font-size: 1rem;
+}
+
+h2 {
+    font-size: 1.8rem;
+}

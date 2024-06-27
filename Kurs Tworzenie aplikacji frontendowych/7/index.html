@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css"/>
+    <title>TODO list</title>
+    <script defer src="index.js"></script>
+</head>
+<body>
+    <div class="content">
+        <header class="main_header content__item">
+            <h1 class="main_header__header">TODO list</h1>
+            
+        </header>
+        <div class="todo content__item">
+            <h2 class="todo__header">Add your tasks to do!</h2>
+            <div class="todo__input_wrapper">
+                <input class="add_task" type="text" id="add_task__input" placeholder="What's on your mind?">
+                <button class="add_task" id="add_task__button">Add</button>
+            </div>
+            <div class="todo__info_wrapper">
+                <h2 class="tasks_info" id="tasks_info__header">Todo List (0 remaining)</h2>
+                <button class="tasks_info" id="clear_tasks__button" onclick="clearTodoList()">Clear tasks</button>
+                <button class="tasks_info" id="save_tasks__button" onclick="saveData()">Save tasks</button>
+            </div>
+            <div class="todo__ul_wrapper">
+                <ul id="list"></ul>
+            </div>
+            
+        </div>
+    </div>
+    
+    
+</body>
+</html>

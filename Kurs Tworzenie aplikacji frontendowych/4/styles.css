@@ -1,0 +1,94 @@
+html {
+    background-color: #FBF5F5;
+    font-family: Roboto, Arial;
+    font-size: clamp(1rem, 1.3vw, 2rem);
+}
+
+.main_header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.main_header__header {
+    font-size: 2.5rem;                                              
+}
+
+.content {
+    background-color: white;
+    box-shadow: 0px 3px 4px rgba(0, 0, 0, 0.1);
+    width: 80%;
+    margin: auto;
+    padding: 15px;
+    font-size: 1.5rem;                                          
+}
+
+.main_form {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.field {
+    padding: 4px;
+    flex: 1 0 61%;
+}
+.field:nth-of-type(1)  ,
+.field:nth-of-type(2) ,
+.field:nth-of-type(3) ,
+.field:nth-of-type(4) {
+    flex-basis: 40%;
+}
+
+.full_width {
+    width: 100%;
+    box-sizing: border-box; 
+    padding: 15px 5px 15px 5px;
+    font-size: 1.5rem;                                          
+}
+
+.select_option {
+    background-color: rgb(233, 233, 237);
+    border-radius: 5px;
+}
+
+.input_checkbox {
+    display: flex;
+    text-align: center;
+    justify-content: center;
+}
+
+.button {
+    background-color: rgb(0, 0, 255);
+    border: 0;
+    border-radius: 5px;
+    height: 5rem; 
+    color: white;
+    font-size: 1.5rem;                                         
+}
+
+#subscribe_checkbox {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+input[required]:invalid, select[required]:invalid, textarea[required]:invalid {
+    background-color: ivory;
+    border: none;
+    outline: 2px solid red;
+    border-radius: 5px;
+}
+
+@media (max-width: 600px) {
+    .field:nth-of-type(1),
+    .field:nth-of-type(2),
+    .field:nth-of-type(3),
+    .field:nth-of-type(4){
+        flex-basis: 61%;
+    }
+}
+
+@media (pointer: coarse) {
+    #subscribe_checkbox {
+        width: 10vw;
+        height: 10vw;
+    }
+}
